@@ -16,6 +16,10 @@ int _mpn_mod_methods_initialized = 0;
 
 gr_static_method_table _mpn_mod_methods;
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
 gr_method_tab_input _mpn_mod_methods_input[] =
 {
     {GR_METHOD_CTX_WRITE,       (gr_funcptr) mpn_mod_ctx_write},
@@ -33,6 +37,7 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_CTX_IS_EXACT,    (gr_funcptr) gr_generic_ctx_predicate_true},
     {GR_METHOD_CTX_IS_CANONICAL,
                                 (gr_funcptr) gr_generic_ctx_predicate_true},
+    {GR_METHOD_CTX_SET_IS_FIELD,(gr_funcptr) mpn_mod_ctx_set_is_field},
     {GR_METHOD_INIT,            (gr_funcptr) mpn_mod_init},
     {GR_METHOD_CLEAR,           (gr_funcptr) mpn_mod_clear},
     {GR_METHOD_SWAP,            (gr_funcptr) mpn_mod_swap},
@@ -110,11 +115,14 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_VEC_DOT,         (gr_funcptr) _mpn_mod_vec_dot},
     {GR_METHOD_VEC_DOT_REV,     (gr_funcptr) _mpn_mod_vec_dot_rev},
 
+    {GR_METHOD_POLY_MULLOW,     (gr_funcptr) _mpn_mod_poly_mullow},
+    {GR_METHOD_POLY_INV_SERIES, (gr_funcptr) _mpn_mod_poly_inv_series},
+    {GR_METHOD_POLY_DIV_SERIES, (gr_funcptr) _mpn_mod_poly_div_series},
+    {GR_METHOD_POLY_DIVREM,     (gr_funcptr) _mpn_mod_poly_divrem},
+    {GR_METHOD_POLY_DIV,        (gr_funcptr) _mpn_mod_poly_div},
+    {GR_METHOD_POLY_GCD,        (gr_funcptr) _mpn_mod_poly_gcd},
+    {GR_METHOD_POLY_XGCD,       (gr_funcptr) _mpn_mod_poly_xgcd},
 /*
-    {GR_METHOD_POLY_MULLOW,     (gr_funcptr) mpn_mod_poly_mullow},
-    {GR_METHOD_POLY_INV_SERIES, (gr_funcptr) mpn_mod_poly_inv_series},
-    {GR_METHOD_POLY_DIV_SERIES, (gr_funcptr) mpn_mod_poly_div_series},
-    {GR_METHOD_POLY_DIVREM,     (gr_funcptr) mpn_mod_poly_divrem},
     {GR_METHOD_POLY_ROOTS,      (gr_funcptr) mpn_mod_roots_gr_poly},
 */
 
@@ -125,6 +133,9 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_MAT_DET,         (gr_funcptr) mpn_mod_mat_det},
     {0,                         (gr_funcptr) NULL},
 };
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
 int
 _gr_ctx_init_mpn_mod(gr_ctx_t ctx, mp_srcptr n, mp_size_t nlimbs)
@@ -176,13 +187,6 @@ gr_ctx_init_mpn_mod(gr_ctx_t ctx, const fmpz_t n)
     return _gr_ctx_init_mpn_mod(ctx, COEFF_TO_PTR(*n)->_mp_d, COEFF_TO_PTR(*n)->_mp_size);
 }
 
-/* todo: have a generic interface for this */
-void
-gr_ctx_mpn_mod_set_primality(gr_ctx_t ctx, truth_t is_prime)
-{
-    MPN_MOD_CTX_IS_PRIME(ctx) = is_prime;
-}
-
 static const int
 randtest_primes[][2] = {
 #if FLINT_BITS == 32
@@ -213,7 +217,7 @@ gr_ctx_init_mpn_mod_randtest(gr_ctx_t ctx, flint_rand_t state)
         fmpz_ui_pow_ui(n, 2, randtest_primes[i][0]);
         fmpz_add_si(n, n, randtest_primes[i][1]);
         GR_MUST_SUCCEED(gr_ctx_init_mpn_mod(ctx, n));
-        gr_ctx_mpn_mod_set_primality(ctx, n_randint(state, 2) ? T_TRUE : T_UNKNOWN);
+        GR_MUST_SUCCEED(gr_ctx_set_is_field(ctx, n_randint(state, 2) ? T_TRUE : T_UNKNOWN));
     }
     else
     {

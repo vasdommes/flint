@@ -51,6 +51,13 @@ _gr_fmpz_mod_ctx_clear(gr_ctx_t ctx)
     fmpz_clear(FMPZ_MOD_CTX_A(ctx));
 }
 
+int
+_gr_fmpz_mod_ctx_set_is_field(gr_ctx_t ctx, truth_t is_field)
+{
+    FMPZ_MOD_IS_PRIME(ctx) = is_field;
+    return GR_SUCCESS;
+}
+
 truth_t
 _gr_fmpz_mod_ctx_is_field(gr_ctx_t ctx)
 {
@@ -598,6 +605,14 @@ _gr_fmpz_mod_poly_div_series(fmpz * Q, const fmpz * A, slong lenA, const fmpz * 
         return _gr_poly_div_series_newton(Q, A, lenA, B, lenB, len, cutoff, ctx);
 }
 
+int _gr_fmpz_mod_poly_gcd(mp_ptr G, slong * lenG, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+{
+    if (FLINT_MIN(lenA, lenB) < FMPZ_MOD_POLY_GCD_CUTOFF)
+        return _gr_poly_gcd_euclidean(G, lenG, A, lenA, B, lenB, ctx);
+    else
+        return _gr_poly_gcd_hgcd(G, lenG, A, lenA, B, lenB, FMPZ_MOD_POLY_HGCD_CUTOFF, FMPZ_MOD_POLY_GCD_CUTOFF, ctx);
+}
+
 
 /* todo: also need the _other version ... ? */
 /* todo: implement generically */
@@ -720,6 +735,7 @@ gr_method_tab_input _fmpz_mod_methods_input[] =
     {GR_METHOD_CTX_IS_EXACT,    (gr_funcptr) gr_generic_ctx_predicate_true},
     {GR_METHOD_CTX_IS_CANONICAL,
                                 (gr_funcptr) gr_generic_ctx_predicate_true},
+    {GR_METHOD_CTX_SET_IS_FIELD,(gr_funcptr) _gr_fmpz_mod_ctx_set_is_field},
     {GR_METHOD_INIT,            (gr_funcptr) _gr_fmpz_mod_init},
     {GR_METHOD_CLEAR,           (gr_funcptr) _gr_fmpz_mod_clear},
     {GR_METHOD_SWAP,            (gr_funcptr) _gr_fmpz_mod_swap},
@@ -779,6 +795,7 @@ gr_method_tab_input _fmpz_mod_methods_input[] =
     {GR_METHOD_POLY_INV_SERIES, (gr_funcptr) _gr_fmpz_mod_poly_inv_series},
     {GR_METHOD_POLY_DIV_SERIES, (gr_funcptr) _gr_fmpz_mod_poly_div_series},
     {GR_METHOD_POLY_DIVREM,     (gr_funcptr) _gr_fmpz_mod_poly_divrem},
+    {GR_METHOD_POLY_GCD,        (gr_funcptr) _gr_fmpz_mod_poly_gcd},
     {GR_METHOD_POLY_ROOTS,      (gr_funcptr) _gr_fmpz_mod_roots_gr_poly},
     {GR_METHOD_MAT_MUL,         (gr_funcptr) _gr_fmpz_mod_mat_mul},
     {GR_METHOD_MAT_LU,          (gr_funcptr) _gr_fmpz_mod_mat_lu},
@@ -827,10 +844,4 @@ _gr_ctx_init_fmpz_mod_from_ref(gr_ctx_t ctx, const void * fctx)
         gr_method_tab_init(_fmpz_mod_methods, _fmpz_mod_methods_input);
         _fmpz_mod_methods_initialized = 1;
     }
-}
-
-void
-gr_ctx_fmpz_mod_set_primality(gr_ctx_t ctx, truth_t is_prime)
-{
-    FMPZ_MOD_IS_PRIME(ctx) = is_prime;
 }

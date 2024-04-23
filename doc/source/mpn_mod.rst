@@ -59,6 +59,10 @@ Context objects
 
     Retrives the number of limbs `\ell` of the modulus.
 
+.. macro:: MPN_MOD_CTX_MODULUS_BITS
+
+    Retrieves the number of bits of the modulus.
+
 .. macro:: MPN_MOD_CTX_MODULUS(ctx)
 
     Pointer to the limbs of the modulus.
@@ -81,7 +85,7 @@ Context objects
 
     A :type:`truth_t` flag indicating whether `n` is prime.
 
-.. function:: void gr_ctx_mpn_mod_set_primality(gr_ctx_t ctx, truth_t is_prime)
+.. function:: void mpn_mod_ctx_set_is_field(gr_ctx_t ctx, truth_t is_prime)
 
     Set the flag indicating whether `n` is prime. Setting this to ``T_TRUE``
     speeds up some algorithms which can assume that the ring
@@ -168,12 +172,12 @@ Matrix algorithms
 -------------------------------------------------------------------------------
 
 All :type:`gr_mat_t` functionality is supported by this ring.
-The following methods implement optimised basic operation overrides
+The following methods implement optimized basic operation overrides
 used by higher-level generic routines.
 
 .. function:: int mpn_mod_mat_mul_waksman(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
 
-    Waksman's matrix multiplication algorithm using `n^3/2 + O(n)` scalar multiplications.
+    Waksman's matrix multiplication algorithm using `n^3/2 + O(n^2)` scalar multiplications.
     The operations are done with delayed reduction.
 
 .. function:: int mpn_mod_mat_mul_multi_mod(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
@@ -211,4 +215,74 @@ used by higher-level generic routines.
 Polynomial algorithms
 -------------------------------------------------------------------------------
 
-TODO
+All :type:`gr_poly_t` functionality is supported by this ring.
+The following methods implement optimized basic operation overrides
+used by higher-level generic routines.
+
+Multiplication
+..............
+
+All multiplication algorithms optimize for squaring.
+
+.. function:: int _mpn_mod_poly_mullow_classical(mp_ptr res, mp_srcptr poly1, slong len1, mp_srcptr poly2, slong len2, slong len, gr_ctx_t ctx)
+
+    Polynomial multiplication using the schoolbook algorithm.
+
+.. function:: int _mpn_mod_poly_mullow_KS(mp_ptr res, mp_srcptr poly1, slong len1, mp_srcptr poly2, slong len2, slong len, gr_ctx_t ctx)
+
+    Polynomial multiplication using Kronecker substitution (bit packing).
+
+.. function:: int _mpn_mod_poly_mullow_karatsuba(mp_ptr res, mp_srcptr poly1, slong len1, mp_srcptr poly2, slong len2, slong len, slong cutoff, gr_ctx_t ctx)
+
+    Polynomial multiplication using the Karatsuba algorithm,
+    implemented without intermediate modular reductions.
+    This algorithm calls itself recursively, switching to
+    basecase multiplication (also without intermediate reductions)
+    when either *len1* or *len2* is smaller than *cutoff*.
+
+    Currently a full product is computed internally regardless of *len*;
+    truncation only skips the modular reductions.
+
+.. function:: int _mpn_mod_poly_mullow_fft_small(mp_ptr res, mp_srcptr poly1, slong len1, mp_srcptr poly2, slong len2, slong len, gr_ctx_t ctx)
+
+    Polynomial multiplication using the small-prime FFT.
+    Returns ``GR_UNABLE`` if the small-prime FFT is not available
+    or if the coefficients are too large to use this implementation.
+
+.. function:: int _mpn_mod_poly_mullow(mp_ptr res, mp_srcptr poly1, slong len1, mp_srcptr poly2, slong len2, slong len, gr_ctx_t ctx)
+
+    Polynomial multiplication with automatic algorithm selection.
+
+Division
+..............
+
+.. function:: int _mpn_mod_poly_inv_series(mp_ptr Q, mp_srcptr B, slong lenB, slong len, gr_ctx_t ctx)
+              int _mpn_mod_poly_div_series(mp_ptr Q, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, slong len, gr_ctx_t ctx)
+
+    Power series inversion and divison with automatic selection
+    between basecase and Newton algorithms.
+
+.. function:: int _mpn_mod_poly_divrem_basecase_preinv1(mp_ptr Q, mp_ptr R, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, mp_srcptr invL, gr_ctx_t ctx)
+              int _mpn_mod_poly_divrem_basecase(mp_ptr Q, mp_ptr R, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+
+    Polynomial division with remainder implemented using the basecase
+    algorithm with delayed reductions.
+
+.. function:: int _mpn_mod_poly_divrem(mp_ptr Q, mp_ptr R, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+              int _mpn_mod_poly_div(mp_ptr Q, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+
+    Polynomial division with remainder with automatic selection
+    between basecase and Newton algorithms.
+
+GCD
+..............
+
+.. function:: int _mpn_mod_poly_gcd(mp_ptr G, slong * lenG, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+
+    Polynomial GCD with automatic selection between basecase
+    and HGCD algorithms.
+
+.. function:: int _mpn_mod_poly_xgcd(slong * lenG, mp_ptr G, mp_ptr S, mp_ptr T, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx);
+
+    Polynomial extended GCD with automatic selection between basecase
+    and HGCD algorithms.
