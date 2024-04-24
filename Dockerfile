@@ -3,6 +3,11 @@
 # latest alpine release
 FROM alpine:3.19 AS build
 
+# Argument for ./configure --host (target architecture/OS/..., e.g. arm64)
+# If empty, configure command will ignore it and build for current machine
+ARG host
+ENV FLINT_CONFIGURE_HOST=$host
+
 RUN apk add \
     autoconf \
     automake \
@@ -19,8 +24,9 @@ RUN apk add \
 WORKDIR /usr/local/src/flint
 # Build FLINT from current sources
 COPY . .
-RUN ./bootstrap.sh && \
-    ./configure --disable-static --enable-assert --with-blas  --disable-pthread --prefix=/usr/local && \
+RUN echo FLINT target host=$FLINT_CONFIGURE_HOST && \
+    ./bootstrap.sh && \
+    ./configure --disable-static --enable-assert --with-blas  --disable-pthread --prefix=/usr/local --host=$FLINT_CONFIGURE_HOST && \
     make -j`nproc` && \
     make -j $(expr $(nproc) + 1) check  && \
     make -j`nproc` install

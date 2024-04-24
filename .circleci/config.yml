@@ -36,8 +36,9 @@ commands:
       - run: uname -m
       - run:
           name: Docker build flint
+          # will run FLINT ./configure --host=amd64 or ./configure --host=arm64
           command: |
-            docker build . --platform << parameters.platform >> --tag flint:<< parameters.tag >> 
+            docker build . --platform << parameters.platform >> --tag flint:<< parameters.tag >> --build-arg host=<< parameters.tag >>
       - run:
           name: Save images to workspace
           command: |
