@@ -13,7 +13,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 if(NOT WIN32)
-    message(WARNING "Detected system is not Windows. Please use the Autotools configuration along with the Makefile instead as it is more up-to-date. Read INSTALL.")
+    message(FATAL_ERROR "Detected system is not Windows.  Please use the Autotools configuration along with the Makefile instead as it is more up-to-date.  Read INSTALL.md.")
 endif()
 
 include(CheckCCompilerFlag)
@@ -150,7 +150,7 @@ set(CMAKE_REQUIRED_LIBRARIES gmp::gmp)
 if(HAS_FLAG_ARCH)
     set(CMAKE_REQUIRED_FLAGS "-march=${ENABLE_ARCH}")
 endif()
-if(HAS_FLAG_AVX2)
+if(ENABLE_AVX2)
     set(CMAKE_REQUIRED_FLAGS "${avx2_flag}")
 endif()
 check_c_source_compiles([[
@@ -211,9 +211,10 @@ set(_BUILD_DIRS
     long_extras
     perm
     double_extras   d_vec           d_mat
+    nfloat
     mpn_extras
-    mpfr_vec                        mpfr_mat
     nmod            nmod_vec        nmod_mat        nmod_poly
+    mpn_mod
     fmpz            fmpz_vec        fmpz_mat        fmpz_poly
     fmpz_mod        fmpz_mod_vec    fmpz_mod_mat    fmpz_mod_poly
     fmpq            fmpq_vec        fmpq_mat        fmpq_poly
@@ -236,7 +237,7 @@ set(_BUILD_DIRS
     nmod_poly_mat                   fmpz_poly_mat
 
     mpoly           nmod_mpoly      fmpz_mpoly      fmpz_mod_mpoly
-    fmpq_mpoly      fq_nmod_mpoly   fq_zech_mpoly
+    fmpq_mpoly      fq_nmod_mpoly   fq_zech_mpoly   fmpz_mod_mpoly_q
 
     nmod_mpoly_factor               fmpz_mpoly_factor
     fmpz_mod_mpoly_factor           fmpq_mpoly_factor
@@ -259,7 +260,7 @@ set(_BUILD_DIRS
     acb_theta       dirichlet       bernoulli       hypgeom
 
     gr              gr_generic      gr_vec          gr_mat
-    gr_poly         gr_mpoly        gr_special
+    gr_poly         gr_mpoly        gr_series       gr_special
 
     calcium
     fmpz_mpoly_q
@@ -275,7 +276,7 @@ string(REGEX REPLACE "([A-Za-z0-9_-]+;|[A-Za-z0-9_-]+$)" "src/\\1" BUILD_DIRS "$
 
 set(_HEADERS
     NTL-interface.h flint.h longlong.h flint-config.h gmpcompat.h flint-mparam.h
-    profiler.h templates.h mpf-impl.h
+    profiler.h templates.h
 )
 string(REGEX REPLACE "([A-Za-z0-9_-]+\.h;|[A-Za-z0-9_-]+\.h$)" "src/\\1" HEADERS "${_HEADERS}")
 
@@ -320,7 +321,23 @@ check_c_source_compiles([[#include <gmp.h>
   #ifndef _LONG_LONG_LIMB
   # error mp_limb_t != unsigned long long limb
   #endif
-  void main(){};]] LONG_LONG_LIMB)
+  void main(){};]] FLINT_LONG_LONG)
+
+check_c_source_compiles([[#include <gmp.h>
+  #if GMP_LIMB_BITS == 32
+  # error
+  #endif
+  void main(){};]] FLINT64)
+
+if(FLINT64)
+    set(FLINT_BITS 64)
+else()
+    set(FLINT_BITS 32)
+endif()
+
+if(MSVC AND NOT BUILD_SHARED_LIBS)
+    set(FLINT_STATIC_BUILD 1)
+endif()
 
 # Populate headers
 configure_file(
@@ -336,7 +353,7 @@ configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/fmpz/fmpz.c
     COPYONLY
 )
-if(LONG_LONG_LIMB)
+if(FLINT_LONG_LONG)
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/gmpcompat-longlong.h.in
         ${CMAKE_CURRENT_SOURCE_DIR}/src/gmpcompat.h
@@ -385,6 +402,10 @@ target_link_libraries(flint PUBLIC
     mpfr::mpfr
     ${PThreads_LIBRARIES}
 )
+
+if(MSVC AND NOT "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(flint PUBLIC "/experimental:c11atomics")
+endif()
 
 if(FLINT_USES_BLAS)
     target_link_libraries(flint PUBLIC CBLAS::CBLAS)

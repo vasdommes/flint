@@ -10,7 +10,6 @@
 */
 
 #include <float.h>
-#include "flint.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
 #include "fmpz_mod.h"
@@ -70,7 +69,7 @@ main(void)
     fmpz_clear(N);
     fmpz_mod_ctx_clear(ctx);
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 }

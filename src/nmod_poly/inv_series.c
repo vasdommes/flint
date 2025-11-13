@@ -14,10 +14,11 @@
 #include "nmod.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
+#include "nmod_poly/impl.h"
 #include "gr_poly.h"
 
 void
-_nmod_poly_inv_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slong n, mp_limb_t q, nmod_t mod)
+_nmod_poly_inv_series_basecase_preinv1(nn_ptr Qinv, nn_srcptr Q, slong Qlen, slong n, ulong q, nmod_t mod)
 {
     Qlen = FLINT_MIN(Qlen, n);
 
@@ -29,16 +30,14 @@ _nmod_poly_inv_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slo
     }
     else
     {
-        slong i, j, l;
-        int nlimbs;
-        mp_limb_t s;
-
-        nlimbs = _nmod_vec_dot_bound_limbs(FLINT_MIN(n, Qlen), mod);
+        slong i, l;
+        ulong s;
+        const dot_params_t params = _nmod_vec_dot_params(FLINT_MIN(n, Qlen) - 1, mod);
 
         for (i = 1; i < n; i++)
         {
             l = FLINT_MIN(i, Qlen - 1);
-            NMOD_VEC_DOT(s, j, l, Q[j + 1], Qinv[i - 1 - j], mod, nlimbs);
+            s = _nmod_vec_dot_rev(Q+1, Qinv + i-l, l, mod, params);
 
             if (q == 1)
                 Qinv[i] = nmod_neg(s, mod);
@@ -49,9 +48,9 @@ _nmod_poly_inv_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slo
 }
 
 void
-_nmod_poly_inv_series_basecase(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slong n, nmod_t mod)
+_nmod_poly_inv_series_basecase(nn_ptr Qinv, nn_srcptr Q, slong Qlen, slong n, nmod_t mod)
 {
-    mp_limb_t q;
+    ulong q;
 
     q = Q[0];
     if (q != 1)
@@ -61,7 +60,7 @@ _nmod_poly_inv_series_basecase(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slong n, nm
 }
 
 void
-_nmod_poly_inv_series(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slong n, nmod_t mod)
+_nmod_poly_inv_series(nn_ptr Qinv, nn_srcptr Q, slong Qlen, slong n, nmod_t mod)
 {
     Qlen = FLINT_MIN(Qlen, n);
 
@@ -86,7 +85,7 @@ nmod_poly_inv_series(nmod_poly_t Qinv, const nmod_poly_t Q, slong n)
 
     if (Qlen == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (nmod_poly_inv_series). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_inv_series). Division by zero.\n");
     }
 
     if (Qinv != Q)
@@ -116,7 +115,7 @@ nmod_poly_inv_series_basecase(nmod_poly_t Qinv, const nmod_poly_t Q, slong n)
 
     if (Qlen == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (nmod_poly_inv_series_basecase). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_inv_series_basecase). Division by zero.\n");
     }
 
     if (Qinv != Q)
@@ -138,7 +137,7 @@ nmod_poly_inv_series_basecase(nmod_poly_t Qinv, const nmod_poly_t Q, slong n)
 }
 
 void
-_nmod_poly_inv_series_newton(mp_ptr Qinv, mp_srcptr Q, slong Qlen, slong n, nmod_t mod)
+_nmod_poly_inv_series_newton(nn_ptr Qinv, nn_srcptr Q, slong Qlen, slong n, nmod_t mod)
 {
     _nmod_poly_inv_series(Qinv, Q, Qlen, n, mod);
 }

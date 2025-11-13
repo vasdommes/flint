@@ -9,12 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#ifdef __GNUC__
-# define sqrt __builtin_sqrt
-#else
-# include <math.h>
-#endif
-
+#include <math.h>
 #include "nmod.h"
 #include "fq_zech.h"
 #include "mpoly.h"
@@ -24,7 +19,7 @@
 static int _is_proved_not_square_medprime(
     int count,
     flint_rand_t state,
-    const mp_limb_t * Acoeffs,
+    const ulong * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     flint_bitcnt_t Abits,
@@ -94,7 +89,7 @@ next_p:
 static int _is_proved_not_square(
     int count,
     flint_rand_t state,
-    const mp_limb_t * Acoeffs,
+    const ulong * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     flint_bitcnt_t Abits,
@@ -103,7 +98,7 @@ static int _is_proved_not_square(
 {
     int tries_left, success = 0;
     slong i, N = mpoly_words_per_exp(Abits, mctx);
-    mp_limb_t eval, * alphas;
+    ulong eval, * alphas;
     ulong * t;
     TMP_INIT;
 
@@ -121,7 +116,7 @@ static int _is_proved_not_square(
 
     tries_left = 3*count;
 
-    alphas = (mp_limb_t *) TMP_ALLOC(mctx->nvars*sizeof(mp_limb_t));
+    alphas = (ulong *) TMP_ALLOC(mctx->nvars*sizeof(ulong));
 
 next_p:
 
@@ -148,7 +143,7 @@ cleanup:
 
 static int _nmod_mpoly_sqrt_heap1(
     nmod_mpoly_t Q,
-    const mp_limb_t * Acoeffs,
+    const ulong * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     flint_bitcnt_t bits,
@@ -163,7 +158,7 @@ static int _nmod_mpoly_sqrt_heap1(
     slong exp_alloc;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * Qcoeffs = Q->coeffs;
+    ulong * Qcoeffs = Q->coeffs;
     ulong * Qexps = Q->exps;
     ulong mask, exp, exp3 = 0;
     ulong maskhi;
@@ -175,7 +170,7 @@ static int _nmod_mpoly_sqrt_heap1(
     FLINT_ASSERT(mpoly_words_per_exp(bits, mctx) == 1);
     mpoly_get_cmpmask(&maskhi, 1, bits, mctx);
 
-    flint_randinit(heuristic_state);
+    flint_rand_init(heuristic_state);
 
     /* alloc array of heap nodes which can be chained together */
     next_loc = 2*n_sqrt(Alen) + 4;   /* something bigger than heap can ever be */
@@ -345,7 +340,7 @@ static int _nmod_mpoly_sqrt_heap1(
 
 cleanup:
 
-    flint_randclear(heuristic_state);
+    flint_rand_clear(heuristic_state);
 
     Q->coeffs = Qcoeffs;
     Q->exps = Qexps;
@@ -367,7 +362,7 @@ not_sqrt:
 
 static int _nmod_mpoly_sqrt_heap(
     nmod_mpoly_t Q,
-    const mp_limb_t * Acoeffs,
+    const ulong * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     flint_bitcnt_t bits,
@@ -385,7 +380,7 @@ static int _nmod_mpoly_sqrt_heap(
     mpoly_heap_t ** chain;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * Qcoeffs = Q->coeffs;
+    ulong * Qcoeffs = Q->coeffs;
     ulong * Qexps = Q->exps;
     ulong * exp, * exp3;
     ulong * exps[64];
@@ -406,7 +401,7 @@ static int _nmod_mpoly_sqrt_heap(
     cmpmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     mpoly_get_cmpmask(cmpmask, N, bits, mctx);
 
-    flint_randinit(heuristic_state);
+    flint_rand_init(heuristic_state);
 
     /* alloc array of heap nodes which can be chained together */
     next_loc = 2*sqrt(Alen) + 4;   /* something bigger than heap can ever be */
@@ -629,7 +624,7 @@ static int _nmod_mpoly_sqrt_heap(
 
 cleanup:
 
-    flint_randclear(heuristic_state);
+    flint_rand_clear(heuristic_state);
 
     Q->coeffs = Qcoeffs;
     Q->exps = Qexps;
@@ -663,7 +658,7 @@ int nmod_mpoly_sqrt_heap(nmod_mpoly_t Q, const nmod_mpoly_t A,
     if ((ctx->mod.n % 2) == 0)
     {
         flint_bitcnt_t bits = A->bits;
-        mp_limb_t * Aexps = A->exps;
+        ulong * Aexps = A->exps;
         slong Alen = A->length;
         slong i, N = mpoly_words_per_exp(bits, ctx->minfo);
         ulong mask = (bits <= FLINT_BITS) ? mpoly_overflow_mask_sp(bits) : 0;

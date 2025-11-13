@@ -9,12 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "mpn_extras.h"
 
-#if !defined(_MSC_VER)
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_UNUSED_VARIABLE
 
 void flint_mpn_mulmod_preinv1(mp_ptr r,
         mp_srcptr a, mp_srcptr b, mp_size_t n,
@@ -58,6 +56,4 @@ void flint_mpn_mulmod_preinv1(mp_ptr r,
        flint_free(t);
 }
 
-#if !defined(_MSC_VER)
-#pragma GCC diagnostic warning "-Wunused-variable"
-#endif
+DIAGNOSTIC_POP

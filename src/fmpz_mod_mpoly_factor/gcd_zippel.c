@@ -75,7 +75,7 @@ static int fmpz_mod_poly_add_zip_must_match(
 
     for (i = 0; i < Z->length; i++)
     {
-        if (ai >= 0 && Zexps[i] == ai)
+        if (ai >= 0 && Zexps[i] == (ulong) ai)
         {
             /* Z present, A present */
             fmpz_set(Zcoeffs[i].coeffs + cur_length, Acoeffs + ai);
@@ -84,7 +84,7 @@ static int fmpz_mod_poly_add_zip_must_match(
                 ai--;
             } while (ai >= 0 && fmpz_is_zero(Acoeffs + ai));
         }
-        else if (ai < 0 || Zexps[i] > ai)
+        else if (ai < 0 || Zexps[i] > (ulong) ai)
         {
             /* Z present, A missing */
             fmpz_zero(Zcoeffs[i].coeffs + cur_length);
@@ -99,13 +99,6 @@ static int fmpz_mod_poly_add_zip_must_match(
 
     return ai < 0;
 }
-
-
-static fmpz * fmpz_mod_mat_row_ref(fmpz_mod_mat_t M, slong i)
-{
-    return M->rows[i];
-}
-
 
 /*
     Try to set G to the gcd of A and B given the form f of G.
@@ -123,7 +116,7 @@ static fmpz * fmpz_mod_mat_row_ref(fmpz_mod_mat_t M, slong i)
         sum_j c_ij alpha^((k+1)e_j) = s_k g_ik  for 0 <= i <= degree(gcd)
 
 */
-int fmpz_mod_mpolyl_gcds_zippel(
+static int fmpz_mod_mpolyl_gcds_zippel(
     fmpz_mod_mpoly_t G, const ulong * Gmarks, slong Gmarkslen,
     fmpz_mod_mpoly_t A,
     fmpz_mod_mpoly_t B,
@@ -320,18 +313,18 @@ general_case:
             fmpz_mod_mat_init(ML + s, l, l + n, ctx->ffinfo);
         }
 
-        _fmpz_vec_set(fmpz_mod_mat_row_ref(ML + s, 0), HG->coeffs[s].coeffs, n);
+        _fmpz_vec_set(fmpz_mod_mat_row(ML + s, 0), HG->coeffs[s].coeffs, n);
         for (i = 1; i < l; i++)
         {
-            _fmpz_mod_vec_mul(fmpz_mod_mat_row_ref(ML + s, i),
-                              fmpz_mod_mat_row_ref(ML + s, i - 1),
+            _fmpz_mod_vec_mul(fmpz_mod_mat_row(ML + s, i),
+                              fmpz_mod_mat_row(ML + s, i - 1),
                                          HG->coeffs[s].coeffs, n, ctx->ffinfo);
         }
 
         for (i = 0; i < l; i++)
         {
-            _fmpz_vec_zero(fmpz_mod_mat_row_ref(ML + s, i) + n, l);
-            fmpz_set(fmpz_mod_mat_row_ref(ML + s, i) + n + i, ZG->coeffs[s].coeffs + i);
+            _fmpz_vec_zero(fmpz_mod_mat_row(ML + s, i) + n, l);
+            fmpz_set(fmpz_mod_mat_row(ML + s, i) + n + i, ZG->coeffs[s].coeffs + i);
         }
 
         /*
@@ -352,7 +345,7 @@ general_case:
 
         /* delete zero rows from MF, matrix interface makes this fun */
         i = fmpz_mod_mat_nrows(MF, ctx->ffinfo);
-        while (i > 1 && _fmpz_vec_is_zero(fmpz_mod_mat_row_ref(MF, i - 1), l))
+        while (i > 1 && _fmpz_vec_is_zero(fmpz_mod_mat_row(MF, i - 1), l))
             i--;
 
         if (i < fmpz_mod_mat_nrows(MF, ctx->ffinfo))
@@ -402,7 +395,7 @@ try_it:
     for (s = 0; s < Gmarkslen; s++)
     {
         _fmpz_mod_vec_mul(ZG->coeffs[s].coeffs, ZG->coeffs[s].coeffs,
-                                fmpz_mod_mat_row_ref(Msol, 0), l, ctx->ffinfo);
+                                fmpz_mod_mat_row(Msol, 0), l, ctx->ffinfo);
     }
 
     success = fmpz_mod_polyun_zip_solve(G, ZG, HG, MG, ctx);
@@ -445,13 +438,13 @@ cleanup:
 
 static int _do_bivar_or_univar(
     fmpz_mod_mpoly_t G,
-    fmpz_mod_mpoly_t Abar,
-    fmpz_mod_mpoly_t Bbar,
+    fmpz_mod_mpoly_t FLINT_UNUSED(Abar),
+    fmpz_mod_mpoly_t FLINT_UNUSED(Bbar),
     fmpz_mod_mpoly_t A,
     fmpz_mod_mpoly_t B,
     slong var,
     const fmpz_mod_mpoly_ctx_t ctx,
-    flint_rand_t state)
+    flint_rand_t FLINT_UNUSED(state))
 {
     if (var == 1)
     {
@@ -734,7 +727,7 @@ outer_loop:
     for (i = 0; i < Gmarks->length; i++)
         perm[i] = i;
 
-#define length(k) Gmarks->coeffs[(k)+1] - Gmarks->coeffs[k]
+#define length(k) (Gmarks->coeffs[(k)+1] - Gmarks->coeffs[k])
 
     for (i = 1; i < Gmarks->length; i++)
         for (j = i; j > 0 && length(perm[j-1]) > length(perm[j]); j--)
@@ -745,7 +738,7 @@ outer_loop:
     for (i = 0; i < Gmarks->length; i++)
     {
         req_zip_images += length(i);
-        j = FLINT_MAX(j, length(i));
+        j = FLINT_MAX(j, (slong) length(i));
     }
 
     if (Gmarks->length > 1)

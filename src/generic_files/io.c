@@ -23,6 +23,11 @@
 #include "arf_types.h"
 #include "arb.h"
 #include "acb.h"
+#include "gr.h"
+#include "gr_vec.h"
+#include "gr_poly.h"
+#include "gr_mat.h"
+#include "gr_mat/impl.h"
 
 /* Helper functions **********************************************************/
 
@@ -324,9 +329,9 @@ int flint_vfprintf(FILE * fs, const char * ip, va_list vlist)
     iplen = strlen(ip);
     TMP_START;
 
-#if defined(_LONG_LONG_LIMB)
+#if FLINT_LONG_LONG
     /*
-       If mp_limb_t is long long, then
+       If ulong is long long, then
 
          `%(format args...)w' -> `%(format args...)ll'.
 
@@ -381,7 +386,7 @@ continue_while:
             memcpy(opcur, ip, sizeof(char) * cpsz);
             ip = ipcur;
 
-#if defined(_LONG_LONG_LIMB)
+#if FLINT_LONG_LONG
             opcur += cpsz + 1;
             opcur[-1] = opcur[-2];
             opcur[-2] = 'l';
@@ -692,19 +697,71 @@ print_flint_type:
         res += __mpq_fprint(fs, va_arg(vlist, mpq_srcptr));
         ip += STRING_LENGTH("mpq}");
     }
+    else if (IS_FLINT_TYPE(ip, "truth"))
+    {
+        truth_t t = va_arg(vlist, truth_t);
+        if (t == T_TRUE) res += fprintf(fs, "T_TRUE");
+        else if (t == T_FALSE) res += fprintf(fs, "T_FALSE");
+        else res += fprintf(fs, "T_UNKNOWN");
+        ip += STRING_LENGTH("truth}");
+    }
+    else if (IS_FLINT_BASE_TYPE(ip, "gr"))
+    {
+        gr_stream_t out;
+        gr_stream_init_file(out, fs);
+
+        if (IS_FLINT_TYPE(ip, "gr"))
+        {
+            gr_srcptr elem = va_arg(vlist, gr_srcptr);
+            gr_ctx_struct * ctx = va_arg(vlist, gr_ctx_struct *);
+            GR_MUST_SUCCEED(gr_write(out, elem, ctx));
+            res += out->len;
+            ip += STRING_LENGTH("gr}");
+        }
+        else if (IS_FLINT_TYPE(ip, "gr*"))
+        {
+            gr_srcptr elem = va_arg(vlist, gr_srcptr);
+            slong len = va_arg(vlist, slong);
+            gr_ctx_struct * ctx = va_arg(vlist, gr_ctx_struct *);
+            GR_MUST_SUCCEED(_gr_vec_write(out, elem, len, ctx));
+            res += out->len;
+            ip += STRING_LENGTH("gr*}");
+        }
+        else if (IS_FLINT_TYPE(ip, "gr_poly"))
+        {
+            const gr_poly_struct * elem = va_arg(vlist, const gr_poly_struct *);
+            gr_ctx_struct * ctx = va_arg(vlist, gr_ctx_struct *);
+            GR_MUST_SUCCEED(gr_poly_write(out, elem, "x", ctx));
+            res += out->len;
+            ip += STRING_LENGTH("gr_poly}");
+        }
+        else if (IS_FLINT_TYPE(ip, "gr_mat"))
+        {
+            const gr_mat_struct * elem = va_arg(vlist, const gr_mat_struct *);
+            gr_ctx_struct * ctx = va_arg(vlist, gr_ctx_struct *);
+            GR_MUST_SUCCEED(_gr_mat_write(out, elem, 0, ctx));
+            res += out->len;
+            ip += STRING_LENGTH("gr_mat}");
+        }
+        else if (IS_FLINT_TYPE(ip, "gr_ctx"))
+        {
+            gr_ctx_struct * ctx = va_arg(vlist, gr_ctx_struct *);
+            GR_MUST_SUCCEED(gr_ctx_write(out, ctx));
+            res += out->len;
+            ip += STRING_LENGTH("gr_ctx}");
+        }
+        else
+            goto printpercentcurlybracket;
+    }
     else
     {
 printpercentcurlybracket:
         /* Invalid use of "%{FLINT_TYPE}". As we are currently pointed to
          * "FLINT_TYPE}", we let fprintf take care of printing "%{". */
-#ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wformat"
-#endif
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_FORMAT
         tmp = fprintf(fs, "%{");
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
+DIAGNOSTIC_POP
         if (tmp < 0)
         {
             res = tmp;
@@ -1030,22 +1087,24 @@ static size_t __flint_mat_fprint(FILE * fs, const void * ip, flint_type_t type)
     size_t res = 0;
     slong ix;
     slong nr, nc;
-    const void ** rows;
+    const char * entries;
+    slong stride;
 
-    rows = (const void **) ((const fmpz_mat_struct *) ip)->rows;
+    entries = (const char *) ((const fmpz_mat_struct *) ip)->entries;
     nr = ((const fmpz_mat_struct *) ip)->r;
     nc = ((const fmpz_mat_struct *) ip)->c;
+    stride = ((const fmpz_mat_struct *) ip)->stride * flint_type_size_in_chars(type);
 
     if (nr == 0 || nc == 0)
         return fprintf(fs, WORD_FMT "d by " WORD_FMT "d empty matrix", nr, nc);
 
     res += (fputc('[', fs) != EOF);
-    res += __flint_vec_fprint(fs, rows[0], nc, type);
+    res += __flint_vec_fprint(fs, entries, nc, type);
 
     for (ix = 1; ix < nr; ix++)
     {
         res += fwrite(", ", sizeof(char), STRING_LENGTH(", "), fs);
-        res += __flint_vec_fprint(fs, rows[ix], nc, type);
+        res += __flint_vec_fprint(fs, entries + ix * stride, nc, type);
     }
 
     res += (fputc(']', fs) != EOF);
@@ -1146,7 +1205,7 @@ static size_t __flint_poly_fprint(FILE * fs, const void * ip, flint_type_t type)
     }
     else
     {
-        /* fmpq_poly is special as it is an fmpz_poly with a denomitator
+        /* fmpq_poly is special as it is an fmpz_poly with a denominator
          * strapped onto it */
         const fmpz * coeffs = ((const fmpq_poly_struct *) ip)->coeffs;
         const fmpz * den = ((const fmpq_poly_struct *) ip)->den;

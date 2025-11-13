@@ -21,15 +21,8 @@ benefit from your work.
 --------------------------------------------------------------------*/
 
 
-#include "ulong_extras.h"
+#include <string.h>
 #include "qsieve.h"
-
-#ifdef __GNUC__
-# define memcpy __builtin_memcpy
-# define memset __builtin_memset
-#else
-# include <string.h>
-#endif
 
 #define BIT(x) (((uint64_t)(1)) << (x))
 
@@ -485,7 +478,7 @@ static slong find_nonsingular_sub(uint64_t *t, slong *s,
 }
 
 /*-------------------------------------------------------------------*/
-void mul_MxN_Nx64(slong vsize, slong dense_rows,
+static void mul_MxN_Nx64(slong vsize, slong dense_rows,
 		slong ncols, la_col_t *A,
 		uint64_t *x, uint64_t *b) {
 
@@ -525,7 +518,7 @@ void mul_MxN_Nx64(slong vsize, slong dense_rows,
 }
 
 /*-------------------------------------------------------------------*/
-void mul_trans_MxN_Nx64(slong dense_rows, slong ncols,
+static void mul_trans_MxN_Nx64(slong dense_rows, slong ncols,
 			la_col_t *A, uint64_t *x, uint64_t *b) {
 
 	/* Multiply the vector x[] by the transpose of the
@@ -588,7 +581,7 @@ static void transpose_vector(slong ncols, uint64_t *v, uint64_t **trans) {
 }
 
 /*-----------------------------------------------------------------------*/
-void combine_cols(slong ncols,
+static void combine_cols(slong ncols,
 		uint64_t *x, uint64_t *v,
 		uint64_t *ax, uint64_t *av) {
 
@@ -732,27 +725,27 @@ uint64_t * block_lanczos(flint_rand_t state, slong nrows,
 	   two numbers  */
 
 	vsize = FLINT_MAX(nrows, ncols);
-	v[0] = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	v[1] = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	v[2] = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	vnext = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	x = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	v0 = (uint64_t *)flint_malloc(vsize * sizeof(uint64_t));
-	scratch = (uint64_t *)flint_malloc(FLINT_MAX(vsize, 256 * 8) * sizeof(uint64_t));
+	v[0] = flint_malloc(vsize * sizeof(uint64_t));
+	v[1] = flint_calloc(vsize, sizeof(uint64_t));
+	v[2] = flint_calloc(vsize, sizeof(uint64_t));
+	vnext = flint_malloc(vsize * sizeof(uint64_t));
+	x = flint_malloc(vsize * sizeof(uint64_t));
+	v0 = flint_malloc(vsize * sizeof(uint64_t));
+	scratch = flint_malloc(FLINT_MAX(vsize, 256 * 8) * sizeof(uint64_t));
 
 	/* allocate all the 64x64 variables */
 
-	winv[0] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	winv[1] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	winv[2] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	vt_a_v[0] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	vt_a_v[1] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	vt_a2_v[0] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	vt_a2_v[1] = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	d = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	e = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	f = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
-	f2 = (uint64_t *)flint_malloc(64 * sizeof(uint64_t));
+	winv[0] = flint_malloc(64 * sizeof(uint64_t));
+	winv[1] = flint_calloc(64, sizeof(uint64_t));
+	winv[2] = flint_calloc(64, sizeof(uint64_t));
+	vt_a_v[0] = flint_malloc(64 * sizeof(uint64_t));
+	vt_a_v[1] = flint_calloc(64, sizeof(uint64_t));
+	vt_a2_v[0] = flint_malloc(64 * sizeof(uint64_t));
+	vt_a2_v[1] = flint_calloc(64, sizeof(uint64_t));
+	d = flint_malloc(64 * sizeof(uint64_t));
+	e = flint_malloc(64 * sizeof(uint64_t));
+	f = flint_malloc(64 * sizeof(uint64_t));
+	f2 = flint_malloc(64 * sizeof(uint64_t));
 
 	/* The iterations computes v[0], vt_a_v[0],
 	   vt_a2_v[0], s[0] and winv[0]. Subscripts larger
@@ -760,16 +753,9 @@ uint64_t * block_lanczos(flint_rand_t state, slong nrows,
 	   quantities, which start off empty (except for
 	   the past version of s[], which contains all
 	   the column indices */
-
-	memset(v[1], 0, vsize * sizeof(uint64_t));
-	memset(v[2], 0, vsize * sizeof(uint64_t));
-	for (i = 0; i < 64; i++) {
+	for (i = 0; i < 64; i++)
 		s[1][i] = i;
-		vt_a_v[1][i] = 0;
-		vt_a2_v[1][i] = 0;
-		winv[1][i] = 0;
-		winv[2][i] = 0;
-	}
+
 	dim0 = 0;
 	dim1 = 64;
 	mask1 = (uint64_t)(-1);

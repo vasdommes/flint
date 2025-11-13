@@ -12,15 +12,16 @@
 */
 
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 #include "fmpz.h"
 
 void
-_nmod_poly_powmod_fmpz_binexp(mp_ptr res, mp_srcptr poly,
-                                  fmpz_t e, mp_srcptr f, slong lenf, nmod_t mod)
+_nmod_poly_powmod_fmpz_binexp(nn_ptr res, nn_srcptr poly,
+                                  fmpz_t e, nn_srcptr f, slong lenf, nmod_t mod)
 {
-    mp_ptr T, Q;
+    nn_ptr T, Q;
     slong lenT, lenQ;
     slong bits, i;
 
@@ -79,7 +80,7 @@ void
 nmod_poly_powmod_fmpz_binexp(nmod_poly_t res,
                          const nmod_poly_t poly, fmpz_t e, const nmod_poly_t f)
 {
-    mp_ptr p;
+    nn_ptr p;
     slong len = poly->length;
     slong lenf = f->length;
     slong trunc = lenf - 1;
@@ -173,10 +174,10 @@ nmod_poly_powmod_fmpz_binexp(nmod_poly_t res,
 }
 
 void
-_nmod_poly_powmod_ui_binexp(mp_ptr res, mp_srcptr poly,
-                                ulong e, mp_srcptr f, slong lenf, nmod_t mod)
+_nmod_poly_powmod_ui_binexp(nn_ptr res, nn_srcptr poly,
+                                ulong e, nn_srcptr f, slong lenf, nmod_t mod)
 {
-    mp_ptr T, Q;
+    nn_ptr T, Q;
     slong lenT, lenQ;
     int i;
 
@@ -215,7 +216,7 @@ nmod_poly_powmod_ui_binexp(nmod_poly_t res,
                            const nmod_poly_t poly, ulong e,
                            const nmod_poly_t f)
 {
-    mp_ptr p;
+    nn_ptr p;
     slong len = poly->length;
     slong lenf = f->length;
     slong trunc = lenf - 1;

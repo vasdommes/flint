@@ -9,12 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "gmpcompat.h"
 #include "ulong_extras.h"
 #include "fmpz.h"
 
-ulong
+static ulong
 z_gcdinv(ulong * inv, slong a, ulong b)
 {
     ulong g, ua = FLINT_ABS(a);
@@ -39,7 +38,7 @@ fmpz_invmod(fmpz_t f, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_invmod). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_invmod). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -62,19 +61,19 @@ fmpz_invmod(fmpz_t f, const fmpz_t g, const fmpz_t h)
         else                    /* h is large and g is small */
         {
             __mpz_struct temp;  /* put g into a temporary mpz_t */
-            __mpz_struct * mf;
+            mpz_ptr mf;
 
             if (c1 < WORD(0))
             {
                 c1 = -c1;
-                temp._mp_d = (mp_limb_t *) & c1;
+                temp._mp_d = (ulong *) & c1;
                 temp._mp_size = -1;
             }
             else if (c1 == WORD(0))
                 temp._mp_size = 0;
             else
             {
-                temp._mp_d = (mp_limb_t *) & c1;
+                temp._mp_d = (ulong *) & c1;
                 temp._mp_size = 1;
             }
 
@@ -107,7 +106,7 @@ fmpz_invmod(fmpz_t f, const fmpz_t g, const fmpz_t h)
         }
         else                    /* both are large */
         {
-            __mpz_struct * mf = _fmpz_promote(f);
+            mpz_ptr mf = _fmpz_promote(f);
             val = mpz_invert(mf, COEFF_TO_PTR(c1), COEFF_TO_PTR(c2));
             _fmpz_demote_val(f);    /* reduction mod h may result in small value */
 

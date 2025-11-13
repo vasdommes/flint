@@ -9,10 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_hypgeom.h"
 
 /* Compute initial isolating interval, following K. Petras. */
-void
+static void
 arb_hypgeom_legendre_p_ui_root_initial(arb_t res, ulong n, ulong k, slong prec)
 {
     arb_t phi, psi, s, c, t, u;

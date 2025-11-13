@@ -9,16 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
 #include "fmpz_vec.h"
+#include "arb.h"
 #include "arb_hypgeom.h"
-
-#ifdef __GNUC__
-# define ldexp __builtin_ldexp
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
+#include "arb_hypgeom/impl.h"
 
 static double
 d_log2_fac(double n)
@@ -49,8 +45,7 @@ tail_precision(slong k, double min_k, slong alen, slong blen, double log2z, doub
 }
 
 /* Return approximation of log2(|x|), approximately clamped between COEFF_MIN and COEFF_MAX. */
-double
-arf_get_d_log2_abs_approx_clamped(const arf_t x)
+double arf_get_d_log2_abs_approx_clamped(const arf_t x)
 {
     if (arf_is_zero(x))
     {
@@ -69,8 +64,8 @@ arf_get_d_log2_abs_approx_clamped(const arf_t x)
     }
     else
     {
-        mp_srcptr tp;
-        mp_size_t tn;
+        nn_srcptr tp;
+        slong tn;
         double v;
         slong e = ARF_EXP(x);
 
@@ -190,15 +185,6 @@ arb_hypgeom_sum_fmpq_arb_rs(arb_t res, const fmpq * a, slong alen, const fmpq * 
                 /* r = 2 -> exp(2*z^(1/2)) */
                 /* r = 3 -> exp(3*z^(1/3)) */
                 /* ... */
-#ifdef __GNUC__
-                log2max = r * __builtin_exp(log2z * 0.693147180559945 / r) * 1.44269504088896;
-
-                /* fixme */
-                if (r == 1)
-                    adaptive_min_k = __builtin_exp(log2z * log(2));
-                else
-                    adaptive_min_k = __builtin_exp(0.5 * log2z * log(2));
-#else
                 log2max = r * exp(log2z * 0.693147180559945 / r) * 1.44269504088896;
 
                 /* fixme */
@@ -206,7 +192,6 @@ arb_hypgeom_sum_fmpq_arb_rs(arb_t res, const fmpq * a, slong alen, const fmpq * 
                     adaptive_min_k = exp(log2z * log(2));
                 else
                     adaptive_min_k = exp(0.5 * log2z * log(2));
-#endif
             }
         }
     }

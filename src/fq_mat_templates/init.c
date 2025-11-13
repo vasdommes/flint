@@ -11,50 +11,29 @@
 */
 
 #ifdef T
-
+#include "long_extras.h"
 #include "templates.h"
 
 void
-TEMPLATE(T, mat_init) (TEMPLATE(T, mat_t) mat, slong rows, slong cols,
+TEMPLATE(T, mat_init)(TEMPLATE(T, mat_t) mat, slong rows, slong cols,
                        const TEMPLATE(T, ctx_t) ctx)
 {
-    slong i;
-
-    if (rows != 0)
-        mat->rows = (TEMPLATE(T, struct) **) flint_malloc(rows
-			                       * sizeof(TEMPLATE(T, struct) *));
-    else
-        mat->rows = NULL;
-
-    if (rows != 0 && cols != 0)       /* Allocate space for r*c small entries */
-    {
-        slong j;
-
-	mat->entries = (TEMPLATE(T, struct) *) flint_malloc(flint_mul_sizes(rows, cols)
-                                                * sizeof(TEMPLATE(T, struct)));
-
-        for (i = 0; i < rows; i++)
-        {
-            mat->rows[i] = mat->entries + i * cols;
-            for (j = 0; j < cols; j++)
-            {
-                TEMPLATE(T, init) (mat->rows[i] + j, ctx);
-            }
-        }
-    }
-    else
-    {
-        mat->entries = NULL;
-	if (rows != 0)
-	{
-            for (i = 0; i < rows; i++)
-                mat->rows[i] = NULL;
-	}
-    }
-
+    mat->entries = NULL;
     mat->r = rows;
     mat->c = cols;
+    mat->stride = cols;
+
+    if (rows != 0 && cols != 0)
+    {
+        slong num;
+        int of;
+
+        of = z_mul_checked(&num, rows, cols);
+
+        if (of)
+            flint_throw(FLINT_ERROR, "Overflow creating a %wd x %wd object\n", rows, cols);
+
+        mat->entries = _TEMPLATE(T, vec_init)(num, ctx);
+    }
 }
-
-
 #endif

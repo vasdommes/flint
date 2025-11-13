@@ -10,12 +10,16 @@
 */
 
 /* Try to get fdopen declared for fmpz_[print/read] */
-#if defined __STRICT_ANSI__
+#if defined(__STRICT_ANSI__)
 # undef __STRICT_ANSI__
 #endif
 
-#include <string.h>
-#include <stdlib.h>
+#if defined(__CYGWIN__)
+# define ulong ulongxx
+# include <sys/param.h>
+# undef ulong
+#endif
+
 #include <stdio.h>
 #include <mpfr.h>
 

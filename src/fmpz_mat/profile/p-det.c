@@ -11,7 +11,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "fmpz_mat.h"
 #include "fmpz.h"
 #include "ulong_extras.h"
@@ -57,7 +56,7 @@ void sample(void * arg, ulong count)
     fmpz_mat_clear(A);
     fmpz_clear(d);
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 }
 
 int main(void)

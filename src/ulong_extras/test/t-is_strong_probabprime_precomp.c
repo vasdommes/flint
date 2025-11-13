@@ -17,16 +17,14 @@ TEST_FUNCTION_START(n_is_strong_probabprime_precomp, state)
 {
     int i, j, result;
     ulong count = UWORD(0);
-    slong test_multiplier;
-
-    test_multiplier = FLINT_MAX(1, flint_test_multiplier());
+    double test_multiplier = FLINT_MAX(1, flint_test_multiplier());
 
     for (i = 0; i < 100 * test_multiplier; i++) /* Test that primes pass the test */
     {
-        mp_limb_t a, d, norm;
+        ulong a, d, norm;
         mpz_t d_m;
         double dpre;
-        mp_limb_t bits = n_randint(state, FLINT_D_BITS-1) + 2;
+        ulong bits = n_randint(state, FLINT_D_BITS-1) + 2;
 
         mpz_init(d_m);
 
@@ -57,10 +55,10 @@ TEST_FUNCTION_START(n_is_strong_probabprime_precomp, state)
 
     for (i = 0; i < 100 * test_multiplier; i++) /* Test that not too many composites pass */
     {
-        mp_limb_t a, d, norm;
+        ulong a, d, norm;
         mpz_t d_m;
         double dpre;
-        mp_limb_t bits = n_randint(state, FLINT_D_BITS-3) + 4;
+        ulong bits = n_randint(state, FLINT_D_BITS-3) + 4;
 
         mpz_init(d_m);
 

@@ -14,10 +14,6 @@
 #include "fmpz_vec.h"
 #include "fmpz_poly.h"
 
-void
-_fmpz_poly_mullow_kara_recursive(fmpz * out, const fmpz * pol1,
-                                 const fmpz * pol2, fmpz * temp, slong len);
-
 /*
    Multiplication using truncated karatsuba.
 
@@ -27,7 +23,7 @@ _fmpz_poly_mullow_kara_recursive(fmpz * out, const fmpz * pol1,
    karatsuba multiplication and two truncated karatsuba multiplications.
  */
 
-void
+static void
 _fmpz_poly_mullow_kara_recursive(fmpz * out, const fmpz * pol1,
                                  const fmpz * pol2, fmpz * temp, slong len)
 {
@@ -106,7 +102,7 @@ _fmpz_poly_mullow_karatsuba(fmpz * res, const fmpz * poly1, slong len1,
         copy1 = (fmpz *) flint_malloc(n * sizeof(fmpz));
         for (i = 0; i < len1; i++)
             copy1[i] = poly1[i];
-        flint_mpn_zero((mp_ptr) copy1 + len1, n - len1);
+        flint_mpn_zero((nn_ptr) copy1 + len1, n - len1);
         clear |= 1;
     }
 
@@ -117,7 +113,7 @@ _fmpz_poly_mullow_karatsuba(fmpz * res, const fmpz * poly1, slong len1,
         copy2 = (fmpz *) flint_malloc(n * sizeof(fmpz));
         for (i = 0; i < len2; i++)
             copy2[i] = poly2[i];
-        flint_mpn_zero((mp_ptr) copy2 + len2, n - len2);
+        flint_mpn_zero((nn_ptr) copy2 + len2, n - len2);
         clear |= 2;
     }
 

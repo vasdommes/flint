@@ -9,15 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "acb.h"
 #include "acb_elliptic.h"
 #include "acb_calc.h"
-
-#ifdef __GNUC__
-# define pow __builtin_pow
-#else
-# include <math.h>
-#endif
 
 static const unsigned short den_ratio_tab[512] = {
     1,1,14,3,44,13,10,17,152,1,46,1,12,29,62,1,
@@ -62,7 +57,7 @@ static inline slong rj_fdiv(slong x, slong y)
         return x / y;
 }
 
-void
+static void
 acb_elliptic_rj_taylor_sum(acb_t res, const acb_t E2, const acb_t E3,
                 const acb_t E4, const acb_t E5, slong nterms, slong prec)
 {

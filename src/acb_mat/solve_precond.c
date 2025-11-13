@@ -9,9 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
-int
+static int
 _acb_mat_solve_c(acb_mat_t X, const acb_mat_t A, const acb_mat_t B, slong prec)
 {
     int result;
@@ -52,7 +53,7 @@ _acb_mat_solve_c(acb_mat_t X, const acb_mat_t A, const acb_mat_t B, slong prec)
     return result;
 }
 
-int
+static int
 _acb_mat_solve_d(acb_mat_t X, const acb_mat_t A, const acb_mat_t B, slong prec)
 {
     int result, real;

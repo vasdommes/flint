@@ -11,7 +11,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "ulong_extras.h"
 #include "nmod.h"
 #include "nmod_poly.h"
 #include "fq_nmod.h"
@@ -23,7 +22,7 @@ void fq_nmod_set(fq_nmod_t rop, const fq_nmod_t op, const fq_nmod_ctx_t FLINT_UN
 
 void fq_nmod_set_si(fq_nmod_t rop, const slong x, const fq_nmod_ctx_t ctx)
 {
-    mp_limb_t rx = x < 0 ? -x : x;
+    ulong rx = x < 0 ? -x : x;
     rx =  n_mod2_preinv(rx, ctx->mod.n, ctx->mod.ninv);
     if (x < 0)
         rx = ctx->mod.n - rx;

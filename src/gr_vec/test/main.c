@@ -9,19 +9,20 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
+#include "t-permute.c"
 #include "t-product.c"
+#include "t-sort.c"
 #include "t-sum.c"
 
 /* Array of test functions ***************************************************/
 
 test_struct tests[] =
 {
+    TEST_FUNCTION(gr_vec_permute),
     TEST_FUNCTION(gr_vec_product),
+    TEST_FUNCTION(gr_vec_sort),
     TEST_FUNCTION(gr_vec_sum)
 };
 

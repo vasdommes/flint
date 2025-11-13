@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include "thread_pool.h"
 #include "thread_support.h"
 #include "fmpz.h"
@@ -636,7 +637,7 @@ static void _join_worker(void * varg)
     }
 }
 
-void _fmpz_mpoly_mul_heap_threaded(
+static void _fmpz_mpoly_mul_heap_threaded(
     fmpz_mpoly_t A,
     const fmpz * Bcoeff, const ulong * Bexp, slong Blen,
     const fmpz * Ccoeff, const ulong * Cexp, slong Clen,

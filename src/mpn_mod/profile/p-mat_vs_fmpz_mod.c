@@ -26,7 +26,7 @@
                 break; \
             __reps *= 10; \
         } \
-    } while (0);
+    } while (0)
 #endif
 
 void
@@ -51,10 +51,10 @@ randmat(gr_mat_t mat, flint_rand_t state, slong bits, gr_ctx_t ctx)
     slong i;
 
     for (i = 0; i < mat->r; i++)
-        randvec(mat->rows[i], state, mat->c, bits, ctx);
+        randvec(gr_mat_entry_ptr(mat, i, 0, ctx), state, mat->c, bits, ctx);
 }
 
-int main()
+int main(void)
 {
     fmpz_t p;
     gr_ctx_t ctx, ctx2;
@@ -65,7 +65,7 @@ int main()
     slong i;
     slong bits_tab[] = { 80, 128, 180, 256, 512, 1024, };
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     gr_mat_t A, B, C;
     gr_mat_t A2, B2, C2;
@@ -101,22 +101,22 @@ int main()
             randmat(A2, state, bits, ctx2);
             randmat(B2, state, bits, ctx2);
 
-            TIMEIT_START
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_add(C, A, B, ctx));
-            TIMEIT_STOP_VALUES(t1, __)
+            TIMEIT_STOP_VALUES(t1, __);
             /* don't time allocating fmpzs */
             GR_MUST_SUCCEED(gr_mat_add(C2, A2, B2, ctx2));
-            TIMEIT_START
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_add(C2, A2, B2, ctx2));
-            TIMEIT_STOP_VALUES(t2, __)
+            TIMEIT_STOP_VALUES(t2, __);
             speedup_add = t2 / t1;
 
-            TIMEIT_START
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_mul(C, A, B, ctx));
-            TIMEIT_STOP_VALUES(t1, __)
-            TIMEIT_START
+            TIMEIT_STOP_VALUES(t1, __);
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_mul(C2, A2, B2, ctx2));
-            TIMEIT_STOP_VALUES(t2, __)
+            TIMEIT_STOP_VALUES(t2, __);
 
             speedup_mul = t2 / t1;
 
@@ -143,12 +143,12 @@ int main()
             randmat(A2, state, bits, ctx2);
             randmat(B2, state, bits, ctx2);
 
-            TIMEIT_START
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_nonsingular_solve(C, A, B, ctx));
-            TIMEIT_STOP_VALUES(t1, __)
-            TIMEIT_START
+            TIMEIT_STOP_VALUES(t1, __);
+            TIMEIT_START;
             GR_MUST_SUCCEED(gr_mat_nonsingular_solve(C2, A2, B2, ctx2));
-            TIMEIT_STOP_VALUES(t2, __)
+            TIMEIT_STOP_VALUES(t2, __);
             speedup_solve = t2 / t1;
 
             gr_mat_clear(A, ctx);
@@ -170,6 +170,6 @@ int main()
     }
 
     fmpz_clear(p);
-    flint_randclear(state);
+    flint_rand_clear(state);
     return 0;
 }

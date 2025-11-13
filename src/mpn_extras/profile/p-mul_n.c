@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "mpn_extras.h"
 #include "profiler.h"
 
@@ -23,7 +22,7 @@ int main(void)
     slong i, n;
     double t1, t2, FLINT_SET_BUT_UNUSED(__);
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     {
         for (i = 0; i < MAXN; i++)
@@ -38,16 +37,16 @@ int main(void)
         {
             flint_printf("n = %wd    ", n);
 
-            TIMEIT_START
+            TIMEIT_START;
 #if 0
             __gmpn_mul_basecase(r, x, n, y, n);
 #else
             mpn_mul_n(r, x, y, n);
 #endif
-            TIMEIT_STOP_VALUES(__, t1)
-            TIMEIT_START
+            TIMEIT_STOP_VALUES(__, t1);
+            TIMEIT_START;
             flint_mpn_mul_n(s, x, y, n);
-            TIMEIT_STOP_VALUES(__, t2)
+            TIMEIT_STOP_VALUES(__, t2);
 
             flint_printf("%g    %g   %.2f\n", t1, t2, t1 / t2);
 
@@ -56,7 +55,7 @@ int main(void)
         }
     }
 
-    flint_randclear(state);
+    flint_rand_clear(state);
     flint_cleanup_master();
     return 0;
 }

@@ -9,6 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+#include "longlong.h"
 #include "thread_pool.h"
 #include "thread_support.h"
 #include "fmpz.h"
@@ -39,7 +41,7 @@ typedef struct
     volatile int idx;
     slong nthreads;
     slong Al, Bl, Pl;
-    mp_limb_t * Acoeffs, * Bcoeffs;
+    ulong * Acoeffs, * Bcoeffs;
     slong * Amain, * Bmain;
     ulong * Apexp, * Bpexp;
     slong * perm;
@@ -101,7 +103,7 @@ static void _nmod_mpoly_mul_array_threaded_worker_LEX(void * varg)
     while (Pi < Pl)
     {
         slong len;
-        mp_limb_t t2, t1, t0, u1, u0;
+        ulong t2, t1, t0, u1, u0;
 
         Pi = base->perm[Pi];
 
@@ -207,7 +209,7 @@ static void _nmod_mpoly_mul_array_threaded_worker_LEX(void * varg)
     TMP_END;
 }
 
-void _nmod_mpoly_mul_array_chunked_threaded_LEX(
+static void _nmod_mpoly_mul_array_chunked_threaded_LEX(
     nmod_mpoly_t P,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
@@ -332,7 +334,7 @@ void _nmod_mpoly_mul_array_chunked_threaded_LEX(
         FLINT_ASSERT((Pchunks + Pi)->poly->exps != NULL);
 
         memcpy(P->exps + Plen, (Pchunks + Pi)->poly->exps, (Pchunks + Pi)->len*sizeof(ulong));
-        memcpy(P->coeffs + Plen, (Pchunks + Pi)->poly->coeffs, (Pchunks + Pi)->len*sizeof(mp_limb_t));
+        memcpy(P->coeffs + Plen, (Pchunks + Pi)->poly->coeffs, (Pchunks + Pi)->len*sizeof(ulong));
 
         Plen += (Pchunks + Pi)->len;
 
@@ -490,7 +492,7 @@ static void _nmod_mpoly_mul_array_threaded_worker_DEG(void * varg)
     while (Pi < Pl)
     {
         slong len;
-        mp_limb_t t2, t1, t0, u1, u0;
+        ulong t2, t1, t0, u1, u0;
 
         Pi = base->perm[Pi];
 
@@ -588,7 +590,7 @@ static void _nmod_mpoly_mul_array_threaded_worker_DEG(void * varg)
 
 
 
-void _nmod_mpoly_mul_array_chunked_threaded_DEG(
+static void _nmod_mpoly_mul_array_chunked_threaded_DEG(
     nmod_mpoly_t P,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
@@ -716,7 +718,7 @@ void _nmod_mpoly_mul_array_chunked_threaded_DEG(
         FLINT_ASSERT((Pchunks + Pi)->poly->exps != NULL);
 
         memcpy(P->exps + Plen, (Pchunks + Pi)->poly->exps, (Pchunks + Pi)->len*sizeof(ulong));
-        memcpy(P->coeffs + Plen, (Pchunks + Pi)->poly->coeffs, (Pchunks + Pi)->len*sizeof(mp_limb_t));
+        memcpy(P->coeffs + Plen, (Pchunks + Pi)->poly->coeffs, (Pchunks + Pi)->len*sizeof(ulong));
 
         Plen += (Pchunks + Pi)->len;
 

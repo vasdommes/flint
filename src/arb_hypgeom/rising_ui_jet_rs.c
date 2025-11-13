@@ -9,16 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
 #include "fmpz_vec.h"
 #include "arb_poly.h"
 #include "arb_hypgeom.h"
-
-#ifdef __GNUC__
-# define pow __builtin_pow
-#else
-# include <math.h>
-#endif
 
 void
 arb_hypgeom_rising_ui_jet_rs(arb_ptr res, const arb_t x, ulong n, ulong m, slong len, slong prec)
@@ -26,7 +21,7 @@ arb_hypgeom_rising_ui_jet_rs(arb_ptr res, const arb_t x, ulong n, ulong m, slong
     slong i, j, k, l, m0, xmlen, tlen, ulen, climbs, climbs_max, wp;
     arb_ptr tmp, xpow;
     arb_ptr t, u;
-    mp_ptr c;
+    nn_ptr c;
     TMP_INIT;
 
     if (len == 0)
@@ -79,7 +74,7 @@ arb_hypgeom_rising_ui_jet_rs(arb_ptr res, const arb_t x, ulong n, ulong m, slong
     wp = ARF_PREC_ADD(prec, FLINT_BIT_COUNT(n));
 
     climbs_max = FLINT_BIT_COUNT(n - 1) * m;
-    c = TMP_ALLOC(sizeof(mp_limb_t) * climbs_max * m);
+    c = TMP_ALLOC(sizeof(ulong) * climbs_max * m);
 
     /* length of (x+t)^m */
     xmlen = FLINT_MIN(len, m + 1);

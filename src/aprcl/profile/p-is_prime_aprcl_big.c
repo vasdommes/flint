@@ -9,19 +9,20 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "flint.h"
 #include "profiler.h"
 #include "fmpz.h"
 #include "aprcl.h"
 
 void p_is_prime_repeat(fmpz_t n)
 {
-    TIMEIT_START
+    TIMEIT_START;
     if (aprcl_is_prime(n) == 0)
     {
         flint_printf("Primality test failed\n");
         flint_abort();
     }
-    TIMEIT_STOP
+    TIMEIT_STOP;
 }
 
 int main(void)
@@ -418,6 +419,8 @@ int main(void)
 
         fmpz_clear(n);
     }
+
+    FLINT_TEST_CLEAR(state)
 
     return 0;
 }

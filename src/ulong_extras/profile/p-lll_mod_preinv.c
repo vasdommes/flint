@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 
 typedef struct
@@ -21,17 +20,17 @@ typedef struct
 
 void sample(void * arg, ulong count)
 {
-   mp_limb_t d, dinv, r = 0;
+   ulong d, dinv, r = 0;
    info_t * info = (info_t *) arg;
    flint_bitcnt_t bits = info->bits;
    ulong type = info->type;
    ulong i;
-   mp_ptr arr, arr2;
+   nn_ptr arr, arr2;
    FLINT_TEST_INIT(state);
 
 
-   arr = (mp_ptr) flint_malloc(1024*sizeof(mp_limb_t));
-   arr2 = (mp_ptr) flint_malloc(1024*sizeof(mp_limb_t));
+   arr = (nn_ptr) flint_malloc(1024*sizeof(ulong));
+   arr2 = (nn_ptr) flint_malloc(1024*sizeof(ulong));
 
    for (i = 0; i < count; i++)
    {
@@ -65,9 +64,9 @@ void sample(void * arg, ulong count)
 
    if (r == UWORD(9879875897)) flint_abort();
 
-   flint_randclear(state);
    flint_free(arr);
    flint_free(arr2);
+   FLINT_TEST_CLEAR(state);
 }
 
 int main(void)

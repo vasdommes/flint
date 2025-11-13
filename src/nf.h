@@ -12,7 +12,6 @@
 #ifndef NF_H
 #define NF_H
 
-#include "fmpz.h"
 #include "fmpz_poly.h"
 #include "fmpq_poly.h"
 
@@ -52,7 +51,7 @@ typedef nf_struct nf_t[1];
 
 void nf_init(nf_t nf, const fmpq_poly_t pol);
 
-void nf_init_randtest(nf_t nf, flint_rand_t state, slong len,  mp_bitcnt_t bits_in);
+void nf_init_randtest(nf_t nf, flint_rand_t state, slong len,  flint_bitcnt_t bits_in);
 
 void nf_clear(nf_t nf);
 

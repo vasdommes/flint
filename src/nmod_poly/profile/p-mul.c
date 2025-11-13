@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 #include "nmod_poly.h"
 
@@ -26,7 +25,7 @@ void sample(void * arg, ulong count)
    slong scale;
 
    nmod_poly_t a, b, c;
-   mp_limb_t m;
+   ulong m;
 
    FLINT_TEST_INIT(state);
 
@@ -65,7 +64,7 @@ void sample(void * arg, ulong count)
    nmod_poly_clear(a);
    nmod_poly_clear(b);
    nmod_poly_clear(c);
-   flint_randclear(state);
+   FLINT_TEST_CLEAR(state);
 }
 
 int main(void)

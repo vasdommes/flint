@@ -9,15 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "acb.h"
 #include "arb_hypgeom.h"
 #include "acb_hypgeom.h"
-
-#ifdef __GNUC__
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
 
 /* IMAG: erf(z) = 2z/sqrt(pi) * 1F1(1/2, 3/2, -z^2) */
 void
@@ -232,7 +227,7 @@ acb_hypgeom_erf_propagated_error(mag_t re, mag_t im, const acb_t z)
     mag_clear(y);
 }
 
-void
+static void
 acb_hypgeom_erf_1f1(acb_t res, const acb_t z, slong prec,
     slong wp, int more_imaginary)
 {

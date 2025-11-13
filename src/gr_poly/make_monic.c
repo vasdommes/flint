@@ -22,12 +22,19 @@ _gr_poly_make_monic(gr_ptr res, gr_srcptr poly, slong len, gr_ctx_t ctx)
     gr_srcptr lead;
     gr_ptr inv;
     slong sz = ctx->sizeof_elem;
+    truth_t is_zero;
     int status = GR_SUCCESS;
 
     if (len == 0)
         return GR_DOMAIN;
 
     lead = GR_ENTRY(poly, len - 1, sz);
+
+    /* We must check for 0 to exclude inexact representations of 0
+       in the zero ring (!). */
+    is_zero = gr_is_zero(lead, ctx);
+    if (is_zero != T_FALSE)
+        return (is_zero == T_TRUE) ? GR_DOMAIN : GR_UNABLE;
 
     if (gr_is_one(lead, ctx) == T_TRUE)
     {
@@ -72,6 +79,7 @@ gr_poly_make_monic(gr_poly_t res, const gr_poly_t src, gr_ctx_t ctx)
         gr_poly_fit_length(res, src->length, ctx);
         status = _gr_poly_make_monic(res->coeffs, src->coeffs, src->length, ctx);
         _gr_poly_set_length(res, src->length, ctx);
+        _gr_poly_normalise(res, ctx);
         return status;
     }
     else

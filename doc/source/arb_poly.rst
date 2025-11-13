@@ -301,7 +301,7 @@ Arithmetic
     .. math::
 
         c = \left\lfloor
-            \frac{(e_2 - e_1) + (f_2 + f_1)}{(a_2 - a_1) + (b_2 - b_1)}
+            \frac{(e_2 - e_1) + (f_2 - f_1)}{(a_2 - a_1) + (b_2 - b_1)}
             + \frac{1}{2}
             \right \rfloor.
 
@@ -317,8 +317,6 @@ Arithmetic
     square is computed.
 
 .. function:: void arb_poly_mullow_classical(arb_poly_t C, const arb_poly_t A, const arb_poly_t B, slong n, slong prec)
-
-.. function:: void arb_poly_mullow_ztrunc(arb_poly_t C, const arb_poly_t A, const arb_poly_t B, slong n, slong prec)
 
 .. function:: void arb_poly_mullow_block(arb_poly_t C, const arb_poly_t A, const arb_poly_t B, slong n, slong prec)
 

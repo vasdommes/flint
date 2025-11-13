@@ -9,13 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "nmod_mat.h"
 #include "nmod_poly.h"
 #include "nmod_poly_mat.h"
 
 void
-nmod_poly_mat_evaluate_nmod(nmod_mat_t B, const nmod_poly_mat_t A, mp_limb_t x)
+nmod_poly_mat_evaluate_nmod(nmod_mat_t B, const nmod_poly_mat_t A, ulong x)
 {
     slong i, j;
 

@@ -175,8 +175,8 @@ Flags can be OR'ed and checked only at the top level of a computation
 to avoid complex control flow::
 
     status = GR_SUCCESS;
-    gr |= gr_add(res, a, b, ctx);
-    gr |= gr_pow_ui(res, res, 2, ctx);
+    status |= gr_add(res, a, b, ctx);
+    status |= gr_pow_ui(res, res, 2, ctx);
     ...
 
 If we do not care about recovering from *undefined*/*unknown* results,
@@ -222,6 +222,21 @@ that the value is not computable:
     etc. depending on whether the unknown case should be included
     or excluded.
 
+.. function:: truth_t truth_and(truth_t x, truth_t y)
+              truth_t truth_or(truth_t x, truth_t y)
+              truth_t truth_not(truth_t x)
+
+    Performs the corresponding operation in ternary logic.
+
+.. function:: void truth_println(truth_t x)
+
+.. function:: truth_t gr_in_domain(int status)
+
+   Returns ``T_TRUE`` when ``status`` is ``GR_SUCCESS``, ``T_FALSE`` when ``GR_DOMAIN`` is set but ``GR_UNABLE`` is not, and ``T_UNKNOWN`` otherwise.
+
+.. function:: int gr_check(truth_t t)
+
+   Maps ``T_TRUE`` to ``GR_SUCCESS``, ``T_FALSE`` to ``GR_DOMAIN``, and ``T_UNKNOWN`` to ``GR_UNABLE``.
 
 Context operations
 -------------------------------------------------------------------------------
@@ -231,7 +246,7 @@ Context operations
     Return ``sizeof(type)`` where ``type`` is the underlying C
     type for elements of *ctx*.
 
-.. function:: int gr_ctx_clear(gr_ctx_t ctx)
+.. function:: void gr_ctx_clear(gr_ctx_t ctx)
 
     Clears the context object *ctx*, freeing any memory
     allocated by this object.
@@ -262,6 +277,15 @@ Context operations
     finite field, etc.) or generators (multivariate).
     The name is used when printing and may be used to choose
     coercions.
+
+.. function:: int gr_ctx_ngens(slong * ngens, gr_ctx_t ctx)
+
+    Get the number of generators.
+
+.. function:: int gr_ctx_gen_name(char ** name, slong i, gr_ctx_t ctx)
+
+    Get the name of the generator of index *i*.
+    The returned buffer must be freed with :func:`flint_free`.
 
 Element operations
 --------------------------------------------------------------------------------
@@ -366,6 +390,10 @@ Random elements
     Typically the distribution is non-uniform in order to
     find corner cases more easily in test code.
 
+.. function:: int gr_randtest_invertible(gr_ptr res, flint_rand_t state, gr_ctx_t ctx)
+
+    Sets *res* to a random invertible element of the domain *ctx*.
+
 .. function:: int gr_randtest_not_zero(gr_ptr res, flint_rand_t state, gr_ctx_t ctx)
 
     Sets *res* to a random nonzero element of the domain *ctx*.
@@ -439,6 +467,10 @@ Assignment and conversions
               int gr_get_fmpz_2exp_fmpz(fmpz_t res1, fmpz_t res2, gr_srcptr x, gr_ctx_t ctx)
 
     Set or retrieve a dyadic number `a \cdot 2^b`.
+
+.. function:: int gr_get_d_2exp_si(double * res, slong * exp, gr_srcptr x, gr_ctx_t ctx)
+
+    Returns `m 2^e \approx x` with `0.5 \le |m| < 1` if *x* is nonzero.
 
 .. function:: int gr_set_fmpz_10exp_fmpz(gr_ptr res, const fmpz_t a, const fmpz_t b, gr_ctx_t ctx)
 
@@ -707,6 +739,14 @@ Powering
     should override these methods with faster versions or
     to support more general notions of exponentiation when possible.
 
+Derivative
+........................................................................
+
+.. function:: int gr_derivative_gen(gr_ptr res, gr_srcptr x, slong var, gr_ctx_t ctx)
+
+    Sets *res* to the derivative of *x* with respect to the variable of index *var*.
+    The variables here are the generators of *ctx*.
+
 Square roots
 ........................................................................
 
@@ -750,6 +790,12 @@ Greatest common divisors
 
 Factorization
 ........................................................................
+
+.. function:: int gr_canonical_associate(gr_ptr res, gr_ptr u, gr_srcptr x, gr_ctx_t ctx)
+
+    Given a commutative ring element *x*, sets *res* to a canonical form
+    `u x` with respect to multiplication by units, also writing the normalizing
+    unit *u* as a second output. If `x = 0`, sets *res* to 0 and *u* to 1.
 
 .. function:: int gr_factor(gr_ptr c, gr_vec_t factors, gr_vec_t exponents, gr_srcptr x, int flags, gr_ctx_t ctx)
 
@@ -843,6 +889,23 @@ Ordering methods
     Sets *res* to -1, 0 or 1 according to whether the absolute value
     of *x* is less than, equal or greater than the absolute value of *y*.
     This may return ``GR_DOMAIN`` if the ring is not an ordered ring.
+
+.. function:: truth_t gr_le(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_lt(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_ge(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_gt(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_abs_le(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_abs_lt(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_abs_ge(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              truth_t gr_abs_gt(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+
+    Wrappers of ``gr_cmp`` and ``gr_cmpabs`` returning truth values
+    for the comparison operations ``<=``, ``<``, ``>=``, ``>``.
+
+.. function:: int gr_min(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+              int gr_max(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+
+    Minimum and maximum value.
 
 Enclosure and interval methods
 ........................................................................

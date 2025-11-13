@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include "flint.h"
 #include "fmpz.h"
 #include "fq_nmod.h"
 #include "fq_nmod_poly.h"
@@ -102,7 +101,7 @@ main(int argc, char** argv)
     fq_nmod_ctx_clear(ctx);
     fmpz_clear(temp);
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 }

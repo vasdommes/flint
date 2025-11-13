@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 #include "mpn_extras.h"
 #include "fft.h"
@@ -56,7 +55,7 @@ main(void)
        flint_free(i1);
     }
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 
     flint_printf("done\n");
     return 0;

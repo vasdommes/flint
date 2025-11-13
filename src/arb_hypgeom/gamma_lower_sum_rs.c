@@ -9,16 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
+#include "arb.h"
 #include "arb_hypgeom.h"
-
-#ifdef __GNUC__
-# define fabs __builtin_fabs
-# define ldexp __builtin_ldexp
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
 
 static slong
 exp_series_prec(slong k, double dz, double logdz, slong prec)
@@ -44,10 +38,10 @@ _arb_hypgeom_gamma_lower_sum_rs_1(arb_t res, ulong p, ulong q, const arb_t z, sl
 {
     slong m, j, k, jlen, jbot, wp;
     double dz, logdz;
-    mp_limb_t c, chi, clo;
+    ulong c, chi, clo;
     arb_t s;
     arb_ptr zpow;
-    mp_ptr cs;
+    nn_ptr cs;
 
     m = n_sqrt(N);
     m = FLINT_MAX(m, 2);
@@ -80,7 +74,7 @@ _arb_hypgeom_gamma_lower_sum_rs_1(arb_t res, ulong p, ulong q, const arb_t z, sl
 
     arb_init(s);
     zpow = _arb_vec_init(m + 1);
-    cs = flint_malloc(sizeof(mp_limb_t) * (m + 1));
+    cs = flint_malloc(sizeof(ulong) * (m + 1));
     arb_mul_ui(zpow + m, z, q, prec);
     _arb_vec_set_powers(zpow, zpow + m, m + 1, prec);
 

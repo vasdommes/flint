@@ -51,29 +51,27 @@ void fq_nmod_ctx_init_conway_ui(fq_nmod_ctx_t ctx, ulong p, slong d, const char 
     ctx->is_conway = 1;
 }
 
+void fq_nmod_ctx_init_minimal_weight_ui(fq_nmod_ctx_t ctx, ulong p, slong d, const char *var)
+{
+    nmod_poly_t poly;
+
+    ctx->is_conway = 0;
+
+    nmod_poly_init2(poly, p, d + 1);
+    nmod_poly_minimal_irreducible(poly, d);
+    fq_nmod_ctx_init_modulus(ctx, poly, var);
+    nmod_poly_clear(poly);
+}
+
 void fq_nmod_ctx_init_ui(fq_nmod_ctx_t ctx, ulong p, slong d, const char *var)
 {
     if (_fq_nmod_ctx_init_conway_ui(ctx, p, d, var))
     {
         ctx->is_conway = 1;
-        return;
     }
     else
     {
-        flint_rand_t state;
-        nmod_poly_t poly;
-
-        ctx->is_conway = 0;
-
-        flint_randinit(state);
-
-        nmod_poly_init2(poly, p, d + 1);
-        nmod_poly_randtest_sparse_irreducible(poly, state, d + 1);
-
-        fq_nmod_ctx_init_modulus(ctx, poly, var);
-
-        nmod_poly_clear(poly);
-        flint_randclear(state);
+        fq_nmod_ctx_init_minimal_weight_ui(ctx, p, d, var);
     }
 }
 
@@ -90,7 +88,7 @@ fq_nmod_ctx_init_randtest(fq_nmod_ctx_t ctx, flint_rand_t state, int type)
     if (n_randint(state, 2))
     {
         nmod_poly_t modulus;
-        mp_limb_t x;
+        ulong x;
 
         nmod_poly_init(modulus, ctx->mod.n);
         nmod_poly_set(modulus, ctx->modulus);

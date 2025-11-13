@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
 #include "gr_mat.h"
 
 void
@@ -16,13 +17,10 @@ gr_mat_clear(gr_mat_t mat, gr_ctx_t ctx)
 {
     if (mat->entries != NULL)
     {
-        _gr_vec_clear(mat->entries, mat->r * mat->c, ctx);
+        /* Should always be the case for non-window matrices. */
+        FLINT_ASSERT(mat->stride == mat->c);
 
+        _gr_vec_clear(mat->entries, mat->r * mat->c, ctx);
         flint_free(mat->entries);
-        flint_free(mat->rows);
-    }
-    else if (mat->r != 0)
-    {
-        flint_free(mat->rows);
     }
 }

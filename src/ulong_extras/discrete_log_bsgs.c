@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "flint.h"
 #include "ulong_extras.h"
 
 typedef struct apow {
@@ -65,7 +64,7 @@ bsgs_table_clear(bsgs_t t)
     flint_free(t->table);
 }
 
-ulong
+static ulong
 n_discrete_log_bsgs_table(const bsgs_t t, ulong b)
 {
     ulong i;

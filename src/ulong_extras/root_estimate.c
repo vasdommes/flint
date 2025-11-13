@@ -12,13 +12,12 @@
 */
 
 #include <math.h>
-#include "flint.h"
 #include "ulong_extras.h"
 
 
 /* this table contains the value of UWORD_MAX / n, for n in range [1, FLINT_BITS] */
 
-static const mp_limb_t mul_factor[] = {
+static const ulong mul_factor[] = {
 #ifdef FLINT64
                         UWORD(0), UWORD_MAX,        UWORD(9223372036854775807),
                         UWORD(6148914691236517205), UWORD(4611686018427387903),
@@ -74,7 +73,7 @@ static const mp_limb_t mul_factor[] = {
 /* https://en.wikipedia.org/wiki/Fast_inverse_square_root */
 /* Instead of the inverse square root, we calculate the nth root */
 
-mp_limb_t
+ulong
 n_root_estimate(double a, int n)
 {
     typedef union {
@@ -104,5 +103,5 @@ n_root_estimate(double a, int n)
     i = hi;
     i += s;
     alias.uword_val = i;
-    return (mp_limb_t)alias.double_val;
+    return (ulong)alias.double_val;
 }

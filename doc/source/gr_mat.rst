@@ -29,9 +29,9 @@ Type compatibility
 -------------------------------------------------------------------------------
 
 The ``gr_mat`` type has the same data layout as most
-Flint, Arb and Calcium matrix types.
+FLINT, Arb and Calcium matrix types.
 Methods in this module can therefore be mixed freely with
-methods in the corresponding Flint, Arb and Calcium modules
+methods in the corresponding FLINT, Arb and Calcium modules
 when the underlying coefficient type is the same.
 
 It is not directly compatible with the ``nmod_mat`` type,
@@ -109,6 +109,25 @@ Window matrices
 
     Frees the window matrix.
 
+.. macro:: GR_MAT_TMP_INIT_SHALLOW_TRANSPOSE(AT, A, ctx)
+
+    Initialize *AT* to a shallow transpose of *A* for temporary use.
+    This macro uses stack allocation if *A* is sufficiently small.
+    The matrix *AT* can be used similarly to a window matrix for reading.
+    It can also be used for writing, provided that one finishes the
+    operation by performing ``GR_MAT_SHALLOW_TRANSPOSE(A, AT, ctx)``
+    to write back any changes to the shallow data.
+
+.. macro:: GR_MAT_SHALLOW_TRANSPOSE(AT, A, ctx)
+
+    Sets *AT* to the transpose of *A*, copying entries shallowly.
+    Assumes that *AT* and *A* are not aliased (if aliased, the normal
+    :func:`gr_mat_transpose` already uses shallow operations).
+
+.. macro:: GR_MAT_TMP_CLEAR_SHALLOW_TRANSPOSE(AT, ctx)
+
+    Free the shallow transpose allocated by :macro:`GR_MAT_TMP_INIT_SHALLOW_TRANSPOSE`.
+
 Input and output
 -------------------------------------------------------------------------------
 
@@ -154,6 +173,7 @@ Assignment and special values
 .. function:: int gr_mat_set(gr_mat_t res, const gr_mat_t mat, gr_ctx_t ctx)
               int gr_mat_set_fmpz_mat(gr_mat_t res, const fmpz_mat_t mat, gr_ctx_t ctx)
               int gr_mat_set_fmpq_mat(gr_mat_t res, const fmpq_mat_t mat, gr_ctx_t ctx)
+              int gr_mat_set_gr_mat_other(gr_mat_t res, const gr_mat_t mat, gr_ctx_t mat_ctx, gr_ctx_t ctx)
 
     Sets *res* to the value of *mat*.
 
@@ -173,9 +193,10 @@ Basic row, column and entry operations
 
 .. function:: int gr_mat_concat_vertical(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
 
-.. function:: int gr_mat_transpose(gr_mat_t B, const gr_mat_t A, gr_ctx_t ctx)
+.. function:: int gr_mat_transpose(gr_mat_t res, const gr_mat_t mat, gr_ctx_t ctx)
 
-    Sets *B* to the transpose of *A*.
+    Sets ``res`` to the transpose of ``mat``. Dimensions must be compatible.
+    Aliasing is allowed for square matrices.
 
 .. function:: int gr_mat_swap_rows(gr_mat_t mat, slong * perm, slong r, slong s, gr_ctx_t ctx)
 
@@ -199,6 +220,16 @@ Basic row, column and entry operations
     ``c`` is the number of columns of ``mat``. If ``perm`` is non-``NULL``, the
     permutation of the columns will also be applied to ``perm``.
 
+.. function:: int gr_mat_move_row(gr_mat_t A, slong i, slong new_i, gr_ctx_t ctx)
+
+    Moves row ``i`` to the new position ``new_i``, displacing all intervening
+    rows. For example, with ``i = 4`` and ``new_i = 7`` this replaces the
+    block of rows ``A4, A5, A6, A7`` by ``A5, A6, A7, A4``.
+    With ``i = 7`` and ``new_i = 4`` replaces ``A4, A5, A6, A7``
+    by ``A7, A4, A5, A6``.
+    Returns ``GR_DOMAIN`` if either index is not in bounds, otherwise is
+    guaranteed to succeed.
+
 .. function:: truth_t gr_mat_is_empty(const gr_mat_t mat, gr_ctx_t ctx)
 
     Returns whether *mat* is an empty matrix, having either zero
@@ -213,8 +244,60 @@ Basic row, column and entry operations
     This predicate is always decidable (even if the underlying ring
     is not computable), returning ``T_TRUE`` or ``T_FALSE``.
 
+Entrywise operations
+-------------------------------------------------------------------------------
 
-Arithmetic
+.. function:: int gr_mat_entrywise_unary_op(gr_mat_t res, gr_method_unary_op f, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Sets *res* to the application of the function *f* to the
+    entries of matrix *mat*. Returns ``GR_DOMAIN`` if the matrix dimensions do not match.
+
+.. function:: int gr_mat_entrywise_binary_op(gr_mat_t res, gr_method_binary_op f, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
+
+    Sets *res* to the application of the function *f*
+    to the entries of *mat1* as first argument and the entries of *mat2*
+    as second argument.
+    Returns ``GR_DOMAIN`` if the matrix dimensions do not match.
+
+.. function:: int gr_mat_entrywise_binary_op_scalar(gr_mat_t res, gr_method_binary_op f, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
+
+    Sets *res* to the application of the function *f*
+    to the entries of *mat* as first argument and the scalar *c*
+    as second argument.
+    Returns ``GR_DOMAIN`` if the matrix dimensions do not match.
+
+.. function:: truth_t gr_mat_entrywise_unary_predicate_all(gr_method_unary_predicate f, const gr_mat_t mat, gr_ctx_t ctx)
+              truth_t gr_mat_entrywise_unary_predicate_any(gr_method_unary_predicate f, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Returns whether the predicate *f* is true for all entries,
+    respectively for any entry, in the matrix *mat*.
+
+.. function:: truth_t gr_mat_entrywise_binary_predicate_all(gr_method_binary_predicate f, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
+
+    Returns whether the binary predicate *f* is true for all entries
+    in *mat1* paired with the corresponding entries in *mat2*.
+    Returns ``T_FALSE`` if the matrix dimensions are not compatible.
+
+Norms
+-------------------------------------------------------------------------------
+
+.. function:: int gr_mat_norm_max(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Max norm: `\max_{i,j} |a_{i,j}|`.
+
+.. function:: int gr_mat_norm_1(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
+
+    1-norm (largest absolute column sum): `\max_{1\le j \le n} \sum_{i=1}^m |a_{i,j}|`.
+
+.. function:: int gr_mat_norm_inf(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Infinity-norm (largest absolute row sum): `\max_{1\le i \le m} \sum_{j=1}^n |a_{i,j}|`.
+
+.. function:: int gr_mat_norm_frobenius(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Frobenius norm: `\sqrt{\sum_{i,j} |a_{i,j}|^2}`.
+
+Addition and scalar arithmetic
 -------------------------------------------------------------------------------
 
 .. function:: int gr_mat_neg(gr_mat_t res, const gr_mat_t mat, gr_ctx_t ctx)
@@ -223,23 +306,113 @@ Arithmetic
 
 .. function:: int gr_mat_sub(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
 
-.. function:: int gr_mat_mul_classical(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
-              int gr_mat_mul_strassen(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
-              int gr_mat_mul_generic(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
-              int gr_mat_mul(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
+.. function:: int gr_mat_add_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t ctx)
+              int gr_mat_scalar_add(gr_mat_t res, gr_srcptr x, const gr_mat_t mat, gr_ctx_t ctx)
+              int gr_mat_add_ui(gr_mat_t res, const gr_mat_t mat, ulong x, gr_ctx_t ctx)
+              int gr_mat_add_si(gr_mat_t res, const gr_mat_t mat, slong x, gr_ctx_t ctx)
+              int gr_mat_add_fmpz(gr_mat_t res, const gr_mat_t mat, const fmpz_t x, gr_ctx_t ctx)
+              int gr_mat_add_fmpq(gr_mat_t res, const gr_mat_t mat, const fmpq_t x, gr_ctx_t ctx)
+              int gr_mat_add_scalar_other(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t x_ctx, gr_ctx_t ctx)
+              int gr_mat_scalar_other_add(gr_mat_t res, gr_srcptr x, gr_ctx_t x_ctx, const gr_mat_t mat, gr_ctx_t ctx)
 
-    Matrix multiplication. The default function can be overloaded by specific rings;
-    otherwise, it falls back to :func:`gr_mat_mul_generic` which currently
-    only performs classical multiplication.
+    Perform the matrix-scalar or scalar-matrix operation `A + Ix` or `Ix + A`.
+
+.. function:: int gr_mat_sub_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t ctx)
+              int gr_mat_scalar_sub(gr_mat_t res, gr_srcptr x, const gr_mat_t mat, gr_ctx_t ctx)
+              int gr_mat_sub_ui(gr_mat_t res, const gr_mat_t mat, ulong x, gr_ctx_t ctx)
+              int gr_mat_sub_si(gr_mat_t res, const gr_mat_t mat, slong x, gr_ctx_t ctx)
+              int gr_mat_sub_fmpz(gr_mat_t res, const gr_mat_t mat, const fmpz_t x, gr_ctx_t ctx)
+              int gr_mat_sub_fmpq(gr_mat_t res, const gr_mat_t mat, const fmpq_t x, gr_ctx_t ctx)
+              int gr_mat_sub_scalar_other(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t x_ctx, gr_ctx_t ctx)
+              int gr_mat_scalar_other_sub(gr_mat_t res, gr_srcptr x, gr_ctx_t x_ctx, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Perform the matrix-scalar or scalar-matrix operation `A - Ix` or `Ix - A`.
+
+.. function:: int gr_mat_mul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t ctx)
+              int gr_mat_scalar_mul(gr_mat_t res, gr_srcptr x, const gr_mat_t mat, gr_ctx_t ctx)
+              int gr_mat_mul_ui(gr_mat_t res, const gr_mat_t mat, ulong x, gr_ctx_t ctx)
+              int gr_mat_mul_si(gr_mat_t res, const gr_mat_t mat, slong x, gr_ctx_t ctx)
+              int gr_mat_mul_fmpz(gr_mat_t res, const gr_mat_t mat, const fmpz_t x, gr_ctx_t ctx)
+              int gr_mat_mul_fmpq(gr_mat_t res, const gr_mat_t mat, const fmpq_t x, gr_ctx_t ctx)
+              int gr_mat_mul_scalar_other(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t x_ctx, gr_ctx_t ctx)
+              int gr_mat_scalar_other_mul(gr_mat_t res, gr_srcptr x, gr_ctx_t x_ctx, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Perform the matrix-scalar or scalar-matrix operation `A x` or `x A`.
+
+.. function:: int gr_mat_div_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t ctx)
+              int gr_mat_div_scalar_other(gr_mat_t res, const gr_mat_t mat, gr_srcptr x, gr_ctx_t x_ctx, gr_ctx_t ctx)
+              int gr_mat_div_ui(gr_mat_t res, const gr_mat_t mat, ulong x, gr_ctx_t ctx)
+              int gr_mat_div_si(gr_mat_t res, const gr_mat_t mat, slong x, gr_ctx_t ctx)
+              int gr_mat_div_fmpz(gr_mat_t res, const gr_mat_t mat, const fmpz_t x, gr_ctx_t ctx)
+              int gr_mat_div_fmpq(gr_mat_t res, const gr_mat_t mat, const fmpq_t x, gr_ctx_t ctx)
+
+    Perform the matrix-scalar operation `A / x`.
+
+.. function:: int gr_mat_addmul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
+              int gr_mat_submul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
+
+Matrix multiplication
+-------------------------------------------------------------------------------
+
+.. function:: int gr_mat_mul(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
+
+    Compute `AB` using the default algorithm chosen by the element ring.
+    If the element ring does not overload matrix multiplication, this will
+    fall back to :func:`gr_mat_mul_generic` by default.
+
+.. function:: int gr_mat_mul_generic(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
+
+    Multiply matrices using a generic algorithm choice.
+    Currently this always chooses classical multiplication, but may implement
+    other strategies in the future.
+
+.. function:: int gr_mat_mul_classical(gr_mat_t res, const gr_mat_t mat1, const gr_mat_t mat2, gr_ctx_t ctx)
+
+    Computes the `m \times n \times p` matrix product using the classical algorithm,
+    performing `mp` dot products of length `n`.
+
+.. function:: int gr_mat_mul_strassen(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
+
+    Uses Strassen's algorithm to evaluate `AB` using 7 recursive matrix multiplications
+    of roughly half the size. This function calls :func:`gr_mat_mul` for the recursive
+    multiplications; to use Strassen recursively, the base ring must overload
+    :func:`gr_mat_mul` to choose Strassen multiplication above some cutoff.
+    This results in `O(n^{2.81})` asymptotic complexity in the case of an `n \times n \times n`
+    product.
+
+    This function does not implement Strassen's original evaluation sequence
+    but that of Bodrato [Bodrato2010]_ which uses fewer additions and offers
+    some further time savings when squaring.
+
+.. function:: int gr_mat_mul_waksman(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
+
+    Compute the product `AB` using roughly half the number of multiplications
+    of the classical algorithm, using Waksman's algorithm [Waksman1970]_.
+    The base ring must be commutative and must support exact division by two.
+
+.. function:: int gr_mat_mul_rosowski(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr_ctx_t ctx)
+
+    Compute the product `AB` using roughly half the number of multiplications
+    of the classical algorithm, using Rosowski's algorithm [Rosowski2023]_.
+    The base ring must be commutative. This uses the same number of multiplications
+    as Waksman's algorithm when the inner dimension *n* is even,
+    but uses fewer multiplications when *n* is odd, and does not
+    require division by two.
+
+
+Powering
+-------------------------------------------------------------------------------
+
+See the section on matrix functions for non-integer exponents.
 
 .. function:: int gr_mat_sqr(gr_mat_t res, const gr_mat_t mat, gr_ctx_t ctx)
 
-.. function:: int gr_mat_add_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
-              int gr_mat_sub_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
-              int gr_mat_mul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
-              int gr_mat_addmul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
-              int gr_mat_submul_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
-              int gr_mat_div_scalar(gr_mat_t res, const gr_mat_t mat, gr_srcptr c, gr_ctx_t ctx)
+.. function:: int gr_mat_pow_ui(gr_mat_t res, const gr_mat_t mat, ulong e, gr_ctx_t ctx)
+              int gr_mat_pow_si(gr_mat_t res, const gr_mat_t mat, slong e, gr_ctx_t ctx)
+              int gr_mat_pow_fmpz(gr_mat_t res, const gr_mat_t mat, const fmpz_t e, gr_ctx_t ctx)
+
+Polynomial evaluation
+-------------------------------------------------------------------------------
 
 .. function:: int _gr_mat_gr_poly_evaluate(gr_mat_t res, gr_srcptr poly, slong len, const gr_mat_t mat, gr_ctx_t ctx)
               int gr_mat_gr_poly_evaluate(gr_mat_t res, const gr_poly_t poly, const gr_mat_t mat, gr_ctx_t ctx)
@@ -427,6 +600,39 @@ Determinant and trace
     the square matrix *mat*.
     If the matrix is not square, ``GR_DOMAIN`` is returned.
 
+Permanent
+-------------------------------------------------------------------------------
+
+.. function:: int gr_mat_permanent_cofactor(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_permanent_ryser(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_permanent_glynn(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_permanent_glynn_threaded(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_generic(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_permanent(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
+
+    Sets *res* to the permanent of the square matrix *A*,
+    The permanent `\operatorname{perm}(A)` is a polynomial expression
+    in the entries of `A` equivalent to that for the determinant
+    but with all subtractions replaced by additions.
+    Several algorithms are implemented:
+
+    * The *cofactor* version uses recursive cofactor expansion, requiring
+      `O(n!)` additions and multiplications.
+
+    * The *ryser* version uses Ryser's formula [Rys1963]_ with Gray code traversal,
+      requiring `O(2^n n)` additions, subtractions and multiplications.
+
+    * The *glynn* version uses Glynn's formula [Gly2010]_ (actually equivalent
+      to a method described earlier by Nijenhuis and Wilf [NW1978]_). This
+      requires about half as many operations as *ryser* but requires (exact)
+      division by 2.
+
+    * The *glynn_threaded* version is a multithreaded implementation
+      of Glynn's formula.
+
+    The *generic* method chooses cofactor expansion for `n \le 4` and otherwise
+    chooses *ryser*, *glynn* or *glynn_threaded* depending on whether the ring
+    supports division by 2. The default method can be overloaded.
 
 Rank
 -------------------------------------------------------------------------------
@@ -477,6 +683,23 @@ Nullspace
     basis over the fraction field. The result may be meaningless
     if the ring is not an integral domain.
 
+.. function:: int gr_mat_nullspace_from_rref(gr_mat_t X, const gr_mat_t A, gr_srcptr Aden, slong rank, gr_ctx_t ctx)
+
+    Computes nullspace given the precomputed reduced row
+    echelon form matrix *A* with rank *rank*.
+    If *Aden* is not *NULL*, assume tha *A* has been multiplied
+    by this common denominator as in the output of
+    :func:`gr_mat_rref_den`.
+
+.. function:: int gr_mat_nullspace_no_resize(slong * nullity, gr_mat_t X, const gr_mat_t A, gr_ctx_t ctx)
+
+    Similar to :func:`gr_mat_nullspace`, but does not resize the
+    matrix *X*, instead zero-padding if needed and returning
+    the nullity (number of basis columns) in a separate variable.
+    The user must supply a output matrix *X* with at least as many
+    columns as the nullity.
+
+
 Inverse and adjugate
 -------------------------------------------------------------------------------
 
@@ -517,10 +740,15 @@ Characteristic polynomial
 .. function:: int _gr_mat_charpoly(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
               int gr_mat_charpoly(gr_poly_t res, const gr_mat_t mat, gr_ctx_t ctx)
 
-    Computes the characteristic polynomial using a default
-    algorithm choice. The
-    underscore method assumes that *res* is a preallocated
-    array of `n + 1` coefficients.
+    Computes the characteristic polynomial using an algorithm choice
+    which defaults to :func:`_gr_mat_charpoly_generic` but may be overridden
+    by specific rings for performance. The underscore method assumes that *res*
+    is a preallocated array of `n + 1` coefficients.
+
+.. function:: int _gr_mat_charpoly_generic(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
+              int gr_mat_charpoly_generic(gr_poly_t res, const gr_mat_t mat, gr_ctx_t ctx)
+
+    Computes the characteristic polynomial using a generic algorithm choice.
 
 .. function:: int _gr_mat_charpoly_berkowitz(gr_ptr res, const gr_mat_t mat, gr_ctx_t ctx)
               int gr_mat_charpoly_berkowitz(gr_poly_t res, const gr_mat_t mat, gr_ctx_t ctx)
@@ -588,6 +816,24 @@ Minimal polynomial
     Compute the minimal polynomial of the matrix *mat*.
     The algorithm assumes that the coefficient ring is a field.
 
+Companion matrix
+-------------------------------------------------------------------------------
+
+.. function:: int _gr_mat_companion(gr_mat_t res, gr_srcptr poly, gr_ctx_t ctx)
+              int gr_mat_companion(gr_mat_t res, const gr_poly_t poly, gr_ctx_t ctx)
+
+    Sets the *n* by *n* matrix *res* to the companion matrix of the polynomial
+    *poly* which must have degree *n*.
+    The underscore method reads `n + 1` input coefficients.
+    The algorithm assumes that the leading coefficient of *poly* is invertible.
+
+.. function:: int _gr_mat_companion_fraction(gr_mat_t res_num, gr_ptr res_den, gr_srcptr poly, gr_ctx_t ctx)
+              int gr_mat_companion_fraction(gr_mat_t res_num, gr_ptr res_den, const gr_poly_t poly, gr_ctx_t ctx)
+
+    Sets the *n* by *n* matrix *res_num* and the polynomial *res_den* so that
+    the fraction is the companion matrix of the polynomial *poly* which must
+    have degree *n*. The underscore method reads `n + 1` input coefficients.
+
 Similarity transformations
 -------------------------------------------------------------------------------
 
@@ -650,11 +896,45 @@ Jordan decomposition
 Matrix functions
 -------------------------------------------------------------------------------
 
+.. function:: int gr_mat_func_jordan(gr_mat_t res, const gr_mat_t A, gr_method_vec_op jet_func, gr_ctx_t ctx)
+              int gr_mat_func_param_jordan(gr_mat_t res, const gr_mat_t A, gr_method_vec_scalar_op jet_func, gr_srcptr c, gr_ctx_t ctx)
+
+    Computes the matrix function `f(A)` using Jordan decomposition.
+    The user supplies ``int jet_func(gr_ptr r, gr_srcptr x, slong n, gr_ctx_t ctx)`` which given a scalar
+    `x` writes the jet `f(x), f'(x), \ldots, f^{(n-1)} / (n-1)!` to
+    the array `r`.
+
+    The *param* version takes as input a function with
+    signature ``int jet_func(gr_ptr r, gr_srcptr x, slong n, gr_srcptr c, gr_ctx_t ctx)`` for evaluating
+    a function `f(x, c)` depending on an extra parameter `c`.
+    Although ``c`` is nominally passed as a ``gr_srcptr``,
+    it can be a void pointer to arbitrary data that ``jet_func`` knows
+    how to handle.
+
 .. function:: int gr_mat_exp_jordan(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
               int gr_mat_exp(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
 
 .. function:: int gr_mat_log_jordan(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
               int gr_mat_log(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
+
+.. function:: int gr_mat_pow_scalar_jordan(gr_mat_t res, const gr_mat_t A, gr_srcptr c, gr_ctx_t ctx)
+              int gr_mat_pow_scalar(gr_mat_t res, const gr_mat_t A, gr_srcptr c, gr_ctx_t ctx)
+              int gr_mat_pow_fmpq_jordan(gr_mat_t res, const gr_mat_t mat, const fmpq_t exp, gr_ctx_t ctx)
+              int gr_mat_pow_fmpq(gr_mat_t res, const gr_mat_t mat, const fmpq_t exp, gr_ctx_t ctx)
+
+    Compute `A^c` using Jordan decomposition. The non-Jordan
+    methods also check for small integer exponents and delegate those
+    to the standard powering method.
+
+.. function:: int gr_mat_sqrt(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_rsqrt(gr_mat_t res, const gr_mat_t A, gr_ctx_t ctx)
+
+    Compute a square root `A^{1/2}` or a reciprocal square root `A^{-1/2}`.
+    Currently the only implemented algorithm is the Jordan decomposition.
+    Warning: this will often fail and return ``GR_UNABLE`` when the
+    scalar type is not an algebraically closed field, even if the matrix
+    is a perfect square.
+
 
 Hessenberg form
 -------------------------------------------------------------------------------
@@ -704,6 +984,97 @@ Random matrices
     with unchanged rank by subsequently calling :func:`gr_mat_randops`.
 
     This operation only makes sense over integral domains (currently not checked).
+
+.. function:: int gr_mat_randsimilar(gr_mat_t mat, flint_rand_t state, slong opcount, gr_ctx_t ctx)
+
+    Randomises *mat* in-place by conjugating by elementary row/column
+    operations. More precisely, at most *opcount* conjugations by random
+    elementary row/column operations will be performed.
+
+Orthogonal matrices
+-------------------------------------------------------------------------------
+
+.. function:: truth_t gr_mat_is_orthogonal(const gr_mat_t A, gr_ctx_t ctx)
+
+    Returns whether *A* is an orthogonal matrix (orthonormal matrix),
+    i.e. a square matrix satisfying `A A^T = A^T A = I`. It is assumed
+    (not checked) that the scalar ring is commutative.
+
+.. function:: truth_t gr_mat_is_row_orthogonal(const gr_mat_t A, gr_ctx_t ctx)
+              truth_t gr_mat_is_col_orthogonal(const gr_mat_t A, gr_ctx_t ctx)
+              truth_t gr_mat_is_row_orthonormal(const gr_mat_t A, gr_ctx_t ctx)
+              truth_t gr_mat_is_col_orthonormal(const gr_mat_t A, gr_ctx_t ctx)
+
+    Returns whether *A* is of the following type:
+
+    * Row-orthogonal: `A A^T = D` for some diagonal matrix *D*.
+
+    * Column-orthogonal: `A^T A = D` for some diagonal matrix *D*.
+
+    * Row-orthonormal: `A A^T = I`.
+
+    * Column-orthonormal: `A^T A = I`.
+
+.. function:: int gr_mat_randtest_orthogonal(gr_mat_t A, flint_rand_t state, gr_ctx_t ctx)
+
+    Generates a random orthogonal matrix. Uses Cayley's construction,
+    with a permutation matrix as a fallback. It is assumed (not checked) that
+    the scalar ring is commutative.
+    Fails with ``GR_DOMAIN`` if *A* is not square.
+
+QR decomposition
+-------------------------------------------------------------------------------
+
+.. function:: int gr_mat_lq_gso(gr_mat_t L, gr_mat_t Q, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_lq_recursive(gr_mat_t L, gr_mat_t Q, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_lq_generic(gr_mat_t L, gr_mat_t Q, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_lq(gr_mat_t L, gr_mat_t Q, const gr_mat_t A, gr_ctx_t ctx)
+              int gr_mat_qr(gr_mat_t Q, gr_mat_t R, const gr_mat_t A, gr_ctx_t ctx)
+
+    Computes a QR or LQ decomposition.
+    The `A = QR` decomposition orthogonalizes the columns of `A`:
+
+    * `A` is `m \times n` with `m \ge n` and full rank (`A` has `n` linearly independent columns)
+
+    * `Q` is `m \times n` and column-orthonormal
+
+    * `R` is `n \times n` and upper triangular
+
+    The `A = LQ` decomposition is the transposed operation, which
+    orthogonalizes the rows of `A`:
+
+    * `A` is `m \times n` with `m \le n` and full rank (`A` has `m` linearly independent rows)
+
+    * `L` is `m \times m` and lower triangular
+
+    * `Q` is `m \times n` and row-orthonormal
+
+    For rectangular matrices, these definitions correspond to
+    the "reduced", "compact" or "economy-sized" QR or LQ decomposition.
+    To construct a "full" QR decomposition where `Q` is a square, orthogonal
+    matrix, one can compute the reduced QR decomposition, extend
+    `Q` with its orthogonal complement, and pad `R` or `L` with zeros.
+
+    The input matrix `A` should have elements in a
+    subfield of `\mathbb{R}` or real floating-point entries. These functions
+    may succeed for other types, but the Euclidean norm normalizations will
+    not necessarily be meaningful.
+
+    The *gso* algorithm uses Gram-Schmidt orthogonalization.
+    The *recursive* algorithm uses block recursion.
+    The QR decomposition is a simple wrapper around the LQ decomposition.
+    We use the LQ decomposition internally as row operations are
+    more efficient than column operations in the row-major format
+    of :type:`gr_mat_t`.
+
+    Aliasing of `A` and `Q` is handled efficiently in-place.
+    Aliasing of `A` and `R` or `L` is allowed, but requires a temporary
+    internal copy.
+
+    These methods return ``GR_DOMAIN`` if the matrix dimensions are not
+    compatible, if `A` does not have full rank, or if the base ring does
+    not support the necessary divisions or square roots to normalize
+    vectors.
 
 Special matrices
 -------------------------------------------------------------------------------
@@ -759,7 +1130,8 @@ with the intended number of rows and columns.
 Helper functions for reduction
 -------------------------------------------------------------------------------
 
-.. function:: int gr_mat_reduce_row(slong * column, gr_mat_t A, slong * P, slong * L, slong m, gr_ctx_t ctx)
+.. function:: int gr_mat_reduce_row_generic(slong * column, gr_mat_t A, slong * P, slong * L, slong m, gr_ctx_t ctx)
+              int gr_mat_reduce_row(slong * column, gr_mat_t A, slong * P, slong * L, slong m, gr_ctx_t ctx)
 
     Reduce row n of the matrix `A`, assuming the prior rows are in Gauss
     form. However those rows may not be in order. The entry `i` of the array
@@ -773,6 +1145,58 @@ Helper functions for reduction
     `L` can all be set to the number of columns of `A`. We require the entries
     of `L` to be monotonic increasing.
 
+    By default the *generic* version is called; specific rings
+    can overload this (typically to implement delayed canonicalisation).
+
+LLL
+-------------------------------------------------------------------------------
+
+Let `A = (a_0, \ldots, a_{n-1})` be a set of linearly independent vectors over `\mathbb{R}`
+with Gram-Schmidt orthogonalization `(b_0, \ldots, b_{n-1})`
+and Gram-Schmidt coefficients `\mu_{i,j} = \langle a_i, b_i \rangle / \| b_j \|^2`.
+The basis `A` is said to be LLL-reduced with parameter (`\delta`, `\eta`)
+where `0.25 < \delta \le 1` and `0.5 \le \eta < \sqrt{\delta}` if they satisfy
+the size reduction condition
+
+.. math ::
+
+    |\mu_{i,j}| \le \eta, \quad 0 \le j < i < n
+
+and the Lovász condition
+
+.. math ::
+
+    (\delta - \mu_{i,i-1}^2) \| b_{i-1} \|_2^2 \le \| b_i \|_2^2, \quad 1 \le i \le n - 1.
+
+.. function:: truth_t gr_mat_is_row_lll_reduced_naive(const gr_mat_t A, gr_srcptr delta, gr_srcptr eta, gr_ctx_t ctx)
+              truth_t gr_mat_is_row_lll_reduced_with_removal_naive(const gr_mat_t A, gr_srcptr delta, gr_srcptr eta, gr_srcptr gs_B, slong newd, gr_ctx_t ctx)
+
+    Check if the rows of *A* are LLL-reduced by naively performing the
+    Gram-Schmidt orthogonalization and checking the conditions one row
+    at a time.
+
+    In interval arithmetic, these functions terminate eagerly: ``T_UNKNOWN``
+    is returned if the tests are inconclusive for one row, even if there is a
+    possibility that a later row could prove that the result should be ``T_FALSE``.
+
+Linear ODEs
+-------------------------------------------------------------------------------
+
+.. function:: int _gr_mat_gr_poly_solve_lode_newton_start(gr_mat_t Y, gr_mat_t Z, gr_poly_t A_denominator_inv, const gr_mat_t A_numerator, const gr_poly_t A_denominator, const gr_mat_t Y0, gr_ctx_t sol_poly_ctx)
+              int _gr_mat_gr_poly_solve_lode_newton_step(gr_mat_t Y, gr_mat_t Z, gr_poly_t A_denominator_inv, slong *len, const gr_mat_t A_numerator, const gr_poly_t A_denominator, int A_is_companion, gr_ctx_t sol_poly_ctx)
+              int _gr_mat_gr_poly_solve_lode_newton(gr_mat_t Y, gr_mat_t Z, const gr_mat_t A_numerator, const gr_poly_t A_denominator, const gr_mat_t Y0, slong len, gr_ctx_t A_poly_ctx, gr_ctx_t sol_poly_ctx)
+              int gr_mat_gr_poly_solve_lode_newton(gr_mat_t Y, const gr_mat_t A_numerator, const gr_poly_t A_denominator, const gr_mat_t Y0, slong len, gr_ctx_t A_poly_ctx, gr_ctx_t sol_poly_ctx)
+
+    Solves the system of linear ordinary differential
+    equations `Y'(t) = A(t)Y(t)` with rational function coefficients `A(t)`
+    and initial condition `Y(0) = Y_0`. Sets *Y* to the power series solution
+    truncated to length *len*.
+    The algorithm is a Newton iteration as described in [BCOSSS2007]_,
+    but using an iteration for the power series inverse of *A_denominator*,
+    and using a specialized implementation of multiplication by `A(t)` mod `t^m`
+    in the case where `A(t)` is a companion matrix.
+    An optimal sequence of precisions is used to reach the target *len*, even
+    when it is not a power of two.
 
 Test functions
 -------------------------------------------------------------------------------
@@ -796,12 +1220,30 @@ on each test iteration, otherwise the given ring is tested.
     Tests the given function ``det_impl`` for correctness as an implementation
     of :func:`gr_mat_det`.
 
+.. function:: void gr_mat_test_charpoly(gr_method_mat_unary_op_get_scalar charpoly_impl, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
+
+    Tests the given function ``charpoly_impl`` for correctness as an implementation
+    of :func:`_gr_mat_charpoly`.
+
 .. function:: void gr_mat_test_nonsingular_solve_tril(gr_method_mat_binary_op_with_flag solve_impl, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
               void gr_mat_test_nonsingular_solve_triu(gr_method_mat_binary_op_with_flag solve_impl, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
 
     Tests the given function ``solve_impl`` for correctness as an implementation
     of :func:`gr_mat_nonsingular_solve_tril` / :func:`gr_mat_nonsingular_solve_triu`.
 
+.. function:: void gr_mat_test_approx_mul_max_norm(gr_method_mat_binary_op mul_impl, gr_srcptr rel_tol, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
+
+    Tests the given implementation of matrix multiplication for accuracy
+    over an approximate numerical ring by checking that
+    `|C-AB| \le |A||B| rel\_tol` holds in the max norm,
+    using classical multiplication for reference.
+
+.. function:: void gr_mat_test_approx_mul_pos_entrywise_accurate(gr_method_mat_binary_op mul_impl, gr_srcptr rel_tol, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
+
+    Tests the given implementation of matrix multiplication for accuracy
+    over an approximate numerical ring by generating nonnegative matrices
+    and checking that the entrywise relative error compared to
+    classical multiplication does not exceed *rel_tol*.
 
 .. raw:: latex
 

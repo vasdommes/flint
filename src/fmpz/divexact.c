@@ -21,7 +21,7 @@ fmpz_divexact(fmpz_t f, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_divexact). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_divexact). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))  /* g is small, h must be also or division isn't exact */
@@ -30,7 +30,7 @@ fmpz_divexact(fmpz_t f, const fmpz_t g, const fmpz_t h)
     }
     else  /* g is large */
     {
-        __mpz_struct * mf;
+        mpz_ptr mf;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
         {
@@ -70,7 +70,7 @@ void fmpz_divexact_si(fmpz_t f, const fmpz_t g, slong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_divexact_si). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_divexact_si). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))  /* g is small */
@@ -79,7 +79,7 @@ void fmpz_divexact_si(fmpz_t f, const fmpz_t g, slong h)
     }
     else  /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         if (h > 0)
         {
@@ -88,7 +88,7 @@ void fmpz_divexact_si(fmpz_t f, const fmpz_t g, slong h)
         }
         else
         {
-            flint_mpz_divexact_ui(mf, COEFF_TO_PTR(c1), -h);
+            flint_mpz_divexact_ui(mf, COEFF_TO_PTR(c1), -(ulong) h);
             _fmpz_demote_val(f);  /* division by h may result in small value */
             fmpz_neg(f, f);
         }
@@ -101,7 +101,7 @@ void fmpz_divexact_ui(fmpz_t f, const fmpz_t g, ulong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_divexact_ui). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_divexact_ui). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))  /* g is small */
@@ -110,9 +110,47 @@ void fmpz_divexact_ui(fmpz_t f, const fmpz_t g, ulong h)
     }
     else  /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         flint_mpz_divexact_ui(mf, COEFF_TO_PTR(c1), h);
         _fmpz_demote_val(f);  /* division by h may result in small value */
     }
 }
+
+#if defined(__GNUC__)
+void fmpz_divexact2_uiui(fmpz_t f, const fmpz_t g, ulong h1, ulong h2)
+{
+    ulong hx;
+    int of;
+
+    /* builtin for better handling of overflow */
+    of = __builtin_mul_overflow(h1, h2, &hx);
+
+    if (!of)
+    {
+        fmpz_divexact_ui(f, g, hx);
+    }
+    else
+    {
+        fmpz_divexact_ui(f, g, h1);
+        fmpz_divexact_ui(f, f, h2);
+    }
+}
+#else
+void fmpz_divexact2_uiui(fmpz_t f, const fmpz_t g, ulong h1, ulong h2)
+{
+    ulong hi, lo;
+
+    umul_ppmm(hi, lo, h1, h2);
+
+    if (!hi)
+    {
+        fmpz_divexact_ui(f, g, lo);
+    }
+    else
+    {
+        fmpz_divexact_ui(f, g, h1);
+        fmpz_divexact_ui(f, f, h2);
+    }
+}
+#endif

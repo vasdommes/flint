@@ -9,21 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "acb.h"
 
-#ifdef __GNUC__
-# define atan2 __builtin_atan2
-# define cos __builtin_cos
-# define fabs __builtin_fabs
-# define log __builtin_log
-# define pow __builtin_pow
-# define sin __builtin_sin
-#else
-# include <math.h>
-#endif
-
 /* Check if z crosses a branch cut. */
-int
+static int
 acb_lambertw_branch_crossing(const acb_t z, const acb_t ez1, const fmpz_t k)
 {
     if (arb_contains_zero(acb_imagref(z)) && !arb_is_nonnegative(acb_imagref(z)))
@@ -45,7 +35,7 @@ acb_lambertw_branch_crossing(const acb_t z, const acb_t ez1, const fmpz_t k)
 }
 
 /* todo: remove radii */
-void
+static void
 acb_lambertw_halley_step(acb_t res, acb_t ew, const acb_t z, const acb_t w, slong prec)
 {
     acb_t t, u, v;
@@ -77,7 +67,7 @@ acb_lambertw_halley_step(acb_t res, acb_t ew, const acb_t z, const acb_t w, slon
 }
 
 /* assumes no aliasing of w and p */
-void
+static void
 acb_lambertw_branchpoint_series(acb_t w, const acb_t t, int bound, slong prec)
 {
     slong i;
@@ -109,7 +99,7 @@ acb_lambertw_branchpoint_series(acb_t w, const acb_t t, int bound, slong prec)
     }
 }
 
-void
+static void
 acb_lambertw_principal_d(acb_t res, const acb_t z)
 {
     double za, zb, wa, wb, ewa, ewb, t, u, q, r;
@@ -149,11 +139,7 @@ acb_lambertw_principal_d(acb_t res, const acb_t z)
 
     for (k = 0; k < maxk; k++)
     {
-#if __GNUC__
-        t = __builtin_exp(wa);
-#else
         t = exp(wa);
-#endif
         ewa = t * cos(wb);
         ewb = t * sin(wb);
         t = (ewa * wa - ewb * wb); q = t + ewa; t -= za;
@@ -169,7 +155,7 @@ acb_lambertw_principal_d(acb_t res, const acb_t z)
     acb_set_d_d(res, wa, wb);
 }
 
-void
+static void
 acb_lambertw_initial_asymp(acb_t w, const acb_t z, const fmpz_t k, slong prec)
 {
     acb_t L1, L2, t;
@@ -204,7 +190,7 @@ acb_lambertw_initial_asymp(acb_t w, const acb_t z, const fmpz_t k, slong prec)
 }
 
 /* assumes no aliasing */
-slong
+static slong
 acb_lambertw_initial(acb_t res, const acb_t z, const acb_t ez1, const fmpz_t k, slong prec)
 {
     /* Handle z very close to 0 on the principal branch. */
@@ -255,7 +241,7 @@ acb_lambertw_initial(acb_t res, const acb_t z, const acb_t ez1, const fmpz_t k, 
 }
 
 /* note: z should be exact here */
-void acb_lambertw_main(acb_t res, const acb_t z,
+static void acb_lambertw_main(acb_t res, const acb_t z,
                 const acb_t ez1, const fmpz_t k, int flags, slong prec)
 {
     acb_t w, t, oldw, ew;
@@ -412,7 +398,7 @@ void acb_lambertw_main(acb_t res, const acb_t z,
     mag_clear(err);
 }
 
-void
+static void
 acb_lambertw_cleared_cut(acb_t res, const acb_t z, const fmpz_t k, int flags, slong prec)
 {
     acb_t ez1;
@@ -456,7 +442,7 @@ acb_lambertw_cleared_cut(acb_t res, const acb_t z, const fmpz_t k, int flags, sl
 }
 
 /* Extremely close to the branch point at -1/e, use the series expansion directly. */
-int
+static int
 acb_lambertw_try_near_branch_point(acb_t res, const acb_t z,
     const acb_t ez1, const fmpz_t k, int flags, slong prec)
 {
@@ -482,7 +468,7 @@ acb_lambertw_try_near_branch_point(acb_t res, const acb_t z,
     return 0;
 }
 
-void
+static void
 acb_lambertw_cleared_cut_fix_small(acb_t res, const acb_t z,
     const acb_t ez1, const fmpz_t k, int flags, slong prec)
 {
@@ -530,7 +516,7 @@ acb_lambertw_cleared_cut_fix_small(acb_t res, const acb_t z,
     arf_clear(eps);
 }
 
-void
+static void
 _acb_lambertw(acb_t res, const acb_t z, const acb_t ez1, const fmpz_t k, int flags, slong prec)
 {
     slong goal, ebits, ebits2, ls, lt;
@@ -655,7 +641,7 @@ _acb_lambertw(acb_t res, const acb_t z, const acb_t ez1, const fmpz_t k, int fla
     }
 }
 
-void
+static void
 acb_lambertw_middle(acb_t res, const acb_t z, slong prec)
 {
     fmpz_t k;
@@ -741,7 +727,7 @@ acb_lambertw_middle(acb_t res, const acb_t z, slong prec)
     fmpz_clear(k);
 }
 
-void
+static void
 acb_lambertw_left(acb_t res, const acb_t z, const fmpz_t k, slong prec)
 {
     if (acb_contains_zero(z) && !(fmpz_equal_si(k, -1) && acb_is_real(z)))

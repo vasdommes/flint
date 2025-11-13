@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz.h"
 #include "fmpz_poly.h"
 #include "fmpz_poly_mat.h"
@@ -19,7 +18,7 @@
 #define BB(ii,jj) fmpz_poly_mat_entry(B,(ii),(jj))
 #define LU(ii,jj) fmpz_poly_mat_entry(FFLU,(ii),(jj))
 
-void
+static void
 fmpz_poly_mat_set_perm(fmpz_poly_mat_t X, const slong * perm,
     const fmpz_poly_mat_t B)
 {

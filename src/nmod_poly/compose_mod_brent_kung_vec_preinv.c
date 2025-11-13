@@ -12,6 +12,7 @@
 */
 
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 #include "nmod_mat.h"
@@ -19,11 +20,11 @@
 void
 _nmod_poly_compose_mod_brent_kung_vec_preinv(nmod_poly_struct * res,
         const nmod_poly_struct * polys, slong FLINT_UNUSED(lenpolys), slong l,
-        mp_srcptr g, slong glen, mp_srcptr poly, slong len,
-        mp_srcptr polyinv, slong leninv, nmod_t mod)
+        nn_srcptr g, slong glen, nn_srcptr poly, slong len,
+        nn_srcptr polyinv, slong leninv, nmod_t mod)
 {
     nmod_mat_t A, B, C;
-    mp_ptr t, h;
+    nn_ptr t, h;
     slong i, j, k, n, m, len2 = l, len1;
 
     n = len - 1;
@@ -45,51 +46,37 @@ _nmod_poly_compose_mod_brent_kung_vec_preinv(nmod_poly_struct * res,
         len1 = (polys + j)->length;
 
         for (i = 0; i < len1/m; i++)
-            _nmod_vec_set(B->rows[i + j*k], (polys + j)->coeffs + i*m, m);
+            _nmod_vec_set(nmod_mat_entry_ptr(B, i + j*k, 0), (polys + j)->coeffs + i*m, m);
 
-        _nmod_vec_set(B->rows[i + j*k], (polys + j)->coeffs + i*m, len1%m);
+        _nmod_vec_set(nmod_mat_entry_ptr(B, i + j*k, 0), (polys + j)->coeffs + i*m, len1%m);
     }
 
     /* Set rows of A to powers of last element of polys */
-    _nmod_poly_powers_mod_preinv_naive(A->rows, g, glen,
-                                           m, poly, len, polyinv, leninv, mod);
+    {
+        nn_ptr * Arows;
+        slong i;
+        Arows = flint_malloc(sizeof(nn_ptr) * A->r);
+        for (i = 0; i < A->r; i++)
+            Arows[i] = nmod_mat_entry_ptr(A, i, 0);
+
+        _nmod_poly_powers_mod_preinv_naive(Arows, g, glen,
+                                               m, poly, len, polyinv, leninv, mod);
+
+        flint_free(Arows);
+    }
 
     nmod_mat_mul(C, B, A);
 
     /* Evaluate block composition using the Horner scheme */
-    if (n == 1)
-    {
-        h[0] = n_mulmod2_preinv(A->rows[m - 1][0],
-                                               A->rows[1][0], mod.n, mod.ninv);
-    } else
-    {
-        _nmod_poly_mulmod_preinv(h, A->rows[m - 1], n, A->rows[1], n, poly,
+    _nmod_poly_mulmod_preinv(h, nmod_mat_entry_ptr(A, m - 1, 0), n, nmod_mat_entry_ptr(A, 1, 0), n, poly,
                                                     len, polyinv, leninv, mod);
-    }
 
+    /* Todo: precompute powers of h for repeated rectangular splitting */
     for (j = 0; j < len2; j++)
     {
-        _nmod_vec_set((res + j)->coeffs, C->rows[(j + 1)*k - 1], n);
-
-        if (n == 1)
-        {
-            for (i = 2; i <= k; i++)
-            {
-                t[0] = n_mulmod2_preinv(res[j].coeffs[0],
-                                                        h[0], mod.n, mod.ninv);
-                res[j].coeffs[0] = n_addmod(t[0],
-                                             C->rows[(j + 1)*k - i][0], mod.n);
-            }
-        } else
-        {
-            for (i = 2; i <= k; i++)
-            {
-                _nmod_poly_mulmod_preinv(t, res[j].coeffs,
-                                     n, h, n, poly, len, polyinv, leninv, mod);
-                _nmod_poly_add(res[j].coeffs, t, n,
-                                               C->rows[(j + 1)*k - i], n, mod);
-            }
-        }
+        nmod_mat_t Cw;
+        nmod_mat_window_init(Cw, C, j * k, 0, (j + 1) * k, C->c);
+        _nmod_poly_mod_matrix_rows_evaluate(res[j].coeffs, Cw, h, n, poly, len, polyinv, leninv, mod);
     }
 
     _nmod_vec_clear(h);

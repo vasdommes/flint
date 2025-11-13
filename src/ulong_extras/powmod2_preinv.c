@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 
 ulong
@@ -30,7 +29,7 @@ n_powmod2_preinv(ulong a, slong exp, ulong n, ulong ninv)
             flint_throw(FLINT_IMPINV, "Cannot invert modulo %wd*%wd\n", g,
                         n / g);
 
-        exp = -exp;
+        exp = -(ulong) exp;
     }
 
     norm = flint_clz(n);

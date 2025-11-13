@@ -11,7 +11,6 @@
 
 #include <string.h>
 #include <float.h>
-#include "flint.h"
 #include "fmpz.h"
 #include "fmpz_poly.h"
 #include "ulong_extras.h"
@@ -117,7 +116,7 @@ main(void)
     fmpz_poly_clear(f);
     fmpz_poly_clear(g);
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 }

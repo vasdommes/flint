@@ -13,17 +13,30 @@
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 
-void _nmod_poly_mulmod_preinv(mp_ptr res, mp_srcptr poly1, slong len1,
-                            mp_srcptr poly2, slong len2, mp_srcptr f,
-                            slong lenf, mp_srcptr finv, slong lenfinv, nmod_t mod)
+void _nmod_poly_mulmod_preinv(nn_ptr res, nn_srcptr poly1, slong len1,
+                            nn_srcptr poly2, slong len2, nn_srcptr f,
+                            slong lenf, nn_srcptr finv, slong lenfinv, nmod_t mod)
 {
-    mp_ptr T, Q;
+    nn_ptr T, Q;
     slong lenT, lenQ;
+    TMP_INIT;
+
+    if (lenf == 2)
+    {
+        FLINT_ASSERT(len1 == 1);
+        FLINT_ASSERT(len2 == 1);
+
+        res[0] = nmod_mul(poly1[0], poly2[0], mod);
+        return;
+    }
 
     lenT = len1 + len2 - 1;
     lenQ = lenT - lenf + 1;
 
-    T = _nmod_vec_init(lenT + lenQ);
+    FLINT_ASSERT(lenQ >= 1);
+
+    TMP_START;
+    T = TMP_ALLOC(sizeof(ulong) * (lenT + lenQ));
     Q = T + lenT;
 
     if (len1 >= len2)
@@ -33,7 +46,8 @@ void _nmod_poly_mulmod_preinv(mp_ptr res, mp_srcptr poly1, slong len1,
 
     _nmod_poly_divrem_newton_n_preinv(Q, res, T, lenT, f, lenf,
                                       finv, lenfinv, mod);
-    _nmod_vec_clear(T);
+
+    TMP_END;
 }
 
 void
@@ -42,7 +56,7 @@ nmod_poly_mulmod_preinv(nmod_poly_t res, const nmod_poly_t poly1,
                         const nmod_poly_t finv)
 {
     slong len1, len2, lenf;
-    mp_ptr fcoeffs;
+    nn_ptr fcoeffs;
 
     lenf = f->length;
     len1 = poly1->length;
@@ -68,7 +82,7 @@ nmod_poly_mulmod_preinv(nmod_poly_t res, const nmod_poly_t poly1,
     {
         if (f == res)
         {
-            fcoeffs = (mp_ptr) flint_malloc(sizeof(mp_limb_t) * lenf);
+            fcoeffs = (nn_ptr) flint_malloc(sizeof(ulong) * lenf);
             _nmod_vec_set(fcoeffs, f->coeffs, lenf);
         } else
             fcoeffs = f->coeffs;

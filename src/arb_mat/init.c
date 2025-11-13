@@ -9,24 +9,17 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
 void
 arb_mat_init(arb_mat_t mat, slong r, slong c)
 {
-    if (r != 0 && c != 0)
-    {
-        slong i;
-
-        mat->entries = _arb_vec_init(r * c);
-        mat->rows = (arb_ptr *) flint_malloc(r * sizeof(arb_ptr));
-
-        for (i = 0; i < r; i++)
-            mat->rows[i] = mat->entries + i * c;
-    }
-    else
-        mat->entries = NULL;
-
+    mat->entries = NULL;
     mat->r = r;
     mat->c = c;
+    mat->stride = c;
+
+    if (r != 0 && c != 0)
+        mat->entries = _arb_vec_init(r * c);
 }

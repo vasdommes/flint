@@ -10,6 +10,7 @@
 */
 
 #include <string.h>
+#include <gmp.h>
 #include "fmpz.h"
 #include "fq_nmod.h"
 #include "n_poly.h"
@@ -18,8 +19,8 @@
 
 #define ALLOC_PER_VAR ((FLINT_BITS+4)/3)
 
-char * _fq_nmod_mpoly_get_str_pretty(
-    const mp_limb_t * coeff,
+static char * _fq_nmod_mpoly_get_str_pretty(
+    const ulong * coeff,
     const ulong * exp,
     slong len,
     const char ** x_in,

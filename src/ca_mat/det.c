@@ -13,7 +13,7 @@
 #include "fmpq_mat.h"
 #include "ca_mat.h"
 
-int
+static int
 _ca_mat_is_fmpq(const ca_mat_t A, ca_ctx_t ctx)
 {
     slong i, j;
@@ -26,7 +26,7 @@ _ca_mat_is_fmpq(const ca_mat_t A, ca_ctx_t ctx)
     return 1;
 }
 
-int
+static int
 _ca_mat_fmpq_is_fmpz(const ca_mat_t A, ca_ctx_t ctx)
 {
     slong i, j;
@@ -100,7 +100,6 @@ ca_mat_det(ca_t res, const ca_mat_t A, ca_ctx_t ctx)
 
             fmpz_mat_det(det, Zm);
 
-            flint_free(Zm->rows);
             flint_free(Zm->entries);
             ca_set_fmpz(res, det, ctx);
             fmpz_clear(det);
@@ -120,7 +119,6 @@ ca_mat_det(ca_t res, const ca_mat_t A, ca_ctx_t ctx)
 
             fmpq_mat_det(det, Qm);
 
-            flint_free(Qm->rows);
             flint_free(Qm->entries);
             ca_set_fmpq(res, det, ctx);
             fmpq_clear(det);

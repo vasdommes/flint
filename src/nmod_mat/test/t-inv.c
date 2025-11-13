@@ -16,8 +16,8 @@
 TEST_FUNCTION_START(nmod_mat_inv, state)
 {
     nmod_mat_t A, B, C, I;
-    slong i, j, m, r;
-    mp_limb_t mod;
+    slong i, m, r;
+    ulong mod;
     int result;
 
     for (i = 0; i < 1000 * flint_test_multiplier(); i++)
@@ -30,8 +30,7 @@ TEST_FUNCTION_START(nmod_mat_inv, state)
         nmod_mat_init(C, m, m, mod);
         nmod_mat_init(I, m, m, mod);
 
-        for (j = 0; j < m; j++)
-            I->rows[j][j] = UWORD(1);
+        nmod_mat_one(I);
 
         /* Verify that A * A^-1 = I for random matrices */
 

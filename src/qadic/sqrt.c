@@ -9,11 +9,13 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "nmod_mat.h"
 #include "fmpz_poly.h"
 #include "fmpz_mod.h"
 #include "fmpz_mod_poly.h"
 #include "qadic.h"
+#include "qadic/impl.h"
 
 static int __fmpz_mod_poly_invmod(fmpz *A,
                           const fmpz *B, slong lenB,
@@ -159,7 +161,7 @@ _artin_schreier_preimage(fmpz *rop, const fmpz *op, slong len,
 
         for (k = 0; k < d; k++)
         {
-            nmod_mat_entry(A, k, i) = (mp_limb_t) f[k];
+            nmod_mat_entry(A, k, i) = (ulong) f[k];
         }
         fmpz_zero(e + i);
     }
@@ -794,7 +796,7 @@ _qadic_sqrt_2(fmpz *rop, const fmpz *op, slong len,
 
     Assumes that \code{(op, len)} has valuation $0$.
  */
-int _qadic_sqrt(fmpz *rop, const fmpz *op, slong len,
+static int _qadic_sqrt(fmpz *rop, const fmpz *op, slong len,
                 const fmpz *a, const slong *j, slong lena,
                 const fmpz_t p, slong N)
 {

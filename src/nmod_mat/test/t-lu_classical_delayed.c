@@ -20,15 +20,15 @@
 void perm(nmod_mat_t A, slong * P)
 {
     slong i;
-    mp_ptr * tmp;
+    nn_ptr tmp;
 
     if (A->c == 0 || A->r == 0)
         return;
 
-    tmp = flint_malloc(sizeof(mp_ptr) * A->r);
+    tmp = flint_malloc(sizeof(ulong) * A->r * A->c);
 
-    for (i = 0; i < A->r; i++) tmp[P[i]] = A->rows[i];
-    for (i = 0; i < A->r; i++) A->rows[i] = tmp[i];
+    for (i = 0; i < A->r; i++) _nmod_vec_set(tmp + P[i] * A->c, nmod_mat_entry_ptr(A, i, 0), A->c);
+    for (i = 0; i < A->r; i++) _nmod_vec_set(nmod_mat_entry_ptr(A, i, 0), tmp + i * A->c, A->c);
 
     flint_free(tmp);
 }
@@ -88,7 +88,7 @@ TEST_FUNCTION_START(nmod_mat_lu_classical_delayed, state)
     for (i = 0; i < 1000 * flint_test_multiplier(); i++)
     {
         nmod_mat_t A, LU, LU2;
-        mp_limb_t mod;
+        ulong mod;
         slong m, n, r, d, rank, rank2;
         slong *P, *P2;
 

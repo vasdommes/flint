@@ -10,19 +10,24 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include "profiler.h"
 #include "long_extras.h"
 
 #include "fexpr.h"
 #include "fmpq.h"
 #include "gr.h"
+#include "gr_generic.h"
 #include "gr_vec.h"
 #include "gr_mat.h"
 #include "gr_poly.h"
 
+PUSH_OPTIONS
+OPTIMIZE_OSIZE
+
 typedef int ((*gr_test_function)(gr_ctx_t, flint_rand_t, int));
 
-int
+static int
 gr_test_binary_op_aliasing(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t), flint_rand_t state, int test_flags)
 {
     int status, alias;
@@ -37,6 +42,14 @@ gr_test_binary_op_aliasing(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr
     status |= gr_op(xy1, x, y, R);
 
     alias = n_randint(state, 4);
+
+    /* Don't test x * x == x^2 for inexact "rings" (e.g. floats) where
+       the squaring algorithm might not produce exactly the same result. */
+    if ((alias == 2 || alias == 3) && gr_ctx_is_ring(R) == T_FALSE && gr_ctx_is_exact(R) == T_FALSE)
+    {
+        alias -= 2;
+    }
+
     switch (alias)
     {
         case 0:
@@ -84,7 +97,7 @@ gr_test_binary_op_aliasing(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr
     return status;
 }
 
-int
+static int
 gr_test_set_ui(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -141,7 +154,7 @@ gr_test_set_ui(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_set_si(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -155,7 +168,6 @@ gr_test_set_si(gr_ctx_t R, flint_rand_t state, int test_flags)
     while (z_add_checked(&c, a, b));
 
     GR_TMP_INIT4(xa, xb, xc, xa_xb, R);
-
     GR_MUST_SUCCEED(gr_randtest(xa, state, R));
 
     status = GR_SUCCESS;
@@ -199,7 +211,7 @@ gr_test_set_si(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_set_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -263,7 +275,7 @@ gr_test_set_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_set_fmpq(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -327,7 +339,7 @@ gr_test_set_fmpq(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_get_ui(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -373,7 +385,7 @@ gr_test_get_ui(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_get_si(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -419,7 +431,7 @@ gr_test_get_si(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_get_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -434,6 +446,20 @@ gr_test_get_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
     if (n_randint(state, 2))
     {
         GR_MUST_SUCCEED(gr_randtest(x, state, R));
+
+        /* Don't create too large floats */
+        if (gr_ctx_has_real_prec(R) == T_TRUE)
+        {
+            double t;
+
+            if (gr_abs(y, x, R) == GR_SUCCESS)
+            {
+                if (gr_get_d(&t, y, R) != GR_SUCCESS)
+                    GR_IGNORE(gr_zero(x, R));
+                else if (t < -1e300 || t > 1e300)
+                    GR_IGNORE(gr_zero(x, R));
+            }
+        }
     }
     else
     {
@@ -467,7 +493,7 @@ gr_test_get_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_get_fmpq(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -515,7 +541,7 @@ gr_test_get_fmpq(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_get_fmpz_2exp_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -568,7 +594,121 @@ gr_test_get_fmpz_2exp_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
+gr_test_get_set_d(gr_ctx_t R, flint_rand_t state, int test_flags)
+{
+    int status;
+    gr_ptr x, z, err, tol;
+    double y;
+    slong prec;
+
+    GR_TMP_INIT4(x, z, err, tol, R);
+
+    GR_MUST_SUCCEED(gr_randtest(x, state, R));
+    GR_MUST_SUCCEED(gr_randtest(z, state, R));
+
+    status = gr_get_d(&y, x, R);
+
+    if (gr_ctx_get_real_prec(&prec, R) == GR_SUCCESS)
+        prec = FLINT_MIN(prec, 53);
+    else
+        prec = 53;
+
+    if (status == GR_SUCCESS)
+    {
+        status |= gr_set_d(z, y, R);
+
+        if (status == GR_SUCCESS)
+        {
+            status |= gr_sub(err, x, z, R);
+            status |= gr_abs(err, err, R);
+            status |= gr_mul_2exp_si(tol, z, -prec + 3, R);
+            status |= gr_abs(tol, tol, R);
+
+            if (status == GR_SUCCESS && gr_gt(err, tol, R) == T_TRUE)
+            {
+                status = GR_TEST_FAIL;
+            }
+        }
+    }
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("\n");
+        flint_printf("set_d\n");
+        gr_ctx_println(R);
+        flint_printf("x = %{gr}\n", x, R);
+        flint_printf("y = %.16e\n", y);
+        flint_printf("z = %{gr}\n", x, R);
+        flint_printf("err = %{gr}\n", err, R);
+        flint_printf("tol = %{gr}\n", tol, R);
+        flint_printf("\n");
+    }
+
+    GR_TMP_CLEAR4(x, z, err, tol, R);
+
+    return status;
+}
+
+static int
+gr_test_get_set_d_2exp_si(gr_ctx_t R, flint_rand_t state, int test_flags)
+{
+    int status;
+    gr_ptr x, z, err, tol;
+    double y;
+    slong e, prec;
+
+    GR_TMP_INIT4(x, z, err, tol, R);
+
+    GR_MUST_SUCCEED(gr_randtest(x, state, R));
+    GR_MUST_SUCCEED(gr_randtest(z, state, R));
+
+    status = gr_get_d_2exp_si(&y, &e, x, R);
+
+    if (gr_ctx_get_real_prec(&prec, R) == GR_SUCCESS)
+        prec = FLINT_MIN(prec, 53);
+    else
+        prec = 53;
+
+    if (status == GR_SUCCESS)
+    {
+        status |= gr_set_d(z, y, R);
+        status |= gr_mul_2exp_si(z, z, e, R);
+
+        if (status == GR_SUCCESS)
+        {
+            status |= gr_sub(err, x, z, R);
+            status |= gr_abs(err, err, R);
+            status |= gr_mul_2exp_si(tol, z, -prec + 3, R);
+            status |= gr_abs(tol, tol, R);
+
+            if (status == GR_SUCCESS && gr_gt(err, tol, R) == T_TRUE)
+            {
+                status = GR_TEST_FAIL;
+            }
+        }
+    }
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("\n");
+        flint_printf("set_d_2exp_si\n");
+        gr_ctx_println(R);
+        flint_printf("x = %{gr}\n", x, R);
+        flint_printf("y = %.16e\n", y);
+        flint_printf("e = %wd\n", e);
+        flint_printf("z = %{gr}\n", x, R);
+        flint_printf("err = %{gr}\n", err, R);
+        flint_printf("tol = %{gr}\n", tol, R);
+        flint_printf("\n");
+    }
+
+    GR_TMP_CLEAR4(x, z, err, tol, R);
+
+    return status;
+}
+
+static int
 gr_test_get_set_fexpr(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -620,7 +760,7 @@ gr_test_get_set_fexpr(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_ctx_get_str(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -639,7 +779,48 @@ gr_test_ctx_get_str(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
+gr_test_ctx_gen_names(gr_ctx_t R, flint_rand_t state, int test_flags)
+{
+    int status = GR_SUCCESS;
+
+    slong ngens;
+    gr_vec_t gens;
+    gr_vec_init(gens, 0, R);
+
+    status |= gr_ctx_ngens(&ngens, R);
+
+    if (ngens < 0)
+        status = GR_TEST_FAIL;
+
+    if ((status | gr_gens(gens, R)) == GR_SUCCESS)
+        if (gens->length != ngens)
+            status = GR_TEST_FAIL;
+
+    const char * mynames[] = { "α", "x", "x1" };
+
+    int set_status = GR_UNABLE;
+    if (ngens <= 3)
+        set_status = gr_ctx_set_gen_names(R, mynames);
+
+    for (slong i = 0; i < FLINT_MIN(ngens, 3); i++)
+    {
+        char * name = NULL;
+        status = gr_ctx_gen_name(&name, i, R);
+        if (set_status == GR_SUCCESS && strcmp(mynames[i], name))
+            status = GR_TEST_FAIL;
+        flint_free(name);
+    }
+
+    if (status == GR_TEST_FAIL)
+        flint_printf("gen_names\n");
+
+    gr_vec_clear(gens, R);
+
+    return status;
+}
+
+static int
 gr_test_get_set_str(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -673,9 +854,9 @@ gr_test_get_set_str(gr_ctx_t R, flint_rand_t state, int test_flags)
         gr_ctx_println(R);
         flint_printf("x = \n"); gr_println(x, R);
         if (s == NULL)
-            flint_printf("(NULL)\n");
+            flint_printf("s = \n(NULL)\n");
         else
-            flint_printf("%s\n", s);
+            flint_printf("s = \n%s\n", s);
         flint_printf("y = \n"); gr_println(y, R);
         flint_printf("\n");
     }
@@ -687,7 +868,7 @@ gr_test_get_set_str(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_set_other(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -745,7 +926,7 @@ gr_test_set_other(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_mul_2exp_si(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -801,7 +982,7 @@ gr_test_mul_2exp_si(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_mul_2exp_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -865,7 +1046,7 @@ gr_test_mul_2exp_fmpz(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_binary_op_type_variants(gr_ctx_t R,
     const char * opname,
     int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
@@ -1011,7 +1192,7 @@ gr_test_binary_op_type_variants(gr_ctx_t R,
     return status;
 }
 
-int
+static int
 gr_test_binary_op_associative(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t), flint_rand_t state, int test_flags)
 {
     int status;
@@ -1061,7 +1242,7 @@ gr_test_binary_op_associative(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_src
     return status;
 }
 
-int
+static int
 gr_test_binary_op_commutative(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t), flint_rand_t state, int test_flags)
 {
     int status;
@@ -1102,7 +1283,7 @@ gr_test_binary_op_commutative(gr_ctx_t R, int (*gr_op)(gr_ptr, gr_srcptr, gr_src
 /*
 test x op (y op2 z) = (x op y) op2 (x op z)
 */
-int
+static int
 gr_test_binary_op_left_distributive(gr_ctx_t R,
     int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
     int (*gr_op2)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
@@ -1155,7 +1336,7 @@ gr_test_binary_op_left_distributive(gr_ctx_t R,
 /*
 test (y op2 z) op x = (y op x) op2 (z op x)
 */
-int
+static int
 gr_test_binary_op_right_distributive(gr_ctx_t R,
     int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
     int (*gr_op2)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
@@ -1205,7 +1386,7 @@ gr_test_binary_op_right_distributive(gr_ctx_t R,
     return status;
 }
 
-int
+static int
 gr_test_init_clear(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1249,7 +1430,7 @@ gr_test_init_clear(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_equal(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1289,7 +1470,7 @@ gr_test_equal(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_swap(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1332,7 +1513,7 @@ gr_test_swap(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_zero_one(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1354,16 +1535,20 @@ gr_test_zero_one(gr_ctx_t R, flint_rand_t state, int test_flags)
     equal = gr_is_one(a, R);
     if (status == GR_SUCCESS && equal == T_FALSE)
     {
-        flint_printf("FAILL is_one\n");
+        flint_printf("FAIL is_one\n");
         gr_ctx_println(R);
         gr_println(a, R);
         status = GR_TEST_FAIL;
     }
 
     status |= gr_randtest(a, state, R);
-    status |= gr_one(a, R);
-    status |= gr_neg(a, a, R);
+    status |= gr_neg_one(a, R);
     equal = gr_is_neg_one(a, R);
+    if (status == GR_SUCCESS && equal == T_FALSE)
+        status = GR_TEST_FAIL;
+
+    status |= gr_neg(a, a, R);
+    equal = gr_is_one(a, R);
     if (status == GR_SUCCESS && equal == T_FALSE)
         status = GR_TEST_FAIL;
 
@@ -1375,7 +1560,7 @@ gr_test_zero_one(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_randtest_not_zero(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1402,7 +1587,7 @@ gr_test_randtest_not_zero(gr_ctx_t R, flint_rand_t state, int test_flags)
 }
 
 
-int
+static int
 gr_test_one(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1433,13 +1618,13 @@ gr_test_one(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_add_associative(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_associative(R, gr_add, state, test_flags);
 }
 
-int
+static int
 gr_test_neg(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1494,19 +1679,19 @@ gr_test_neg(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_add_commutative(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_commutative(R, gr_add, state, test_flags);
 }
 
-int
+static int
 gr_test_add_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_aliasing(R, gr_add, state, test_flags);
 }
 
-int
+static int
 gr_test_add_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "add",
@@ -1514,7 +1699,7 @@ gr_test_add_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             0, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_sub_equal_neg_add(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1557,13 +1742,13 @@ gr_test_sub_equal_neg_add(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_sub_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_aliasing(R, gr_sub, state, test_flags);
 }
 
-int
+static int
 gr_test_sub_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "sub",
@@ -1571,38 +1756,38 @@ gr_test_sub_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             0, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_mul_associative(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_associative(R, gr_mul, state, test_flags);
 }
 
-int
+static int
 gr_test_mul_commutative(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_commutative(R, gr_mul, state, test_flags);
 }
 
-int
+static int
 gr_test_mul_left_distributive(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_left_distributive(R, gr_mul, gr_add, state, test_flags);
 }
 
-int
+static int
 gr_test_mul_right_distributive(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_right_distributive(R, gr_mul, gr_add, state, test_flags);
 }
 
 
-int
+static int
 gr_test_mul_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_aliasing(R, gr_mul, state, test_flags);
 }
 
-int
+static int
 gr_test_mul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "mul",
@@ -1610,7 +1795,7 @@ gr_test_mul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             0, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_addmul_submul(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1708,7 +1893,7 @@ gr_test_addmul_submul(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_addmul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "addmul",
@@ -1716,7 +1901,7 @@ gr_test_addmul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             1, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_submul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "submul",
@@ -1724,13 +1909,13 @@ gr_test_submul_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             1, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_div_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_aliasing(R, gr_div, state, test_flags);
 }
 
-int
+static int
 gr_test_div_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "div",
@@ -1738,7 +1923,7 @@ gr_test_div_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             0, 0, state, test_flags);
 }
 
-int
+static int
 gr_test_is_invertible(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1746,7 +1931,6 @@ gr_test_is_invertible(gr_ctx_t R, flint_rand_t state, int test_flags)
     gr_ptr x, x_inv;
 
     GR_TMP_INIT2(x, x_inv, R);
-
     GR_MUST_SUCCEED(gr_randtest(x, state, R));
 
     status = GR_SUCCESS;
@@ -1770,7 +1954,7 @@ gr_test_is_invertible(gr_ctx_t R, flint_rand_t state, int test_flags)
         flint_printf("is_invertible\n");
         flint_printf("x = \n"); gr_println(x, R);
         flint_printf("x ^ -1 = \n"); gr_println(x_inv, R);
-        flint_printf("status = %d, invertible = %d\n", status, invertible);
+        flint_printf("status = %d, invertible = %{truth}\n", status, invertible);
         flint_printf("\n");
     }
 
@@ -1779,7 +1963,7 @@ gr_test_is_invertible(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_inv_involution(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1817,7 +2001,7 @@ gr_test_inv_involution(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_inv_multiplication(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1862,13 +2046,13 @@ gr_test_inv_multiplication(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_div_right_distributive(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_right_distributive(R, gr_div, gr_add, state, test_flags);
 }
 
-int
+static int
 gr_test_div_then_mul(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1909,7 +2093,7 @@ gr_test_div_then_mul(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_mul_then_div(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -1950,7 +2134,7 @@ gr_test_mul_then_div(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_divexact(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -2008,7 +2192,7 @@ gr_test_divexact(gr_ctx_t R, flint_rand_t state, int test_flags)
 }
 
 /* todo: fmpq */
-int
+static int
 gr_test_divexact_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status, alias, which;
@@ -2105,7 +2289,7 @@ gr_test_divexact_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_div_nonunique(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2179,13 +2363,13 @@ gr_test_div_nonunique(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_div_nonunique_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_aliasing(R, gr_div_nonunique, state, test_flags);
 }
 
-int
+static int
 gr_test_divides(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2511,7 +2695,7 @@ gr_test_pow_fmpz_exponent_addition(gr_ctx_t R, flint_rand_t state, int test_flag
     {
         if (gr_set_si(x, -1 + (slong) n_randint(state, 3), R) != GR_SUCCESS)
             /* allow using for groups */
-            GR_MUST_SUCCEED(gr_one(x, R));
+            GR_IGNORE(gr_one(x, R));
         fmpz_randtest(a, state, 100);
         fmpz_randtest(b, state, 100);
     }
@@ -2561,7 +2745,7 @@ gr_test_pow_fmpz_exponent_addition(gr_ctx_t R, flint_rand_t state, int test_flag
     return status;
 }
 
-int
+static int
 gr_test_pow_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -2616,7 +2800,7 @@ gr_test_pow_aliasing(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_pow_exponent_addition(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -2672,7 +2856,7 @@ gr_test_pow_exponent_addition(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_pow_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     return gr_test_binary_op_type_variants(R, "pow",
@@ -2680,7 +2864,7 @@ gr_test_pow_type_variants(gr_ctx_t R, flint_rand_t state, int test_flags)
             0, 1, state, test_flags);
 }
 
-int
+static int
 gr_test_sqrt(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2747,7 +2931,7 @@ gr_test_sqrt(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_rsqrt(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2800,7 +2984,7 @@ gr_test_rsqrt(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_ordered_ring_cmp(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2870,7 +3054,7 @@ gr_test_ordered_ring_cmp(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_ordered_ring_cmpabs(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2892,7 +3076,7 @@ gr_test_ordered_ring_cmpabs(gr_ctx_t R, flint_rand_t state, int test_flags)
         status = GR_TEST_FAIL;
     }
 
-    if (status & GR_DOMAIN && !(status & GR_UNABLE))
+    if (gr_ctx_is_ordered_ring(R) == T_TRUE && (status & GR_DOMAIN && !(status & GR_UNABLE)))
     {
         status = GR_TEST_FAIL;
     }
@@ -2914,7 +3098,7 @@ gr_test_ordered_ring_cmpabs(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_complex_parts(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -2979,7 +3163,7 @@ gr_test_complex_parts(gr_ctx_t R, flint_rand_t state, int test_flags)
 }
 
 
-int
+static int
 gr_test_gcd(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -3038,7 +3222,7 @@ gr_test_gcd(gr_ctx_t R, flint_rand_t state, int test_flags)
 }
 
 /* verify that LCM(a, b) GCD(a, b) ~ a b */
-int
+static int
 gr_test_lcm(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -3104,7 +3288,7 @@ gr_test_lcm(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_numerator_denominator(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -3145,6 +3329,118 @@ gr_test_numerator_denominator(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
+static int
+gr_test_canonical_associate(gr_ctx_t R, flint_rand_t state, int test_flags)
+{
+    int status = GR_SUCCESS;
+    gr_ptr x, v, xv, y1, u1, y2, u2, xu1, xvu2;
+    int i;
+
+    GR_TMP_INIT5(x, v, xv, y1, u1, R);
+    GR_TMP_INIT4(u2, y2, xu1, xvu2, R);
+
+    GR_MUST_SUCCEED(gr_randtest(x, state, R));
+
+    if (gr_is_zero(x, R) != T_FALSE)
+    {
+        status |= gr_canonical_associate(y1, u1, x, R);
+
+        if (status == GR_SUCCESS)
+        {
+            if (gr_is_zero(y1, R) == T_FALSE || gr_is_one(u1, R) == T_FALSE)
+                status = GR_TEST_FAIL;
+        }
+    }
+    else
+    {
+        /*
+            Evaluating:
+                y1, u1 = canonical_associate(x)
+                y2, u2 = canonical_associate(x * v)
+            Check:
+                y1 = y2
+                x * u1 = y1
+                xv * u2 = y2
+        */
+
+        for (i = 0; ; i++)
+        {
+            GR_IGNORE(gr_randtest(v, state, R));
+
+            if (gr_is_invertible(v, R) == T_TRUE)
+                break;
+
+            if (i == 5)
+            {
+                GR_IGNORE(n_randint(state, 2) ? gr_one(v, R) : gr_neg_one(v, R));
+                break;
+            }
+        }
+
+        status |= gr_mul(xv, x, v, R);
+        status |= gr_canonical_associate(y1, u1, x, R);
+        status |= gr_canonical_associate(y2, u2, xv, R);
+
+        if (status == GR_SUCCESS)
+        {
+            status |= gr_mul(xu1, x, u1, R);
+            status |= gr_mul(xvu2, xv, u2, R);
+
+            if (gr_equal(y1, y2, R) == T_FALSE ||
+                gr_equal(xu1, y1, R) == T_FALSE ||
+                gr_equal(xvu2, y2, R) == T_FALSE)
+            {
+                status = GR_TEST_FAIL;
+            }
+        }
+    }
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("\n");
+        gr_ctx_println(R);
+        flint_printf("x = \n"); gr_println(x, R);
+        flint_printf("v = \n"); gr_println(v, R);
+        flint_printf("xv = \n"); gr_println(xv, R);
+        flint_printf("y1 = \n"); gr_println(y1, R);
+        flint_printf("u1 = \n"); gr_println(u1, R);
+        flint_printf("y2 = \n"); gr_println(y2, R);
+        flint_printf("u2 = \n"); gr_println(u2, R);
+        flint_printf("xu1 = \n"); gr_println(xu1, R);
+        flint_printf("xvu2= \n"); gr_println(xvu2, R);
+        flint_printf("\n");
+    }
+
+    GR_TMP_CLEAR5(x, v, xv, y1, u1, R);
+    GR_TMP_CLEAR4(u2, y2, xu1, xvu2, R);
+
+    return status;
+}
+
+static int
+gr_factor_always_able(gr_ctx_t ctx)
+{
+    switch (ctx->which_ring)
+    {
+        case GR_CTX_FMPQ:
+        case GR_CTX_FMPZ:
+        case GR_CTX_FMPZ_MPOLY:
+        /* case GR_CTX_FMPZ_MPOLY_Q:    not implemented */
+        case GR_CTX_FMPZ_POLY:
+            return 1;
+        case GR_CTX_GR_POLY:
+            switch (POLYNOMIAL_CTX(ctx)->base_ring->which_ring)
+            {
+                case GR_CTX_CC_CA:
+                case GR_CTX_COMPLEX_ALGEBRAIC_CA:
+                case GR_CTX_COMPLEX_ALGEBRAIC_QQBAR:
+                case GR_CTX_FMPZ:
+                    return 1;
+            }
+        default:
+            return 0;
+    }
+}
 
 int
 gr_test_factor(gr_ctx_t R, flint_rand_t state, int test_flags)
@@ -3197,10 +3493,30 @@ gr_test_factor(gr_ctx_t R, flint_rand_t state, int test_flags)
         if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
         {
             flint_printf("factor\n");
+            gr_ctx_println(R);
             flint_printf("x = "); gr_println(x, R);
             flint_printf("c = "); gr_println(c, R);
             flint_printf("fac = "); gr_vec_print(fac, R); flint_printf("\n");
             flint_printf("exp = "); gr_vec_print(exp, ZZ); flint_printf("\n");
+            flint_printf("\n");
+        }
+    }
+    else
+    {
+        if (status == GR_DOMAIN && gr_is_zero(x, R) == T_FALSE)
+        {
+            status = GR_TEST_FAIL;
+        }
+        else if (status == GR_UNABLE && gr_factor_always_able(R))
+        {
+            status = GR_TEST_FAIL;
+        }
+
+        if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+        {
+            flint_printf("factor\n");
+            gr_ctx_println(R);
+            flint_printf("x = "); gr_println(x, R);
             flint_printf("\n");
         }
     }
@@ -3214,11 +3530,11 @@ gr_test_factor(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+static int
 gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
     int (*_gr_vec_op)(gr_ptr, gr_srcptr, gr_srcptr, slong, gr_ctx_t), flint_rand_t state, int test_flags)
 {
-    int status, aliasing;
+    int status, aliasing, ref_aliasing;
     slong i, len;
     gr_ptr x, y, xy1, xy2;
 
@@ -3238,6 +3554,14 @@ gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_s
     status = GR_SUCCESS;
 
     aliasing = n_randint(state, 4);
+    ref_aliasing = 0;
+
+    /* Don't test x * x == x^2 for inexact "rings" (e.g. floats) where
+       the squaring algorithm might not produce exactly the same result. */
+    if ((aliasing == 2 || aliasing == 3) && gr_ctx_is_ring(R) == T_FALSE && gr_ctx_is_exact(R) == T_FALSE)
+    {
+        ref_aliasing = 1;
+    }
 
     switch (aliasing)
     {
@@ -3251,6 +3575,10 @@ gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_s
             break;
         case 2:
             status |= _gr_vec_set(y, x, len, R);
+            status |= _gr_vec_op(xy1, x, x, len, R);
+            break;
+        case 3:
+            status |= _gr_vec_set(y, x, len, R);
             status |= _gr_vec_set(xy1, x, len, R);
             status |= _gr_vec_op(xy1, xy1, xy1, len, R);
             break;
@@ -3259,9 +3587,14 @@ gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_s
     }
 
     for (i = 0; i < len; i++)
-        status |= gr_op(GR_ENTRY(xy2, i, R->sizeof_elem),
-                         GR_ENTRY(x, i, R->sizeof_elem),
-                         GR_ENTRY(y, i, R->sizeof_elem), R);
+        if (ref_aliasing)
+            status |= gr_op(GR_ENTRY(xy2, i, R->sizeof_elem),
+                             GR_ENTRY(x, i, R->sizeof_elem),
+                             GR_ENTRY(x, i, R->sizeof_elem), R);
+        else
+            status |= gr_op(GR_ENTRY(xy2, i, R->sizeof_elem),
+                             GR_ENTRY(x, i, R->sizeof_elem),
+                             GR_ENTRY(y, i, R->sizeof_elem), R);
 
     if (status == GR_SUCCESS && _gr_vec_equal(xy1, xy2, len, R) == T_FALSE)
     {
@@ -3276,6 +3609,8 @@ gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_s
         flint_printf("%s\n", opname);
         gr_ctx_println(R);
         flint_printf("aliasing: %d\n", aliasing);
+        _gr_vec_print(x, len, R); flint_printf("\n");
+        _gr_vec_print(y, len, R); flint_printf("\n");
         _gr_vec_print(xy1, len, R); flint_printf("\n");
         _gr_vec_print(xy2, len, R); flint_printf("\n");
     }
@@ -3288,16 +3623,181 @@ gr_test_vec_binary_op(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_s
     return status;
 }
 
-int gr_test_vec_add(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_add", gr_add, _gr_vec_add, state, test_flags); }
-int gr_test_vec_sub(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_sub", gr_sub, _gr_vec_sub, state, test_flags); }
-int gr_test_vec_mul(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_mul", gr_mul, _gr_vec_mul, state, test_flags); }
-int gr_test_vec_div(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_div", gr_div, _gr_vec_div, state, test_flags); }
-int gr_test_vec_divexact(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_divexact", gr_divexact, _gr_vec_divexact, state, test_flags); }
-int gr_test_vec_pow(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_pow", gr_pow, _gr_vec_pow, state, test_flags); }
+static int gr_test_vec_add(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_add", gr_add, _gr_vec_add, state, test_flags); }
+static int gr_test_vec_sub(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_sub", gr_sub, _gr_vec_sub, state, test_flags); }
+static int gr_test_vec_mul(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_mul", gr_mul, _gr_vec_mul, state, test_flags); }
+static int gr_test_vec_div(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_div", gr_div, _gr_vec_div, state, test_flags); }
+#if 0
+static int gr_test_vec_pow(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op(R, "vec_pow", gr_pow, _gr_vec_pow, state, test_flags); }
+#endif
 
-int gr_generic_vec_dot(gr_ptr res, gr_srcptr initial, int subtract, gr_srcptr vec1, gr_srcptr vec2, slong len, gr_ctx_t ctx);
+static int gr_test_vec_divexact(gr_ctx_t R, flint_rand_t state, int test_flags)
+{
+    int status, aliasing, ref_aliasing;
+    slong i, len;
+    gr_ptr x, y, xy1, xy2;
 
-int
+    len = n_randint(state, 5);
+
+    GR_TMP_INIT_VEC(x, len, R);
+    GR_TMP_INIT_VEC(y, len, R);
+    GR_TMP_INIT_VEC(xy1, len, R);
+    GR_TMP_INIT_VEC(xy2, len, R);
+
+    GR_MUST_SUCCEED(_gr_vec_randtest(x, state, len, R));
+    GR_MUST_SUCCEED(_gr_vec_randtest(y, state, len, R));
+    GR_MUST_SUCCEED(_gr_vec_randtest(xy1, state, len, R));
+    GR_MUST_SUCCEED(_gr_vec_randtest(xy2, state, len, R));
+
+    status = GR_SUCCESS;
+    for (i = 0; i < len && status == GR_SUCCESS; i++)
+    {
+        status |= gr_mul(GR_ENTRY(x, i, R->sizeof_elem),
+                    GR_ENTRY(x, i, R->sizeof_elem),
+                    GR_ENTRY(y, i, R->sizeof_elem), R);
+
+        /* Check that we can perform division */
+        status |= gr_div(xy1, GR_ENTRY(x, i, R->sizeof_elem),
+                                GR_ENTRY(y, i, R->sizeof_elem), R);
+    }
+
+    if (status == GR_SUCCESS)
+    {
+        aliasing = n_randint(state, 4);
+        ref_aliasing = 0;
+
+        switch (aliasing)
+        {
+            case 0:
+                status |= _gr_vec_set(xy1, x, len, R);
+                status |= _gr_vec_divexact(xy1, xy1, y, len, R);
+                break;
+            case 1:
+                status |= _gr_vec_set(xy1, y, len, R);
+                status |= _gr_vec_divexact(xy1, x, xy1, len, R);
+                break;
+            case 2:
+                status |= _gr_vec_set(y, x, len, R);
+                status |= _gr_vec_divexact(xy1, x, x, len, R);
+                break;
+            case 3:
+                status |= _gr_vec_set(y, x, len, R);
+                status |= _gr_vec_set(xy1, x, len, R);
+                status |= _gr_vec_divexact(xy1, xy1, xy1, len, R);
+                break;
+            default:
+                status |= _gr_vec_divexact(xy1, x, y, len, R);
+        }
+
+        for (i = 0; i < len; i++)
+            if (ref_aliasing)
+                status |= gr_divexact(GR_ENTRY(xy2, i, R->sizeof_elem),
+                                 GR_ENTRY(x, i, R->sizeof_elem),
+                                 GR_ENTRY(x, i, R->sizeof_elem), R);
+            else
+                status |= gr_divexact(GR_ENTRY(xy2, i, R->sizeof_elem),
+                                 GR_ENTRY(x, i, R->sizeof_elem),
+                                 GR_ENTRY(y, i, R->sizeof_elem), R);
+
+        if (status == GR_SUCCESS && _gr_vec_equal(xy1, xy2, len, R) == T_FALSE)
+        {
+            status = GR_TEST_FAIL;
+        }
+
+        if ((test_flags & GR_TEST_ALWAYS_ABLE) && (status & GR_UNABLE))
+            status = GR_TEST_FAIL;
+
+        if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+        {
+            flint_printf("divexact\n");
+            gr_ctx_println(R);
+            flint_printf("aliasing: %d\n", aliasing);
+            _gr_vec_print(x, len, R); flint_printf("\n");
+            _gr_vec_print(y, len, R); flint_printf("\n");
+            _gr_vec_print(xy1, len, R); flint_printf("\n");
+            _gr_vec_print(xy2, len, R); flint_printf("\n");
+        }
+    }
+
+    GR_TMP_CLEAR_VEC(x, len, R);
+    GR_TMP_CLEAR_VEC(y, len, R);
+    GR_TMP_CLEAR_VEC(xy1, len, R);
+    GR_TMP_CLEAR_VEC(xy2, len, R);
+
+    return status;
+}
+
+
+static int
+gr_test_vec_binary_op_scalar(gr_ctx_t R, const char * opname, int (*gr_op)(gr_ptr, gr_srcptr, gr_srcptr, gr_ctx_t),
+    int (*_gr_vec_op)(gr_ptr, gr_srcptr, slong, gr_srcptr, gr_ctx_t), flint_rand_t state, int test_flags)
+{
+    int status, aliasing;
+    slong i, len;
+    gr_ptr x, y, xy1, xy2;
+
+    len = n_randint(state, 5);
+
+    GR_TMP_INIT_VEC(x, len, R);
+    GR_TMP_INIT_VEC(y, 1, R);
+    GR_TMP_INIT_VEC(xy1, len, R);
+    GR_TMP_INIT_VEC(xy2, len, R);
+
+    GR_MUST_SUCCEED(_gr_vec_randtest(x, state, len, R));
+
+    GR_MUST_SUCCEED(_gr_vec_randtest(y, state, 1, R));
+    GR_MUST_SUCCEED(_gr_vec_randtest(xy1, state, len, R));
+    GR_MUST_SUCCEED(_gr_vec_randtest(xy2, state, len, R));
+
+    status = GR_SUCCESS;
+
+    aliasing = n_randint(state, 2);
+
+    if (aliasing)
+    {
+        status |= _gr_vec_set(xy1, x, len, R);
+        status |= _gr_vec_op(xy1, xy1, len, y, R);
+    }
+    else
+    {
+        status |= _gr_vec_op(xy1, x, len, y, R);
+    }
+
+    for (i = 0; i < len; i++)
+        status |= gr_op(GR_ENTRY(xy2, i, R->sizeof_elem),
+                         GR_ENTRY(x, i, R->sizeof_elem),
+                         y, R);
+
+    if (status == GR_SUCCESS && _gr_vec_equal(xy1, xy2, len, R) == T_FALSE)
+    {
+        status = GR_TEST_FAIL;
+    }
+
+    if ((test_flags & GR_TEST_ALWAYS_ABLE) && (status & GR_UNABLE))
+        status = GR_TEST_FAIL;
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("%s\n", opname);
+        gr_ctx_println(R);
+        flint_printf("aliasing: %d\n", aliasing);
+        _gr_vec_print(x, len, R); flint_printf("\n");
+        _gr_vec_print(y, 1, R); flint_printf("\n");
+        _gr_vec_print(xy1, len, R); flint_printf("\n");
+        _gr_vec_print(xy2, len, R); flint_printf("\n");
+    }
+
+    GR_TMP_CLEAR_VEC(x, len, R);
+    GR_TMP_CLEAR_VEC(y, 1, R);
+    GR_TMP_CLEAR_VEC(xy1, len, R);
+    GR_TMP_CLEAR_VEC(xy2, len, R);
+
+    return status;
+}
+
+static int gr_test_vec_mul_scalar(gr_ctx_t R, flint_rand_t state, int test_flags) { return gr_test_vec_binary_op_scalar(R, "vec_mul_scalar", gr_mul, _gr_vec_mul_scalar, state, test_flags); }
+
+static int
 gr_test_vec_dot(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -3374,7 +3874,7 @@ gr_test_vec_dot(gr_ctx_t R, flint_rand_t state, int test_flags)
 }
 
 /* (AB)C = A(BC) */
-int
+static int
 gr_test_mat_mul_classical_associative(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status;
@@ -3451,7 +3951,7 @@ gr_test_mat_mul_classical_associative(gr_ctx_t R, flint_rand_t state, int test_f
     return status;
 }
 
-int
+static int
 gr_test_integral_domain(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -3492,7 +3992,8 @@ gr_test_integral_domain(gr_ctx_t R, flint_rand_t state, int test_flags)
     return status;
 }
 
-int
+#if 0
+static int
 gr_test_field(gr_ctx_t R, flint_rand_t state, int test_flags)
 {
     int status = GR_SUCCESS;
@@ -3547,8 +4048,514 @@ gr_test_field(gr_ctx_t R, flint_rand_t state, int test_flags)
 
     return status;
 }
+#endif
 
-void
+int
+gr_test_cmp_fun(gr_ctx_t R, gr_method_binary_op_get_int op, gr_ctx_t R_ref, flint_rand_t state, int test_flags)
+{
+    int status = GR_SUCCESS;
+    int cmp1, cmp2;
+    gr_ptr a, b, a_ref, b_ref;
+
+    GR_TMP_INIT2(a, b, R);
+    GR_TMP_INIT2(a_ref, b_ref, R_ref);
+
+    status |= gr_randtest(a, state, R);
+    status |= gr_randtest(b, state, R);
+
+    status |= gr_set_other(a_ref, a, R, R_ref);
+    status |= gr_set_other(b_ref, b, R, R_ref);
+
+    status |= op(&cmp1, a, b, R);
+    status |= op(&cmp2, a_ref, b_ref, R_ref);
+
+    if (status == GR_SUCCESS && cmp1 != cmp2)
+        status = GR_TEST_FAIL;
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("\n");
+        gr_ctx_println(R);
+        gr_ctx_println(R_ref);
+        flint_printf("a = "); gr_println(a, R);
+        flint_printf("b = "); gr_println(b, R);
+        flint_printf("cmp1 = %d\n", cmp1);
+        flint_printf("cmp2 = %d\n", cmp2);
+        flint_printf("\n");
+    }
+
+    if (status == GR_TEST_FAIL)
+        flint_abort();
+
+    GR_TMP_CLEAR2(a, b, R);
+    GR_TMP_CLEAR2(a_ref, b_ref, R_ref);
+
+    return status;
+}
+
+int
+gr_test_approx_unary_op(gr_ctx_t R, gr_method_unary_op op, gr_ctx_t R_ref, gr_srcptr rel_tol, flint_rand_t state, int test_flags)
+{
+    int status = GR_SUCCESS;
+    int alias;
+    int cmp;
+    gr_ptr a, b, a_ref, b_ref, rel_err;
+
+    GR_TMP_INIT2(a, b, R);
+    GR_TMP_INIT3(a_ref, b_ref, rel_err, R_ref);
+
+    alias = n_randint(state, 2);
+
+    status |= gr_randtest(a, state, R);
+    status |= gr_randtest(b, state, R);
+
+    status |= gr_set_other(a_ref, a, R, R_ref);
+
+    if (status == GR_SUCCESS)
+    {
+        if (alias == 0)
+        {
+            status |= op(b, a, R);
+            status |= op(b_ref, a_ref, R_ref);
+        }
+        else
+        {
+            status |= gr_set(b, a, R);
+            status |= op(b, b, R);
+            status |= op(b_ref, a_ref, R_ref);
+        }
+
+        if (status == GR_SUCCESS)
+        {
+            status |= gr_set_other(rel_err, b, R, R_ref);
+            status |= gr_sub(rel_err, b_ref, rel_err, R_ref);
+            status |= gr_div(rel_err, rel_err, b_ref, R_ref);
+            status |= gr_abs(rel_err, rel_err, R_ref);
+            status |= gr_cmp(&cmp, rel_err, rel_tol, R_ref);
+
+            if (status == GR_SUCCESS && cmp > 0)
+                status = GR_TEST_FAIL;
+
+            if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+            {
+                flint_printf("\n");
+                gr_ctx_println(R);
+                gr_ctx_println(R_ref);
+                flint_printf("alias: %d\n", alias);
+                flint_printf("Computed:\n");
+                flint_printf("a = "); gr_println(a, R);
+                flint_printf("op(a) = "); gr_println(b, R);
+                flint_printf("Reference:\n");
+                flint_printf("a = "); gr_println(a_ref, R_ref);
+                flint_printf("op(a) = "); gr_println(b_ref, R_ref);
+                flint_printf("\nrel_err = "); gr_println(rel_err, R_ref);
+                flint_printf("\nrel_tol = "); gr_println(rel_tol, R_ref);
+                flint_printf("\n");
+            }
+        }
+    }
+
+    if (status == GR_TEST_FAIL)
+        flint_abort();
+
+    GR_TMP_CLEAR2(a, b, R);
+    GR_TMP_CLEAR3(a_ref, b_ref, rel_err, R_ref);
+
+    return status;
+}
+
+int
+gr_test_approx_binary_op(gr_ctx_t R, gr_method_binary_op op, gr_ctx_t R_ref, gr_srcptr rel_tol, flint_rand_t state, int test_flags)
+{
+    int status = GR_SUCCESS;
+    int alias;
+    int cmp;
+    gr_ptr a, b, c, a_ref, b_ref, c_ref, rel_err;
+
+    GR_TMP_INIT3(a, b, c, R);
+    GR_TMP_INIT4(a_ref, b_ref, c_ref, rel_err, R_ref);
+
+    alias = n_randint(state, 5);
+
+    status |= gr_randtest(a, state, R);
+    status |= gr_randtest(b, state, R);
+    status |= gr_randtest(c, state, R);
+
+    status |= gr_set_other(a_ref, a, R, R_ref);
+    status |= gr_set_other(b_ref, b, R, R_ref);
+
+    if (status == GR_SUCCESS)
+    {
+        if (alias == 0)
+        {
+            status |= op(c, a, b, R);
+            status |= op(c_ref, a_ref, b_ref, R_ref);
+        }
+        else if (alias == 1)
+        {
+            status |= gr_set(c, a, R);
+            status |= op(c, c, b, R);
+            status |= op(c_ref, a_ref, b_ref, R_ref);
+        }
+        else if (alias == 2)
+        {
+            status |= gr_set(c, b, R);
+            status |= op(c, a, c, R);
+            status |= op(c_ref, a_ref, b_ref, R_ref);
+        }
+        else if (alias == 3)
+        {
+            status |= gr_set(b, a, R);
+            status |= gr_set(b_ref, a_ref, R_ref);
+            status |= op(c, a, a, R);
+            status |= op(c_ref, a_ref, a_ref, R_ref);
+        }
+        else
+        {
+            status |= gr_set(b, a, R);
+            status |= gr_set(c, a, R);
+            status |= gr_set(b_ref, a_ref, R_ref);
+            status |= op(c, c, c, R);
+            status |= op(c_ref, a_ref, a_ref, R_ref);
+        }
+
+        if (status == GR_SUCCESS)
+        {
+            status |= gr_set_other(rel_err, c, R, R_ref);
+
+            status |= gr_sub(rel_err, c_ref, rel_err, R_ref);
+            status |= gr_div(rel_err, rel_err, c_ref, R_ref);
+            status |= gr_abs(rel_err, rel_err, R_ref);
+            status |= gr_cmp(&cmp, rel_err, rel_tol, R_ref);
+
+            if (status == GR_SUCCESS && cmp > 0)
+                status = GR_TEST_FAIL;
+
+            if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+            {
+                flint_printf("\n");
+                gr_ctx_println(R);
+                gr_ctx_println(R_ref);
+                flint_printf("alias: %d\n", alias);
+                flint_printf("Computed:\n");
+                flint_printf("a = "); gr_println(a, R);
+                flint_printf("b = "); gr_println(b, R);
+                flint_printf("a (op) b = "); gr_println(c, R);
+                flint_printf("Reference:\n");
+                flint_printf("a = "); gr_println(a_ref, R_ref);
+                flint_printf("b = "); gr_println(b_ref, R_ref);
+                flint_printf("a (op) b = "); gr_println(c_ref, R_ref);
+                flint_printf("\nrel_err = "); gr_println(rel_err, R_ref);
+                flint_printf("\nrel_tol = "); gr_println(rel_tol, R_ref);
+                flint_printf("\n");
+            }
+        }
+    }
+
+    if (status == GR_TEST_FAIL)
+        flint_abort();
+
+    GR_TMP_CLEAR3(a, b, c, R);
+    GR_TMP_CLEAR4(a_ref, b_ref, c_ref, rel_err, R_ref);
+
+    return status;
+}
+
+int
+gr_test_approx_binary_op_type_variants(gr_ctx_t R,
+    const char * opname,
+    gr_method_binary_op gr_op,
+    gr_method_binary_op_ui gr_op_ui,
+    gr_method_binary_op_si gr_op_si,
+    gr_method_binary_op_fmpz gr_op_fmpz,
+    gr_method_binary_op_fmpq gr_op_fmpq,
+    int fused,
+    int small_test_values,
+    gr_srcptr rel_tol, flint_rand_t state, int test_flags)
+{
+    int status, alias, which;
+    gr_ptr x, y, xy1, xy2, err;
+    ulong uy;
+    slong sy;
+    fmpz_t zy;
+    fmpq_t qy;
+
+    GR_TMP_INIT5(x, y, xy1, xy2, err, R);
+    fmpz_init(zy);
+    fmpq_init(qy);
+
+    which = 0;
+
+    if (small_test_values)
+    {
+        uy = n_randint(state, 6);
+        sy = -5 + (slong) n_randint(state, 11);
+        fmpz_randtest(zy, state, 3);
+        fmpq_randtest(qy, state, 3);
+    }
+    else
+    {
+        uy = n_randtest(state);
+        sy = (slong) n_randtest(state);
+
+        if (n_randint(state, 10) == 0)
+        {
+            fmpz_randtest(zy, state, 10000);
+            fmpq_randtest(qy, state, 200);
+        }
+        else
+        {
+            fmpz_randtest(zy, state, 100);
+            fmpq_randtest(qy, state, 100);
+        }
+    }
+
+    for (which = 0; which < 4; which++)
+    {
+        status = GR_SUCCESS;
+        alias = n_randint(state, 2);
+
+        GR_MUST_SUCCEED(gr_randtest(x, state, R));
+        GR_MUST_SUCCEED(gr_randtest(y, state, R));
+        GR_MUST_SUCCEED(gr_randtest(xy1, state, R));
+
+        if (fused && alias)
+            GR_MUST_SUCCEED(gr_set(xy2, x, R));
+        else if (fused)
+            GR_MUST_SUCCEED(gr_set(xy2, xy1, R));
+        else
+            GR_MUST_SUCCEED(gr_randtest(xy2, state, R));
+
+        if (alias)
+            GR_MUST_SUCCEED(gr_set(xy1, x, R));
+
+        if (which == 0)
+        {
+            if (alias)
+                status |= gr_op_ui(xy1, xy1, uy, R);
+            else
+                status |= gr_op_ui(xy1, x, uy, R);
+
+            status |= gr_set_ui(y, uy, R);
+
+            if (status == GR_SUCCESS)
+                status |= gr_op(xy2, x, y, R);
+        }
+        else if (which == 1)
+        {
+            if (alias)
+                status |= gr_op_si(xy1, xy1, sy, R);
+            else
+                status |= gr_op_si(xy1, x, sy, R);
+            status |= gr_set_si(y, sy, R);
+
+            if (status == GR_SUCCESS)
+                status |= gr_op(xy2, x, y, R);
+        }
+        else if (which == 2)
+        {
+            if (alias)
+                status |= gr_op_fmpz(xy1, xy1, zy, R);
+            else
+                status |= gr_op_fmpz(xy1, x, zy, R);
+            status |= gr_set_fmpz(y, zy, R);
+
+            if (status == GR_SUCCESS)
+                status |= gr_op(xy2, x, y, R);
+        }
+        else
+        {
+            if (alias)
+                status |= gr_op_fmpq(xy1, xy1, qy, R);
+            else
+                status |= gr_op_fmpq(xy1, x, qy, R);
+            status |= gr_set_fmpq(y, qy, R);
+
+            if (status == GR_SUCCESS)
+                status |= gr_op(xy2, x, y, R);
+        }
+
+        if (status == GR_SUCCESS)
+        {
+            int cmp;
+
+            status |= gr_sub(err, xy1, xy2, R);
+            status |= gr_div(err, err, xy2, R);
+            status |= gr_abs(err, err, R);
+            status |= gr_cmp(&cmp, err, rel_tol, R);
+
+            if (status == GR_SUCCESS && cmp > 0)
+            {
+                status = GR_TEST_FAIL;
+                break;
+            }
+        }
+    }
+
+    if ((test_flags & GR_TEST_ALWAYS_ABLE) && (status & GR_UNABLE))
+        status = GR_TEST_FAIL;
+
+    if ((test_flags & GR_TEST_VERBOSE) || status == GR_TEST_FAIL)
+    {
+        flint_printf("\n");
+        flint_printf("%s\n", opname);
+        gr_ctx_println(R);
+        flint_printf("which: %d\n", which);
+        flint_printf("alias: %d\n", alias);
+        flint_printf("x = "); gr_println(x, R);
+        flint_printf("y = "); gr_println(y, R);
+        flint_printf("y (op) y (1) = "); gr_println(xy1, R);
+        flint_printf("x (op) y (2) = "); gr_println(xy2, R);
+        flint_printf("err = "); gr_println(err, R);
+        flint_printf("tol = "); gr_println(rel_tol, R);
+        flint_printf("\n");
+    }
+
+    if (status == GR_TEST_FAIL)
+        flint_abort();
+
+    GR_TMP_CLEAR5(x, y, xy1, xy2, err, R);
+
+    fmpz_clear(zy);
+    fmpq_clear(qy);
+
+    return status;
+}
+
+int
+gr_test_approx_dot(gr_ctx_t R, gr_ctx_t R_ref, slong maxlen, gr_srcptr rel_tol, flint_rand_t state, int test_flags)
+{
+    slong i, len;
+    gr_ptr s0, vec1, vec2, res;
+    int subtract, initial, reverse;
+    gr_ptr avec1, avec2;
+    gr_ptr as0, ares, ares2, amag, err, t;
+    int status = GR_SUCCESS;
+    int cmp;
+
+    len = n_randint(state, maxlen + 1);
+    initial = n_randint(state, 2);
+    subtract = n_randint(state, 2);
+    reverse = n_randint(state, 2);
+
+    vec1 = gr_heap_init_vec(len, R);
+    vec2 = gr_heap_init_vec(len, R);
+    s0 = gr_heap_init(R);
+    res = gr_heap_init(R);
+
+    avec1 = gr_heap_init_vec(len, R_ref);
+    avec2 = gr_heap_init_vec(len, R_ref);
+    GR_TMP_INIT4(as0, ares, ares2, amag, R_ref);
+    GR_TMP_INIT2(t, err, R_ref);
+
+    if (initial)
+    {
+        status |= gr_randtest(s0, state, R);
+        status |= gr_set_other(as0, s0, R, R_ref);
+
+        status |= gr_set(ares, as0, R_ref);
+        status |= gr_abs(t, as0, R_ref);
+        status |= gr_add(amag, amag, t, R_ref);
+    }
+
+    for (i = 0; i < len; i++)
+    {
+        if (2 * i >= len && n_randint(state, 2))
+        {
+            status |= gr_set(GR_ENTRY(vec1, i, R->sizeof_elem), GR_ENTRY(vec1, len - 1 - i, R->sizeof_elem),  R);
+            status |= gr_neg(GR_ENTRY(vec2, i, R->sizeof_elem), GR_ENTRY(vec2, len - 1 - i, R->sizeof_elem),  R);
+        }
+        else
+        {
+            status |= gr_randtest(GR_ENTRY(vec1, i, R->sizeof_elem), state, R);
+            status |= gr_randtest(GR_ENTRY(vec2, i, R->sizeof_elem), state, R);
+        }
+
+        status |= gr_set_other(GR_ENTRY(avec1, i, R_ref->sizeof_elem), GR_ENTRY(vec1, i, R->sizeof_elem), R, R_ref);
+        status |= gr_set_other(GR_ENTRY(avec2, i, R_ref->sizeof_elem), GR_ENTRY(vec2, i, R->sizeof_elem), R, R_ref);
+    }
+
+    GR_MUST_SUCCEED(status);
+
+    for (i = 0; i < len; i++)
+    {
+        status |= gr_mul(t, GR_ENTRY(avec1, i, R_ref->sizeof_elem), GR_ENTRY(avec2, reverse ? len - 1 - i : i, R_ref->sizeof_elem), R_ref);
+
+        if (subtract)
+            status |= gr_sub(ares, ares, t, R_ref);
+        else
+            status |= gr_add(ares, ares, t, R_ref);
+
+        status |= gr_abs(t, t, R_ref);
+        status |= gr_add(amag, amag, t, R_ref);
+    }
+
+    GR_MUST_SUCCEED(status);
+
+    if (reverse)
+        GR_MUST_SUCCEED(_gr_vec_dot_rev(res, initial ? s0 : NULL, subtract, vec1, vec2, len, R));
+    else
+        GR_MUST_SUCCEED(_gr_vec_dot(res, initial ? s0 : NULL, subtract, vec1, vec2, len, R));
+
+    status |= gr_set_other(ares2, res, R, R_ref);
+    status |= gr_sub(err, ares, ares2, R_ref);
+    status |= gr_abs(err, err, R_ref);
+    status |= gr_mul(t, amag, rel_tol, R_ref);
+    status |= gr_abs(t, t, R_ref);
+    GR_MUST_SUCCEED(status);
+
+    status |= gr_cmpabs(&cmp, err, t, R_ref);
+
+    if (status == GR_SUCCESS && cmp > 0)
+        status = GR_TEST_FAIL;
+
+    if (status == GR_TEST_FAIL)
+    {
+        flint_printf("FAIL: dot\n");
+        gr_ctx_println(R);
+        gr_ctx_println(R_ref);
+
+        flint_printf("reverse = %d, subtract = %d\n", reverse, subtract);
+
+        if (initial)
+        {
+            flint_printf("\n\ninitial = ");
+            gr_println(as0, R_ref);
+        }
+
+        flint_printf("\n\nvec1 = ");
+        _gr_vec_print(vec1, len, R);
+        flint_printf("\n\nvec2 = ");
+        _gr_vec_print(vec2, len, R);
+        flint_printf("\n\nres (ref) = \n");
+        gr_println(ares, R_ref);
+        flint_printf("\nres (computed) = \n");
+        gr_println(ares2, R_ref);
+        flint_printf("\nrel_tol = \n");
+        gr_println(rel_tol, R_ref);
+        flint_printf("\nabs_tol = \n");
+        gr_println(t, R_ref);
+        flint_printf("\nerr = \n");
+        gr_println(err, R_ref);
+        flint_printf("\n");
+
+        flint_abort();
+    }
+
+    gr_heap_clear_vec(vec1, len, R);
+    gr_heap_clear_vec(vec2, len, R);
+    gr_heap_clear(s0, R);
+    gr_heap_clear(res, R);
+
+    gr_heap_clear_vec(avec1, len, R_ref);
+    gr_heap_clear_vec(avec2, len, R_ref);
+    GR_TMP_CLEAR4(as0, ares, ares2, amag, R_ref);
+    GR_TMP_CLEAR2(t, err, R_ref);
+
+    return status;
+}
+
+static void
 gr_test_iter(gr_ctx_t R, flint_rand_t state, const char * descr, gr_test_function func, slong iters, int test_flags)
 {
     slong iter, count_success, count_unable, count_domain;
@@ -3614,12 +4621,13 @@ gr_test_ring(gr_ctx_t R, slong iters, int test_flags)
         flint_printf("-------------------------------------------------------------------------------\n");
     }
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     /* if (gr_ctx_is_ring(R) != T_TRUE)
         flint_abort(); */
 
     gr_test_iter(R, state, "ctx_get_str", gr_test_ctx_get_str, 1, test_flags);
+    gr_test_iter(R, state, "ctx_gen_names", gr_test_ctx_gen_names, 1, test_flags);
 
     gr_test_iter(R, state, "init/clear", gr_test_init_clear, iters, test_flags);
     gr_test_iter(R, state, "equal", gr_test_equal, iters, test_flags);
@@ -3639,6 +4647,9 @@ gr_test_ring(gr_ctx_t R, slong iters, int test_flags)
     gr_test_iter(R, state, "get_fmpz", gr_test_get_fmpz, iters, test_flags);
     gr_test_iter(R, state, "get_fmpq", gr_test_get_fmpq, iters, test_flags);
     gr_test_iter(R, state, "get_fmpz_2exp_fmpz", gr_test_get_fmpz_2exp_fmpz, iters, test_flags);
+
+    gr_test_iter(R, state, "get_set_d", gr_test_get_set_d, iters, test_flags);
+    gr_test_iter(R, state, "get_set_d_2exp_si", gr_test_get_set_d_2exp_si, iters, test_flags);
 
     gr_test_iter(R, state, "get_set_fexpr", gr_test_get_set_fexpr, iters, test_flags);
     gr_test_iter(R, state, "get_set_str", gr_test_get_set_str, iters, test_flags);
@@ -3710,10 +4721,11 @@ gr_test_ring(gr_ctx_t R, slong iters, int test_flags)
     gr_test_iter(R, state, "pow: ui/si/fmpz/fmpq", gr_test_pow_type_variants, iters, test_flags & (~GR_TEST_ALWAYS_ABLE));
 
     if (gr_ctx_is_ordered_ring(R) == T_TRUE)
-    {
         gr_test_iter(R, state, "ordered_ring_cmp", gr_test_ordered_ring_cmp, iters, test_flags);
-        gr_test_iter(R, state, "ordered_ring_cmpabs", gr_test_ordered_ring_cmpabs, iters, test_flags);
-    }
+
+    gr_test_iter(R, state, "canonical_associate", gr_test_canonical_associate, iters, test_flags);
+
+    gr_test_iter(R, state, "ordered_ring_cmpabs", gr_test_ordered_ring_cmpabs, iters, test_flags);
 
     gr_test_iter(R, state, "numerator_denominator", gr_test_numerator_denominator, iters, test_flags);
     gr_test_iter(R, state, "complex_parts", gr_test_complex_parts, iters, test_flags);
@@ -3732,11 +4744,13 @@ gr_test_ring(gr_ctx_t R, slong iters, int test_flags)
     gr_test_iter(R, state, "vec_divexact", gr_test_vec_divexact, vec_iters, test_flags);
     /* gr_test_iter(R, state, "vec_pow", gr_test_vec_pow, vec_iters, test_flags & (~GR_TEST_ALWAYS_ABLE)); large elements */
 
+    gr_test_iter(R, state, "vec_mul_scalar", gr_test_vec_mul_scalar, vec_iters, test_flags);
+
     gr_test_iter(R, state, "vec_dot", gr_test_vec_dot, iters, test_flags);
 
     gr_test_iter(R, state, "mat_mul_classical: associative", gr_test_mat_mul_classical_associative, iters, test_flags);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     if (test_flags & GR_TEST_VERBOSE)
     {
@@ -3765,7 +4779,7 @@ gr_test_multiplicative_group(gr_ctx_t R, slong iters, int test_flags)
         flint_printf("-------------------------------------------------------------------------------\n");
     }
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     /* if (gr_ctx_is_multiplicative_group(R) != T_TRUE)
         flint_abort(); */
@@ -3799,7 +4813,7 @@ gr_test_multiplicative_group(gr_ctx_t R, slong iters, int test_flags)
 
     gr_test_iter(R, state, "get_set_fexpr", gr_test_get_set_fexpr, iters, test_flags);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     if (test_flags & GR_TEST_VERBOSE)
     {
@@ -3810,3 +4824,68 @@ gr_test_multiplicative_group(gr_ctx_t R, slong iters, int test_flags)
         flint_printf("===============================================================================\n\n");
     }
 }
+
+void
+gr_test_floating_point(gr_ctx_t R, slong iters, int test_flags)
+{
+    timeit_t timer;
+    flint_rand_t state;
+    slong vec_iters = iters / 10 + 1;
+
+    /* test_flags |= GR_TEST_VERBOSE; */
+
+    if (test_flags & GR_TEST_VERBOSE)
+    {
+        timeit_start(timer);
+
+        flint_printf("===============================================================================\n");
+        flint_printf("Testing "); gr_ctx_println(R);
+        flint_printf("-------------------------------------------------------------------------------\n");
+    }
+
+    flint_rand_init(state);
+
+    /* if (gr_ctx_is_ring(R) != T_TRUE)
+        flint_abort(); */
+
+    gr_test_iter(R, state, "ctx_get_str", gr_test_ctx_get_str, 1, test_flags);
+
+    gr_test_iter(R, state, "init/clear", gr_test_init_clear, iters, test_flags);
+    gr_test_iter(R, state, "equal", gr_test_equal, iters, test_flags);
+    gr_test_iter(R, state, "swap", gr_test_swap, iters, test_flags);
+    gr_test_iter(R, state, "zero_one", gr_test_zero_one, iters, test_flags);
+    gr_test_iter(R, state, "randtest_not_zero", gr_test_randtest_not_zero, iters, test_flags);
+    gr_test_iter(R, state, "neg", gr_test_neg, iters, test_flags);
+
+    gr_test_iter(R, state, "add: commutative", gr_test_add_commutative, iters, test_flags);
+    gr_test_iter(R, state, "add: aliasing", gr_test_add_aliasing, iters, test_flags);
+    gr_test_iter(R, state, "sub: equal neg add", gr_test_sub_equal_neg_add, iters, test_flags);
+    gr_test_iter(R, state, "sub: aliasing", gr_test_sub_aliasing, iters, test_flags);
+    /* can fail for complex */
+    /* gr_test_iter(R, state, "mul: commutative", gr_test_mul_commutative, iters, test_flags); */
+    gr_test_iter(R, state, "mul: aliasing", gr_test_mul_aliasing, iters, test_flags);
+    gr_test_iter(R, state, "div: aliasing", gr_test_div_aliasing, iters, test_flags);
+    gr_test_iter(R, state, "pow: aliasing", gr_test_pow_aliasing, iters, test_flags);
+
+    gr_test_iter(R, state, "vec_add", gr_test_vec_add, vec_iters, test_flags);
+    gr_test_iter(R, state, "vec_sub", gr_test_vec_sub, vec_iters, test_flags);
+    gr_test_iter(R, state, "vec_mul", gr_test_vec_mul, vec_iters, test_flags);
+    gr_test_iter(R, state, "vec_mul_scalar", gr_test_vec_mul_scalar, vec_iters, test_flags);
+
+    gr_test_iter(R, state, "get_fmpz", gr_test_get_fmpz, iters, test_flags);
+    gr_test_iter(R, state, "get_set_d", gr_test_get_set_d, iters, test_flags);
+    gr_test_iter(R, state, "get_set_d_2exp_si", gr_test_get_set_d_2exp_si, iters, test_flags);
+
+    flint_rand_clear(state);
+
+    if (test_flags & GR_TEST_VERBOSE)
+    {
+        timeit_stop(timer);
+
+        flint_printf("-------------------------------------------------------------------------------\n");
+        flint_printf("Tests finished in %.3g cpu, %.3g wall\n", timer->cpu*0.001, timer->wall*0.001);
+        flint_printf("===============================================================================\n\n");
+    }
+}
+
+POP_OPTIONS

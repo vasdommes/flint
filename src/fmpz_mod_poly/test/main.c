@@ -14,8 +14,11 @@
 # undef __STRICT_ANSI__
 #endif
 
-#include <string.h>
-#include <stdlib.h>
+#if defined(__CYGWIN__)
+# define ulong ulongxx
+# include <sys/param.h>
+# undef ulong
+#endif
 
 /* Include functions *********************************************************/
 

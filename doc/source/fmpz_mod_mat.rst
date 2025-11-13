@@ -2,6 +2,7 @@
 
 **fmpz_mod_mat.h** -- matrices over integers mod n
 ===============================================================================
+Unless indicated, functions may assume that the stored values are in the range `[0, n)`. The user can manipulate matrix entries directly, but must assume responsibility for normalising all values to the range `[0, n)`.
 
 Types, macros and constants
 -------------------------------------------------------------------------------
@@ -95,7 +96,18 @@ Random generation
 .. function:: void fmpz_mod_mat_randtest(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx)
 
     Generate a random matrix with the existing dimensions and entries in
-    `[0, n)` where ``n`` is the modulus.
+    `[0, n)` where ``n`` is the modulus. A sparse matrix is
+    generated with increased probability.
+
+.. function:: void fmpz_mod_mat_randfull(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx)
+
+    Sets the element to random numbers in `[0, n)`, likely to be close to the modulus ``n``
+    of the matrix. This is used to test potential overflow-related bugs.
+
+.. function:: void fmpz_mod_mat_rand(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx)
+
+    Sets the element to random numbers in `[0, n)`, likely to be close to the modulus ``n``
+    of the matrix.
 
 
 Windows and concatenation
@@ -144,6 +156,11 @@ Input and output
 Comparison
 --------------------------------------------------------------------------------
 
+.. function:: int fmpz_mod_mat_equal(const fmpz_mod_mat_t mat1, const fmpz_mod_mat_t mat2, const fmpz_mod_ctx_t ctx)
+
+    Returns nonzero if ``mat1`` and ``mat2`` have the same dimensions and elements,
+    and zero otherwise. The moduli are ignored.
+
 
 .. function:: int fmpz_mod_mat_is_zero(const fmpz_mod_mat_t mat, const fmpz_mod_ctx_t ctx)
 
@@ -160,7 +177,8 @@ Set and transpose
 
 .. function:: void fmpz_mod_mat_transpose(fmpz_mod_mat_t B, const fmpz_mod_mat_t A, const fmpz_mod_ctx_t ctx)
 
-    Set ``B`` to the transpose of ``A``.
+    Sets ``B`` to the transpose of ``A``. Dimensions must be compatible.
+    Aliasing is allowed for square matrices.
 
 
 Conversions
@@ -233,6 +251,11 @@ Matrix multiplication
 .. function:: void fmpz_mod_mat_sqr(fmpz_mod_mat_t B, const fmpz_mod_mat_t A, const fmpz_mod_ctx_t ctx)
 
     Set ``B`` to ``A^2``. The matrix ``A`` must be square.
+
+.. function:: void fmpz_mod_mat_pow_ui(fmpz_mod_mat_t B, const fmpz_mod_mat_t A, ulong e, const fmpz_mod_ctx_t ctx)
+
+    Sets ``B`` to the matrix ``A`` raised to the power ``e``,
+    where ``A`` must be a square matrix. Aliasing is allowed.
 
 .. function:: void fmpz_mod_mat_mul_fmpz_vec(fmpz * c, const fmpz_mod_mat_t A, const fmpz * b, slong blen, const fmpz_mod_ctx_t ctx)
               void fmpz_mod_mat_mul_fmpz_vec_ptr(fmpz * const * c, const fmpz_mod_mat_t A, const fmpz * const * b, slong blen, const fmpz_mod_ctx_t ctx)
@@ -315,7 +338,7 @@ LU decomposition
 
 .. function:: slong fmpz_mod_mat_lu(slong * P, fmpz_mod_mat_t A, int rank_check, const fmpz_mod_ctx_t ctx)
 
-    Computes a generalised LU decomposition `LU = PA` of a given
+    Computes a generalised LU decomposition `PLU = A` of a given
     matrix `A`, returning the rank of `A`.
 
     If `A` is a nonsingular square matrix, it will be overwritten with

@@ -48,7 +48,7 @@ static void _queue_vec_fit_length(queue_struct ** Q, slong * Qalloc,
 }
 
 /* given g|f, update Q and res with g and f/g */
-void _add_split(
+static void _add_split(
     fmpz_mod_poly_factor_t res,
     queue_struct ** Q_, slong * Qlen_, slong * Qalloc_,
     fmpz_mod_poly_t f,
@@ -246,7 +246,7 @@ static void _fmpz_mod_poly_factor_equal_deg_via_trace(
 
     res->num = 0;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     fmpz_init(halfp);
     fmpz_sub_ui(halfp, p, 1);
@@ -445,7 +445,7 @@ cleanup:
     fmpz_mod_poly_clear(tr, ctx);
     fmpz_mod_poly_clear(finv, ctx);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
     fmpz_clear(halfp);
 
     return;

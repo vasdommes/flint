@@ -9,14 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
 void
 acb_mat_clear(acb_mat_t mat)
 {
     if (mat->entries != NULL)
-    {
         _acb_vec_clear(mat->entries, mat->r * mat->c);
-        flint_free(mat->rows);
-    }
 }

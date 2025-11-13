@@ -9,23 +9,33 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
+#include "gr_vec.h"
 #include "gr_mat.h"
 #include "fmpz_mat.h"
 
-static void perm(gr_mat_t A, slong * P)
+PUSH_OPTIONS
+OPTIMIZE_OSIZE
+
+static void perm(gr_mat_t A, slong * P, gr_ctx_t ctx)
 {
     slong i;
-    gr_ptr * tmp;
+    gr_mat_t tmp;
 
     if (A->c == 0 || A->r == 0)
         return;
 
-    tmp = flint_malloc(sizeof(gr_ptr) * A->r);
+    gr_mat_init(tmp, A->r, A->c, ctx);
 
-    for (i = 0; i < A->r; i++) tmp[P[i]] = A->rows[i];
-    for (i = 0; i < A->r; i++) A->rows[i] = tmp[i];
+    for (i = 0; i < A->r; i++)
+        GR_MUST_SUCCEED(_gr_vec_set(gr_mat_entry_ptr(tmp, P[i], 0, ctx),
+                    gr_mat_entry_srcptr(A, i, 0, ctx), A->c, ctx));
 
-    flint_free(tmp);
+    for (i = 0; i < A->r; i++)
+        GR_MUST_SUCCEED(_gr_vec_set(gr_mat_entry_ptr(A, i, 0, ctx),
+                    gr_mat_entry_srcptr(tmp, i, 0, ctx), A->c, ctx));
+
+    gr_mat_clear(tmp, ctx);
 }
 
 static void check(slong * P, gr_mat_t LU, const gr_mat_t A, slong rank, gr_ctx_t ctx)
@@ -72,7 +82,7 @@ static void check(slong * P, gr_mat_t LU, const gr_mat_t A, slong rank, gr_ctx_t
     }
 
     status |= gr_mat_mul(B, L, U, ctx);
-    perm(B, P);
+    perm(B, P, ctx);
 
     if (status == GR_SUCCESS && gr_mat_equal(A, B, ctx) == T_FALSE)
     {
@@ -91,14 +101,16 @@ static void check(slong * P, gr_mat_t LU, const gr_mat_t A, slong rank, gr_ctx_t
     gr_mat_clear(U, ctx);
 }
 
-static void
+static int
 _gr_mat_randrank(gr_mat_t mat, flint_rand_t state, slong rank, slong bits, gr_ctx_t ctx)
 {
+    int status;
     fmpz_mat_t A;
     fmpz_mat_init(A, mat->r, mat->c);
     fmpz_mat_randrank(A, state, rank, bits);
-    GR_MUST_SUCCEED(gr_mat_set_fmpz_mat(mat, A, ctx));
+    status = gr_mat_set_fmpz_mat(mat, A, ctx);
     fmpz_mat_clear(A);
+    return status;
 }
 
 FLINT_DLL extern gr_static_method_table _ca_methods;
@@ -163,14 +175,15 @@ void gr_mat_test_lu(gr_method_mat_lu_op lu_impl, flint_rand_t state, slong iters
         else
         {
             r = n_randint(state, FLINT_MIN(m, n) + 1);
-            _gr_mat_randrank(A, state, r, 5, ctx);
+            status = _gr_mat_randrank(A, state, r, 5, ctx);
+
             if (n_randint(state, 2))
             {
                 d = n_randint(state, 2*m*n + 1);
-                GR_MUST_SUCCEED(gr_mat_randops(A, state, d, ctx));
+                status |= gr_mat_randops(A, state, d, ctx);
             }
 
-            if (gr_ctx_is_finite_characteristic(ctx) == T_FALSE)
+            if (status == GR_SUCCESS && gr_ctx_is_finite_characteristic(ctx) == T_FALSE)
                 rank_lower_bound = rank_upper_bound = r;
             else
             {
@@ -247,3 +260,5 @@ void gr_mat_test_lu(gr_method_mat_lu_op lu_impl, flint_rand_t state, slong iters
             gr_ctx_clear(ctx);
     }
 }
+
+POP_OPTIONS

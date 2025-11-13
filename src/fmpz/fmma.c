@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "fmpz.h"
 
 void fmpz_fmma(fmpz_t f, const fmpz_t a, const fmpz_t b,
@@ -24,7 +25,7 @@ void fmpz_fmma(fmpz_t f, const fmpz_t a, const fmpz_t b,
     if (!COEFF_IS_MPZ(s) && !COEFF_IS_MPZ(t) &&
         !COEFF_IS_MPZ(u) && !COEFF_IS_MPZ(v))
     {
-        mp_limb_t sh, sl, th, tl;
+        ulong sh, sl, th, tl;
 
         smul_ppmm(sh, sl, s, t);
         smul_ppmm(th, tl, u, v);

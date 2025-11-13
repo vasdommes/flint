@@ -9,42 +9,36 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "nmod.h"
 #include "nmod_vec.h"
 #include "nmod_mat.h"
 
 void nmod_mat_mul_nmod_vec(
-    mp_limb_t * c,
+    ulong * c,
     const nmod_mat_t A,
-    const mp_limb_t * b, slong blen)
+    const ulong * b, slong blen)
 {
-    nmod_t mod = A->mod;
-    slong i, j;
-    slong len = FLINT_MIN(A->c, blen);
-    int nlimbs = _nmod_vec_dot_bound_limbs(len, mod);
+    const slong len = FLINT_MIN(A->c, blen);
+    const dot_params_t params = _nmod_vec_dot_params(len, A->mod);
 
-    for (i = A->r - 1; i >= 0; i--)
-    {
-        const mp_limb_t * Ai = A->rows[i];
-        NMOD_VEC_DOT(c[i], j, len, Ai[j], b[j], mod, nlimbs);
-    }
+    for (slong i = 0; i < A->r; i++)
+        c[i] = _nmod_vec_dot(nmod_mat_entry_ptr(A, i, 0), b, len, A->mod, params);
 }
 
 void nmod_mat_mul_nmod_vec_ptr(
-    mp_limb_t * const * c,
+    ulong * const * c,
     const nmod_mat_t A,
-    const mp_limb_t * const * b, slong blen)
+    const ulong * const * b, slong blen)
 {
     slong i;
     slong len = FLINT_MIN(A->c, blen);
     slong nrows = A->r;
-    mp_limb_t * bb, * cc;
+    ulong * bb, * cc;
     TMP_INIT;
 
     TMP_START;
 
-    bb = TMP_ARRAY_ALLOC(len, mp_limb_t);
-    cc = TMP_ARRAY_ALLOC(nrows, mp_limb_t);
+    bb = TMP_ARRAY_ALLOC(len, ulong);
+    cc = TMP_ARRAY_ALLOC(nrows, ulong);
 
     for (i = 0; i < len; i++)
         bb[i] = b[i][0];

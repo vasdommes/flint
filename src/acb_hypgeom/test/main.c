@@ -9,9 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-0f1.c"
@@ -22,6 +19,7 @@
 #include "t-airy_series.c"
 #include "t-bessel_i.c"
 #include "t-bessel_j.c"
+#include "t-bessel_j_deriv_bound.c"
 #include "t-bessel_k.c"
 #include "t-bessel_y.c"
 #include "t-beta_lower.c"
@@ -90,6 +88,7 @@ test_struct tests[] =
     TEST_FUNCTION(acb_hypgeom_airy_series),
     TEST_FUNCTION(acb_hypgeom_bessel_i),
     TEST_FUNCTION(acb_hypgeom_bessel_j),
+    TEST_FUNCTION(acb_hypgeom_bessel_j_deriv_bound),
     TEST_FUNCTION(acb_hypgeom_bessel_k),
     TEST_FUNCTION(acb_hypgeom_bessel_y),
     TEST_FUNCTION(acb_hypgeom_beta_lower),

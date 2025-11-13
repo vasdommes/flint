@@ -10,8 +10,9 @@
 */
 
 #include <string.h>
-#include "acb_dirichlet.h"
 #include "profiler.h"
+#include "acb.h"
+#include "acb_dirichlet.h"
 
 #define LOG 0
 #define CSV 1
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
                 flint_printf("{ \"name\": \"%s\", \"prec\": %d, \"qmin\": %d, \"qmax\": %d, \"time\": ",
                         name[l], prec[j], qmin[i], qmax[i]);
 
-            TIMEIT_ONCE_START
+            TIMEIT_ONCE_START;
 
                 for (q = qmin[i]; q <= qmax[i]; q+=2)
                 {
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
                     dirichlet_group_clear(G);
                 }
 
-            TIMEIT_ONCE_STOP
+            TIMEIT_ONCE_STOP;
 
                 if (out == JSON)
                     flint_printf("}\n");

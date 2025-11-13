@@ -10,15 +10,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "thread_support.h"
 #include "ulong_extras.h"
 #include "arb.h"
-
-#ifdef __GNUC__
-# define fabs __builtin_fabs
-#else
-# include <math.h>
-#endif
+#include "arb/impl.h"
 
 #define HAVE_64_BIT (FLINT_BITS == 64)
 
@@ -473,7 +469,7 @@ arb_log_primes_vec_bsplit(arb_ptr res, slong n, slong prec)
 FLINT_TLS_PREFIX arb_struct _arb_log_p_cache[ARB_LOG_PRIME_CACHE_NUM];
 FLINT_TLS_PREFIX slong _arb_log_p_cache_prec = 0;
 
-void _arb_log_p_cleanup(void)
+static void _arb_log_p_cleanup(void)
 {
     slong i;
     for (i = 0; i < ARB_LOG_PRIME_CACHE_NUM; i++)
@@ -508,7 +504,7 @@ void _arb_log_p_ensure_cached(slong prec)
             for (i = 0; i < ARB_LOG_PRIME_CACHE_NUM; i++)
             {
                 slong exp, exp_fix;
-                mp_size_t n;
+                slong n;
                 arb_ptr res = _arb_log_p_cache + i;
 
                 n = ARB_LOG_TAB2_PREC / FLINT_BITS;
@@ -694,7 +690,7 @@ arb_atan_gauss_primes_vec_bsplit(arb_ptr res, slong n, slong prec)
 FLINT_TLS_PREFIX arb_struct _arb_atan_gauss_p_cache[ARB_ATAN_GAUSS_PRIME_CACHE_NUM];
 FLINT_TLS_PREFIX slong _arb_atan_gauss_p_cache_prec = 0;
 
-void _arb_atan_gauss_p_cleanup(void)
+static void _arb_atan_gauss_p_cleanup(void)
 {
     slong i;
     for (i = 0; i < ARB_ATAN_GAUSS_PRIME_CACHE_NUM; i++)
@@ -729,7 +725,7 @@ void _arb_atan_gauss_p_ensure_cached(slong prec)
             for (i = 0; i < ARB_ATAN_GAUSS_PRIME_CACHE_NUM; i++)
             {
                 slong exp, exp_fix;
-                mp_size_t n;
+                slong n;
                 static const char exponents[24] = {0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1};
                 arb_ptr res = _arb_atan_gauss_p_cache + i;
 

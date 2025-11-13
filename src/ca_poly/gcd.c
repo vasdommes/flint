@@ -12,10 +12,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb_mat.h"
 #include "acb_mat.h"
 #include "ca_poly.h"
 
-int
+static int
 _ca_poly_check_coprime_numerical(ca_srcptr A, slong lenA, ca_srcptr B, slong lenB, ca_ctx_t ctx)
 {
     acb_t D;

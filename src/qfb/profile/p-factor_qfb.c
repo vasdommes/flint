@@ -11,7 +11,6 @@
 
 #include <stdlib.h>
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fmpz.h"
 #include "qfb.h"
@@ -198,15 +197,7 @@ done:
 
          mult += 2;
 
-    /* GCC really wants to complain about this one */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
          qfb_hash_clear(qhash, depth);
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
       }
 
       iters *= 2;

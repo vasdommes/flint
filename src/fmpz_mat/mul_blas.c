@@ -10,17 +10,19 @@
 */
 
 #include "fmpz_mat.h"
+#include "longlong.h"
 
 /* todo: squaring optimizations */
 
 #if FLINT_USES_BLAS && FLINT_BITS == 64
 
 #include <stdint.h>
+#include <limits.h>
+#include <cblas.h>
 #include "nmod.h"
 #include "fmpz.h"
 #include "thread_pool.h"
 #include "thread_support.h"
-#include "cblas.h"
 
 typedef struct {
     slong m;
@@ -30,8 +32,10 @@ typedef struct {
     slong Astoprow;
     slong Bstartrow;
     slong Bstoprow;
-    fmpz ** Arows;
-    fmpz ** Brows;
+    fmpz * Aentries;
+    slong Astride;
+    fmpz * Bentries;
+    slong Bstride;
     double * dA;
     double * dB;
 } _red_worker_arg;
@@ -46,18 +50,20 @@ static void _red_worker(void * varg)
     slong Astoprow = arg->Astoprow;
     slong Bstartrow = arg->Bstartrow;
     slong Bstoprow = arg->Bstoprow;
-    fmpz ** Arows = arg->Arows;
-    fmpz ** Brows = arg->Brows;
+    fmpz * Aentries = arg->Aentries;
+    slong Astride = arg->Astride;
+    fmpz * Bentries = arg->Bentries;
+    slong Bstride = arg->Bstride;
     double * dA = arg->dA;
     double * dB = arg->dB;
 
     for (i = Astartrow; i < Astoprow; i++)
         for (j = 0; j < k; j++)
-            dA[k*i + j] = (double)(Arows[i][j]);
+            dA[k*i + j] = (double)(Aentries[i * Astride + j]);
 
     for (i = Bstartrow; i < Bstoprow; i++)
         for (j = 0; j < n; j++)
-            dB[n*i + j] = (double)(Brows[i][j]);
+            dB[n*i + j] = (double)(Bentries[i * Bstride + j]);
 }
 
 static int _fmpz_mat_mul_blas_direct(
@@ -83,8 +89,10 @@ static int _fmpz_mat_mul_blas_direct(
     mainarg.m = m = A->r;
     mainarg.k = k = A->c;
     mainarg.n = n = B->c;
-    mainarg.Arows = A->rows;
-    mainarg.Brows = B->rows;
+    mainarg.Aentries = A->entries;
+    mainarg.Astride = A->stride;
+    mainarg.Bentries = B->entries;
+    mainarg.Bstride = B->stride;
     mainarg.dA = dA;
     mainarg.dB = dB;
 
@@ -138,7 +146,7 @@ red_single:
 
     for (i = 0; i < m; i++)
         for (j = 0; j < n; j++)
-            fmpz_set_si(&C->rows[i][j], (slong)(dC[n*i + j]));
+            fmpz_set_si(fmpz_mat_entry(C, i, j), (slong)(dC[n*i + j]));
 
     flint_free(dA);
     flint_free(dB);
@@ -161,9 +169,9 @@ static void _lift_vec(double * a, const uint32_t * b, slong len, uint32_t n)
         a[i] = (int32_t)(b[i] - (n & (-(uint32_t)((int32_t)(n/2 - b[i]) < 0))));
 }
 
-static uint32_t _reduce_uint32(mp_limb_t a, nmod_t mod)
+static uint32_t _reduce_uint32(ulong a, nmod_t mod)
 {
-    mp_limb_t r;
+    ulong r;
     NMOD_RED(r, a, mod);
     return (uint32_t)r;
 }
@@ -202,7 +210,7 @@ static void fmpz_multi_mod_uint32_stride(
         for ( ; i < j; i++)
         {
             /* mid level split: depends on FMPZ_MOD_UI_CUTOFF */
-            mp_limb_t t = fmpz_get_nmod(A + k, lu[i].mod);
+            ulong t = fmpz_get_nmod(A + k, lu[i].mod);
 
             /* low level split: 1, 2, or 3 small primes */
             if (lu[i].mod2.n != 0)
@@ -235,7 +243,7 @@ static void fmpz_multi_mod_uint32_stride(
 /* workers */
 
 typedef struct {
-    mp_limb_t prime;
+    ulong prime;
     slong l;
     slong num_primes;
     slong m;
@@ -253,9 +261,12 @@ typedef struct {
     double * dA;
     double * dB;
     double * dC;
-    fmpz ** Arows;
-    fmpz ** Brows;
-    fmpz ** Crows;
+    fmpz * Aentries;
+    slong Astride;
+    fmpz * Bentries;
+    slong Bstride;
+    fmpz * Centries;
+    slong Cstride;
     const fmpz_comb_struct * comb;
     int sign;
 } _worker_arg;
@@ -273,8 +284,10 @@ static void _mod_worker(void * arg_ptr)
     slong Bstoprow = arg->Bstoprow;
     uint32_t * bigA = arg->bigA;
     uint32_t * bigB = arg->bigB;
-    fmpz ** Arows = arg->Arows;
-    fmpz ** Brows = arg->Brows;
+    fmpz * Aentries = arg->Aentries;
+    slong Astride = arg->Astride;
+    fmpz * Bentries = arg->Bentries;
+    slong Bstride = arg->Bstride;
     const fmpz_comb_struct * comb = arg->comb;
     fmpz_comb_temp_t comb_temp;
 
@@ -283,12 +296,12 @@ static void _mod_worker(void * arg_ptr)
     for (i = Astartrow; i < Astoprow; i++)
         for (j = 0; j < k; j++)
             fmpz_multi_mod_uint32_stride(bigA + i*k*num_primes + j, k,
-                                                &Arows[i][j], comb, comb_temp);
+                                                Aentries + i * Astride + j, comb, comb_temp);
 
     for (i = Bstartrow; i < Bstoprow; i++)
         for (j = 0; j < n; j++)
             fmpz_multi_mod_uint32_stride(bigB + i*n*num_primes + j, n,
-                                                &Brows[i][j], comb, comb_temp);
+                                                Bentries + i * Bstride + j, comb, comb_temp);
 
     fmpz_comb_temp_clear(comb_temp);
 }
@@ -340,9 +353,9 @@ void _fromd_worker(void * arg_ptr)
     {
         for (j = 0; j < n; j++)
         {
-            mp_limb_t r;
+            ulong r;
             slong a = (slong) dC[i*n + j];
-            mp_limb_t b = (a < 0) ? a + shift : a;
+            ulong b = (a < 0) ? a + shift : a;
             NMOD_RED(r, b, mod);
             bigC[n*(num_primes*i + l) + j] = r;
         }
@@ -358,14 +371,15 @@ void _crt_worker(void * arg_ptr)
     slong Cstartrow = arg->Cstartrow;
     slong Cstoprow = arg->Cstoprow;
     uint32_t * bigC = arg->bigC;
-    fmpz ** Crows = arg->Crows;
+    fmpz * Centries = arg->Centries;
+    slong Cstride = arg->Cstride;
     const fmpz_comb_struct * comb = arg->comb;
     fmpz_comb_temp_t comb_temp;
-    mp_limb_t * r;
+    ulong * r;
     int sign = arg->sign;
 
     fmpz_comb_temp_init(comb_temp, comb);
-    r = FLINT_ARRAY_ALLOC(num_primes, mp_limb_t);
+    r = FLINT_ARRAY_ALLOC(num_primes, ulong);
 
     for (i = Cstartrow; i < Cstoprow; i++)
     {
@@ -374,7 +388,7 @@ void _crt_worker(void * arg_ptr)
             for (k = 0; k < num_primes; k++)
                 r[k] = bigC[(i*num_primes + k)*n + j];
 
-            fmpz_multi_CRT_ui(&Crows[i][j], r, comb, comb_temp, sign);
+            fmpz_multi_CRT_ui(Centries + i * Cstride + j, r, comb, comb_temp, sign);
         }
     }
 
@@ -382,14 +396,14 @@ void _crt_worker(void * arg_ptr)
     fmpz_comb_temp_clear(comb_temp);
 }
 
-static mp_limb_t * _calculate_primes(
+static ulong * _calculate_primes(
     slong * num_primes_,
     flint_bitcnt_t bits,
     slong k)
 {
     slong num_primes, primes_alloc;
-    mp_limb_t * primes;
-    mp_limb_t p;
+    ulong * primes;
+    ulong p;
     fmpz_t prod;
 
     p = 2 + 2*n_sqrt((MAX_BLAS_DP_INT - 1)/(ulong)k);
@@ -400,7 +414,7 @@ static mp_limb_t * _calculate_primes(
     }
 
     primes_alloc = 1 + bits/FLINT_BIT_COUNT(p);
-    primes = FLINT_ARRAY_ALLOC(primes_alloc, mp_limb_t);
+    primes = FLINT_ARRAY_ALLOC(primes_alloc, ulong);
     num_primes = 0;
 
     fmpz_init_set_ui(prod, 1);
@@ -420,7 +434,7 @@ static mp_limb_t * _calculate_primes(
         if (num_primes + 1 > primes_alloc)
         {
             primes_alloc = FLINT_MAX(num_primes + 1, primes_alloc*5/4);
-            primes = FLINT_ARRAY_REALLOC(primes, primes_alloc, mp_limb_t);
+            primes = FLINT_ARRAY_REALLOC(primes, primes_alloc, ulong);
         }
 
         primes[num_primes] = p;
@@ -457,7 +471,7 @@ int _fmpz_mat_mul_blas(
     slong n = B->c;
     uint32_t * bigC, * bigA, * bigB;
     double * dC, * dA, * dB;
-    mp_limb_t * primes;
+    ulong * primes;
     slong num_primes;
     fmpz_comb_t comb;
     thread_pool_handle * handles;
@@ -508,9 +522,12 @@ int _fmpz_mat_mul_blas(
         args[i].bigA = bigA;
         args[i].bigB = bigB;
         args[i].bigC = bigC;
-        args[i].Arows = A->rows;
-        args[i].Brows = B->rows;
-        args[i].Crows = C->rows;
+        args[i].Aentries = A->entries;
+        args[i].Astride = A->stride;
+        args[i].Bentries = B->entries;
+        args[i].Bstride = B->stride;
+        args[i].Centries = C->entries;
+        args[i].Cstride = C->stride;
         args[i].dA = dA;
         args[i].dB = dB;
         args[i].dC = dC;

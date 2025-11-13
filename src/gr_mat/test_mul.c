@@ -9,7 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
 #include "gr_mat.h"
+
+PUSH_OPTIONS
+OPTIMIZE_OSIZE
 
 void gr_mat_test_mul(gr_method_mat_binary_op mul_impl, flint_rand_t state, slong iters, slong maxn, gr_ctx_t ctx)
 {
@@ -101,3 +105,5 @@ void gr_mat_test_mul(gr_method_mat_binary_op mul_impl, flint_rand_t state, slong
             gr_ctx_clear(ctx);
     }
 }
+
+POP_OPTIONS

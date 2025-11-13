@@ -13,7 +13,8 @@
 #include "ulong_extras.h"
 #include "nmod_poly.h"
 
-#pragma GCC diagnostic ignored "-Woverlength-strings"
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_OVERLENGTH_STRINGS
 
 TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
 {
@@ -23,7 +24,7 @@ TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
     for (i = 0; i < 200 * flint_test_multiplier(); i++)
     {
         nmod_poly_t a, b, c;
-        mp_limb_t n = n_randtest_not_zero(state);
+        ulong n = n_randtest_not_zero(state);
 
         nmod_poly_init(a, n);
         nmod_poly_init(b, n);
@@ -53,7 +54,7 @@ TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
     for (i = 0; i < 200 * flint_test_multiplier(); i++)
     {
         nmod_poly_t a, b, c;
-        mp_limb_t n = n_randtest_not_zero(state);
+        ulong n = n_randtest_not_zero(state);
 
         nmod_poly_init(a, n);
         nmod_poly_init(b, n);
@@ -83,7 +84,7 @@ TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
     for (i = 0; i < 200 * flint_test_multiplier(); i++)
     {
         nmod_poly_t a1, a2, b, c;
-        mp_limb_t n = n_randtest_not_zero(state);
+        ulong n = n_randtest_not_zero(state);
 
         nmod_poly_init(a1, n);
         nmod_poly_init(a2, n);
@@ -115,7 +116,7 @@ TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
 #if FLINT64
     {
         nmod_poly_t a, b, c, d;
-        mp_limb_t mod = UWORD(2289285083314003039);
+        ulong mod = UWORD(2289285083314003039);
 
         nmod_poly_init(a, mod);
         nmod_poly_init(b, mod);
@@ -145,3 +146,5 @@ TEST_FUNCTION_START(nmod_poly_mul_KS2, state)
 
     TEST_FUNCTION_END(state);
 }
+
+DIAGNOSTIC_POP

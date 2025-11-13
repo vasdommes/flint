@@ -9,14 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
 void
 arb_mat_clear(arb_mat_t mat)
 {
     if (mat->entries != NULL)
-    {
         _arb_vec_clear(mat->entries, mat->r * mat->c);
-        flint_free(mat->rows);
-    }
 }

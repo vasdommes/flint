@@ -15,7 +15,11 @@
 #include "ulong_extras.h"
 #include "long_extras.h"
 #include "mpoly.h"
+#include "fmpz_mpoly.h"
+#include "fmpz_mpoly_q.h"
 #include "gr.h"
+#include "mpn_mod.h"
+#include "gr_series.h"
 
 /* For random composite rings, some base rings that don't require
    memory allocation. */
@@ -39,12 +43,12 @@ _gr_random_base_ring(flint_rand_t state)
     return _gr_some_base_rings + n_randint(state, sizeof(_gr_some_base_rings) / sizeof(gr_ctx_struct));
 }
 
-void
+static void
 gr_ctx_init_random_ring_composite(gr_ctx_t ctx, flint_rand_t state)
 {
     gr_ctx_struct * base_ring = _gr_random_base_ring(state);
 
-    switch (n_randint(state, 5))
+    switch (n_randint(state, 6))
     {
         case 0:
             gr_ctx_init_gr_poly(ctx, base_ring);
@@ -53,17 +57,22 @@ gr_ctx_init_random_ring_composite(gr_ctx_t ctx, flint_rand_t state)
             gr_ctx_init_gr_mpoly(ctx, base_ring, n_randint(state, 3), mpoly_ordering_randtest(state));
             break;
         case 2:
-            gr_ctx_init_gr_poly(ctx, base_ring);
-/*
-    this currently breaks some tests
-            gr_ctx_init_gr_series(ctx, base_ring, n_randint(state, 6));
-*/
+            gr_series_ctx_init(ctx, base_ring, n_randint(state, 6));
             break;
         case 3:
-            gr_ctx_init_series_mod_gr_poly(ctx, base_ring, n_randint(state, 6));
+            gr_series_mod_ctx_init(ctx, base_ring, n_randint(state, 6));
             break;
         case 4:
             gr_ctx_init_vector_space_gr_vec(ctx, base_ring, n_randint(state, 4));
+            break;
+        case 5:
+            {
+                int flags = 0;
+                flags |= n_randint(state, 2) ? GR_DEBUG_WRAP : 0;
+                /* flags |= GR_DEBUG_VERBOSE; */
+                double unable_probability = n_randint(state, 2) ? 0 : 0.1;
+                gr_ctx_init_debug(ctx, base_ring, flags, unable_probability);
+            }
             break;
 /*
     this will break tests that currently assume commutativity
@@ -75,12 +84,12 @@ gr_ctx_init_random_ring_composite(gr_ctx_t ctx, flint_rand_t state)
     }
 }
 
-void
+static void
 gr_ctx_init_random_ring_integers_mod(gr_ctx_t ctx, flint_rand_t state)
 {
     fmpz_t t;
 
-    switch (n_randint(state, 4))
+    switch (n_randint(state, 5))
     {
         case 0:
             gr_ctx_init_nmod8(ctx, n_randtest(state) % 255 + 1);
@@ -98,10 +107,20 @@ gr_ctx_init_random_ring_integers_mod(gr_ctx_t ctx, flint_rand_t state)
             gr_ctx_init_fmpz_mod(ctx, t);
             fmpz_clear(t);
             break;
+        case 4:
+            while (1)
+            {
+                gr_ctx_init_mpn_mod_randtest(ctx, state);
+                if (MPN_MOD_CTX_NLIMBS(ctx) <= 5)
+                    break;
+                gr_ctx_clear(ctx);
+            }
+            break;
+
     }
 }
 
-void
+static void
 gr_ctx_init_random_ring_finite_field(gr_ctx_t ctx, flint_rand_t state)
 {
     fmpz_t t;
@@ -126,7 +145,7 @@ gr_ctx_init_random_ring_finite_field(gr_ctx_t ctx, flint_rand_t state)
     fmpz_clear(t);
 }
 
-void
+static void
 gr_ctx_init_random_ring_number_field(gr_ctx_t ctx, flint_rand_t state)
 {
     fmpz_poly_t g;
@@ -149,7 +168,7 @@ gr_ctx_init_random_ring_number_field(gr_ctx_t ctx, flint_rand_t state)
     fmpq_poly_clear(f);
 }
 
-void
+static void
 gr_ctx_init_random_ring_real_complex_ball(gr_ctx_t ctx, flint_rand_t state)
 {
     if (n_randint(state, 2))
@@ -158,7 +177,7 @@ gr_ctx_init_random_ring_real_complex_ball(gr_ctx_t ctx, flint_rand_t state)
         gr_ctx_init_complex_acb(ctx, 2 + n_randint(state, 200));
 }
 
-void
+static void
 gr_ctx_init_random_ring_real_complex_exact(gr_ctx_t ctx, flint_rand_t state)
 {
     switch (n_randint(state, 4))
@@ -187,9 +206,37 @@ gr_ctx_init_random_ring_real_complex_exact(gr_ctx_t ctx, flint_rand_t state)
     }
 }
 
+static void
+gr_ctx_init_random_ring_builtin_poly(gr_ctx_t ctx, flint_rand_t state)
+{
+
+    switch (n_randint(state, 4))
+    {
+        case 0:
+            gr_ctx_init_fmpz_poly(ctx);
+            break;
+        case 1:
+            gr_ctx_init_fmpq_poly(ctx);
+            break;
+        case 2:
+            gr_ctx_init_fmpz_mpoly(ctx, n_randint(state, 3), mpoly_ordering_randtest(state));
+            break;
+        case 3:
+            gr_ctx_init_fmpz_mpoly_q(ctx, n_randint(state, 2), mpoly_ordering_randtest(state));
+            break;
+    }
+}
+
 void gr_ctx_init_random(gr_ctx_t ctx, flint_rand_t state)
 {
-    switch (n_randint(state, 11))
+    if (n_randint(state, 2))
+    {
+        gr_ctx_init_nmod(_gr_some_base_rings + 1, 1);
+        gr_series_ctx_init(ctx, _gr_some_base_rings + 1, 1);
+        return;
+    }
+
+    switch (n_randint(state, 12))
     {
         case 0:
         case 1:
@@ -219,6 +266,9 @@ void gr_ctx_init_random(gr_ctx_t ctx, flint_rand_t state)
             break;
         case 10:
             gr_ctx_init_random_ring_composite(ctx, state);
+            break;
+        case 11:
+            gr_ctx_init_random_ring_builtin_poly(ctx, state);
             break;
     }
 

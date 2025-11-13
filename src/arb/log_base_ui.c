@@ -9,22 +9,15 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
 #include "arb.h"
-
-#ifdef __GNUC__
-# define fabs __builtin_fabs
-# define ldexp __builtin_ldexp
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
 
 static double
 _arf_get_mantissa_d(const arf_t x)
 {
-    mp_srcptr xp;
-    mp_size_t xn;
+    nn_srcptr xp;
+    slong xn;
     ARF_GET_MPN_READONLY(xp, xn, x);
 
     if (xn == 1)

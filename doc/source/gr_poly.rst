@@ -82,8 +82,14 @@ Memory management
 
 .. function:: void gr_poly_clear(gr_poly_t poly, gr_ctx_t ctx)
 
+.. function:: gr_ptr gr_poly_coeff_ptr(gr_poly_t poly, slong i, gr_ctx_t ctx)
+              gr_srcptr gr_poly_coeff_srcptr(const gr_poly_t poly, slong i, gr_ctx_t ctx)
+
 .. function:: gr_ptr gr_poly_entry_ptr(gr_poly_t poly, slong i, gr_ctx_t ctx)
               gr_srcptr gr_poly_entry_srcptr(const gr_poly_t poly, slong i, gr_ctx_t ctx)
+
+    These functions are deprecated aliases of :func:`gr_poly_coeff_ptr` and
+    :func:`gr_poly_coeff_srcptr`; use those functions instead.
 
 .. function:: slong gr_poly_length(const gr_poly_t poly, gr_ctx_t ctx)
 
@@ -114,7 +120,22 @@ Basic manipulation
               int gr_poly_gen(gr_poly_t poly, gr_ctx_t ctx)
 
 .. function:: int gr_poly_write(gr_stream_t out, const gr_poly_t poly, const char * x, gr_ctx_t ctx)
+              int _gr_poly_write(gr_stream_t out, gr_srcptr poly, slong n, const char * x, gr_ctx_t ctx)
+              int _gr_poly_get_str(char ** res, const gr_poly_t f, const char * x, gr_ctx_t ctx)
+              int gr_poly_get_str(char ** res, const gr_poly_t f, const char * x, gr_ctx_t ctx)
               int gr_poly_print(const gr_poly_t poly, gr_ctx_t ctx)
+
+.. function:: int _gr_poly_set_str(gr_ptr res, const char * s, const char * x, slong len, gr_ctx_t ctx)
+              int gr_poly_set_str(gr_poly_t res, const char * s, const char * x, gr_ctx_t ctx)
+
+    Parse polynomial from an expression string, assuming that the string in *x* gives
+    the name of the generator. The underscore method zero-pads the result if
+    the length of the parsed polynomial is shorter than *len*, and returns
+    ``GR_UNABLE`` if the length of the parsed polynomial exceeds *len*.
+    Intermediate terms are allowed to be longer than *len*.
+
+    Warning: these methods are not currently optimized for polynomials of high degree
+    and may run with quadratic complexity.
 
 .. function:: int gr_poly_randtest(gr_poly_t poly, flint_rand_t state, slong len, gr_ctx_t ctx)
 
@@ -158,7 +179,41 @@ Arithmetic
               int _gr_poly_mullow(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, slong len, gr_ctx_t ctx)
               int gr_poly_mullow(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, slong len, gr_ctx_t ctx)
 
-.. function:: int gr_poly_mul_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+    Note: multiplication and low multiplication call :func:`_gr_poly_mullow_generic`
+    by default, which currently always delegates to :func:`_gr_poly_mullow_classical`.
+    This can be overridden by specific rings.
+
+Multiplication algorithms
+-------------------------------------------------------------------------------
+
+.. function:: int _gr_poly_mullow_classical(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, slong n, gr_ctx_t ctx)
+              int gr_poly_mullow_classical(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, slong n, gr_ctx_t ctx)
+
+    Multiply using the classical (schoolbook) algorithm, performing
+    a sequence of dot products.
+
+.. function:: int _gr_poly_mullow_bivariate_KS(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, slong n, gr_ctx_t ctx)
+              int gr_poly_mullow_bivariate_KS(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, slong n, gr_ctx_t ctx)
+
+    Assuming that the coefficients are polynomials of type ``gr_poly``,
+    reduce the bivariate product to a single univariate product using
+    Kronecker substitution. Returns ``GR_UNABLE`` if the elements are not
+    of type ``gr_poly``.
+
+.. function:: int _gr_poly_mullow_complex_reorder(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, slong n, int karatsuba, gr_ctx_t ctx, gr_ctx_t real_ctx)
+              int gr_poly_mullow_complex_reorder(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, slong n, int karatsuba, gr_ctx_t ctx, gr_ctx_t real_ctx)
+
+    Assuming that the coefficients of the polynomials of type ``ctx`` are
+    complex numbers represented in Cartesian form as pairs of elements
+    of type ``real_ctx``, multiply by reordering to obtain a set of
+    real polynomial products.
+
+    If at least one polynomial is detected to be purely real or imaginary, one or two
+    real multiplications are used. Otherwise, four real multiplications
+    are used unless the *karatsuba* flag is set in which three
+    multiplications are used.
+    When squaring, two real squarings and one real multiplication are used
+    unless the *karatsuba* flag is set in which case three real squarings are used.
 
 .. function:: int _gr_poly_mul_karatsuba(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, gr_ctx_t ctx)
               int gr_poly_mul_karatsuba(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, gr_ctx_t ctx)
@@ -169,6 +224,54 @@ Arithmetic
     This function calls :func:`_gr_poly_mul` recursively rather than itself, so to get a recursive
     algorithm with `O(n^{1.6})` complexity, the ring must overload :func:`_gr_poly_mul` to dispatch
     to :func:`_gr_poly_mul_karatsuba` above some cutoff.
+
+.. function:: int _gr_poly_mul_toom33(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, gr_ctx_t ctx);
+              int gr_poly_mul_toom33(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, gr_ctx_t ctx);
+
+    Balanced Toom-3 multiplication with interpolation in five points,
+    using the Bodrato evaluation scheme. Assumes commutativity and that the ring
+    supports exact division by 2 and 3.
+    Not optimized for squaring.
+    The underscore method requires positive lengths and does not support aliasing.
+    This function calls :func:`_gr_poly_mul` recursively rather than itself, so to get a recursive
+    algorithm with `O(n^{1.5})` complexity, the ring must overload :func:`_gr_poly_mul` to dispatch
+    to :func:`_gr_poly_mul_toom33` above some cutoff.
+
+.. function:: int gr_poly_add_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+              int gr_poly_add_ui(gr_poly_t res, const gr_poly_t poly, ulong c, gr_ctx_t ctx)
+              int gr_poly_add_si(gr_poly_t res, const gr_poly_t poly, slong c, gr_ctx_t ctx)
+              int gr_poly_add_fmpz(gr_poly_t res, const gr_poly_t poly, const fmpz c, gr_ctx_t ctx)
+              int gr_poly_add_fmpq(gr_poly_t res, const gr_poly_t poly, const fmpq c, gr_ctx_t ctx)
+
+    Sets *res* to *poly* plus the scalar *c* which must be
+    an element of or coercible to the coefficient ring.
+
+.. function:: int gr_poly_sub_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+              int gr_poly_sub_ui(gr_poly_t res, const gr_poly_t poly, ulong c, gr_ctx_t ctx)
+              int gr_poly_sub_si(gr_poly_t res, const gr_poly_t poly, slong c, gr_ctx_t ctx)
+              int gr_poly_sub_fmpz(gr_poly_t res, const gr_poly_t poly, const fmpz c, gr_ctx_t ctx)
+              int gr_poly_sub_fmpq(gr_poly_t res, const gr_poly_t poly, const fmpq c, gr_ctx_t ctx)
+
+    Sets *res* to *poly* minus the scalar *c* which must be
+    an element of or coercible to the coefficient ring.
+
+.. function:: int gr_poly_mul_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+              int gr_poly_scalar_mul(gr_poly_t res, gr_srcptr c, const gr_poly_t poly, gr_ctx_t ctx)
+              int gr_poly_mul_ui(gr_poly_t res, const gr_poly_t poly, ulong c, gr_ctx_t ctx)
+              int gr_poly_mul_si(gr_poly_t res, const gr_poly_t poly, slong c, gr_ctx_t ctx)
+              int gr_poly_mul_fmpz(gr_poly_t res, const gr_poly_t poly, const fmpz c, gr_ctx_t ctx)
+              int gr_poly_mul_fmpq(gr_poly_t res, const gr_poly_t poly, const fmpq c, gr_ctx_t ctx)
+
+    Sets *res* to *poly* multiplied by the scalar *c* (or the scalar *c* multiplied by *poly*)
+    which must be an element of or coercible to the coefficient ring.
+
+.. function:: int gr_poly_addmul_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+
+    Adds *poly* multiplied by the scalar *c* to *res*.
+
+.. function:: int gr_poly_submul_scalar(gr_poly_t res, const gr_poly_t poly, gr_srcptr c, gr_ctx_t ctx)
+
+    Subtracts *poly* multiplied by the scalar *c* from *res*.
 
 Powering
 --------------------------------------------------------------------------------
@@ -279,6 +382,56 @@ Division with remainder
               int gr_poly_rem(gr_poly_t R, const gr_poly_t A, const gr_poly_t B, gr_ctx_t ctx)
 
     Versions of the *divrem* functions which output only the remainder.
+
+Division with remainder with full precomputed inverse
+--------------------------------------------------------------------------------
+
+.. function:: int _gr_poly_div_newton_n_preinv(gr_ptr Q, gr_srcptr A, slong lenA, gr_srcptr FLINT_UNUSED(B), slong lenB, gr_srcptr Binv, slong lenBinv, gr_ctx_t ctx)
+
+    Notionally computes polynomials `Q` and `R` such that `A = BQ + R` with
+    `\operatorname{len}(R)` less than ``lenB``, where ``A`` is of length ``lenA``
+    and ``B`` is of length ``lenB``, but return only `Q`.
+
+    We require that `Q` have space for ``lenA - lenB + 1`` coefficients
+    and assume that the leading coefficient of `B` is a unit. Furthermore, we
+    assume that `Binv` is the inverse of the reverse of `B` mod `x^{\operatorname{len}(B)}`.
+
+    The algorithm used is to reverse the polynomials and divide the
+    resulting power series, then reverse the result.
+
+.. function:: int gr_poly_div_newton_n_preinv(gr_poly_t Q, const gr_poly_t A, const gr_poly_t B, const gr_poly_t Binv, gr_ctx_t ctx)
+
+    Notionally computes `Q` and `R` such that `A = BQ + R` with
+    `\operatorname{len}(R) < \operatorname{len}(B)`, but returns only `Q`.
+
+    We assume that the leading coefficient of `B` is a unit and that `Binv` is
+    the inverse of the reverse of `B` mod `x^{\operatorname{len}(B)}`.
+
+    It is required that the length of `A` is less than or equal to
+    2*the length of `B` - 2.
+
+    The algorithm used is to reverse the polynomials and divide the
+    resulting power series, then reverse the result.
+
+.. function:: int _gr_poly_divrem_newton_n_preinv(gr_ptr Q, gr_ptr R, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_srcptr Binv, slong lenBinv, gr_ctx_t ctx)
+
+    Computes `Q` and `R` such that `A = BQ + R` with `\operatorname{len}(R)` less
+    than ``lenB``, where `A` is of length ``lenA`` and `B` is of
+    length ``lenB``. We require that `Q` have space for
+    ``lenA - lenB + 1`` coefficients. Furthermore, we assume that `Binv` is
+    the inverse of the reverse of `B` mod `x^{\operatorname{len}(B)}`. The algorithm
+    used is to call :func:`_gr_poly_div_newton_n_preinv` and then multiply out
+    and compute the remainder.
+
+.. function:: int gr_poly_divrem_newton_n_preinv(gr_poly_t Q, gr_poly_t R, const gr_poly_t A, const gr_poly_t B, const gr_poly_t Binv, gr_ctx_t ctx)
+
+    Computes `Q` and `R` such that `A = BQ + R` with `\operatorname{len}(R) <
+    \operatorname{len}(B)`.  We assume `Binv` is the inverse of the reverse of `B`
+    mod `x^{\operatorname{len}(B)}`.
+
+    It is required (not checked) that the length of `A` is less than or equal to
+    2*the length of `B` - 2.
+
 
 Power series division
 --------------------------------------------------------------------------------
@@ -405,6 +558,89 @@ Evaluation
     Set *res* to *poly* evaluated at *x*, where the coefficients of *f*
     belong to *ctx* while both *x* and *res* belong to *x_ctx*.
 
+
+Newton basis
+-------------------------------------------------------------------------------
+
+Let `C = (c_0, c_1, c_2, \ldots)` be a sequence of
+values of the commutative ring *R*.
+Then the sequence of polynomials
+
+.. math::
+
+      \begin{matrix}
+      N_0 & = & 1, \\
+      N_1 & = & (x-c_0), \\
+      N_2 & = & (x-c_0)(x-c_1), \\
+      N_3 & = & (x-c_0)(x-c_1)(x-c_2), \ldots
+      \end{matrix}
+
+with roots in `C` forms a basis of `R[x]` called the *Newton basis*
+associated with *C*.
+Given a polynomial `f = f_0 + f_1 x + \ldots + f_n x^n` in the
+standard monomial basis, there are accordingly coefficients `g_0, \ldots, g_n`
+such that `f = g_0 N_0 + g_1 N_1 + \ldots + g_n N_n`
+and vice versa.
+In the following functions, some finite initial segment of `C` is represented
+by a vector called *basis*, and a polynomial in the Newton basis is
+represented formally as the polynomial
+`g = g_0 + g_1 x + \ldots + g_n x^n`.
+
+The following functions all support aliasing between inputs and outputs
+except that no output may be aliased with *basis*.
+
+.. function:: int _gr_poly_newton_basis_from_monomial(gr_ptr res, gr_srcptr basis, gr_srcptr poly, slong len, gr_ctx_t ctx)
+              int gr_poly_newton_basis_from_monomial(gr_poly_t res, const gr_vec_t basis, const gr_poly_t poly, gr_ctx_t ctx)
+              int _gr_poly_newton_basis_to_monomial(gr_ptr res, gr_srcptr basis, gr_srcptr poly, slong len, gr_ctx_t ctx)
+              int gr_poly_newton_basis_to_monomial(gr_poly_t res, const gr_vec_t basis, const gr_poly_t poly, gr_ctx_t ctx)
+
+    Given *poly* of length *len* in the standard monomial basis, set *res* to
+    the polynomial in the Newton basis and vice versa.
+    The underscore methods require that ``basis`` is a pointer to at least
+    `len - 1` entries. The non-underscore methods return ``GR_UNABLE`` if
+    *basis* does not contain at least `len - 1` entries.
+
+.. function:: int _gr_poly_newton_basis_evaluate(gr_ptr res, gr_srcptr basis, gr_srcptr poly, slong len, gr_srcptr x, gr_ctx_t ctx)
+              int gr_poly_newton_basis_evaluate(gr_ptr res, const gr_vec_t basis, const gr_poly_t poly, gr_srcptr x, gr_ctx_t ctx)
+
+    Given *poly* of length *len* in the Newton basis, set *res* to the
+    evaluation at *x*.
+    The underscore method requires that ``basis`` is a pointer to at least
+    `len - 1` entries. The non-underscore method returns ``GR_UNABLE`` if
+    *basis* does not contain at least `len - 1` entries.
+
+.. function:: int _gr_poly_newton_basis_interpolate_exact(gr_ptr res, gr_srcptr basis, gr_srcptr ys, slong len, gr_ctx_t ctx)
+              int gr_poly_newton_basis_interpolate_exact(gr_poly_t res, const gr_vec_t basis, const gr_vec_t ys, gr_ctx_t ctx)
+              int _gr_poly_newton_basis_interpolate(gr_ptr res, gr_srcptr basis, gr_srcptr ys, slong len, gr_ctx_t ctx)
+              int gr_poly_newton_basis_interpolate(gr_poly_t res, const gr_vec_t basis, const gr_vec_t ys, gr_ctx_t ctx)
+
+    Given a vector *y* containing *len* values, set *res* to the Newton basis form
+    of the unique interpolating
+    polynomial *f* of length (up to) *len* such that
+    `y_0 = f(c_0), \ldots, y_{len-1} = f(c_{len-1})`
+    evaluated at the roots of the Newton basis.
+
+    We presume, but do not check, that the ring is an integral domain.
+    These functions may succeed over non-integral domains, but
+    the result need not be an interpolating polynomial.
+
+    We require that *basis* contains at least *len* initial roots which
+    are pairwise distinct.
+
+    These functions return ``GR_DOMAIN`` (and/or ``GR_UNABLE``)
+    in either of the following situations:
+
+    * The vector *basis* does not have sufficiently many points (checked by the
+      non-underscore functions only).
+    * The evaluation points *xs* are not pairwise distinct.
+    * The interpolating polynomial *f* has coefficients in the fraction field
+      of *R* but not in *R* itself.
+
+    The *exact* versions presume that the evaluation points are distinct
+    and that *f* has coefficients in *R*; they may silently output some
+    arbitary polynomial otherwise.
+
+
 Multipoint evaluation and interpolation
 -------------------------------------------------------------------------------
 
@@ -414,15 +650,59 @@ Multipoint evaluation and interpolation
 
 .. function:: int _gr_poly_tree_build(gr_ptr * tree, gr_srcptr roots, slong len, gr_ctx_t ctx)
 
-.. function:: int _gr_poly_evaluate_vec_fast_precomp(gr_ptr vs, gr_srcptr poly, slong plen, gr_ptr * tree, slong len, gr_ctx_t ctx)
+    Initialize a subproduct tree over the given roots.
+
+.. function:: int _gr_poly_product_roots(gr_ptr poly, gr_srcptr xs, slong n, gr_ctx_t ctx)
+              int gr_poly_product_roots(gr_poly_t poly, const gr_vec_t xs, gr_ctx_t ctx)
+
+    Set *poly* to the polynomial `(x-x_0) (x-x_1) \cdots (x-x_{n-1})`.
+
+.. function:: int _gr_poly_evaluate_vec_fast_precomp(gr_ptr vs, gr_srcptr poly, slong plen, const gr_ptr * tree, slong len, gr_ctx_t ctx)
 
 .. function:: int _gr_poly_evaluate_vec_fast(gr_ptr ys, gr_srcptr poly, slong plen, gr_srcptr xs, slong n, gr_ctx_t ctx)
-
-.. function:: int gr_poly_evaluate_vec_fast(gr_vec_t ys, const gr_poly_t poly, const gr_vec_t xs, gr_ctx_t ctx)
+              int gr_poly_evaluate_vec_fast(gr_vec_t ys, const gr_poly_t poly, const gr_vec_t xs, gr_ctx_t ctx)
 
 .. function:: int _gr_poly_evaluate_vec_iter(gr_ptr ys, gr_srcptr poly, slong plen, gr_srcptr xs, slong n, gr_ctx_t ctx)
+              int gr_poly_evaluate_vec_iter(gr_vec_t ys, const gr_poly_t poly, const gr_vec_t xs, gr_ctx_t ctx)
 
-.. function:: int gr_poly_evaluate_vec_iter(gr_vec_t ys, const gr_poly_t poly, const gr_vec_t xs, gr_ctx_t ctx)
+.. function:: int _gr_poly_interpolate_exact(gr_ptr res, gr_srcptr xs, gr_srcptr ys, slong len, gr_ctx_t ctx)
+              int gr_poly_interpolate_exact(gr_poly_t poly, const gr_vec_t xs, const gr_vec_t ys, gr_ctx_t ctx)
+              int _gr_poly_interpolate(gr_ptr res, gr_srcptr xs, gr_srcptr ys, slong len, gr_ctx_t ctx)
+              int gr_poly_interpolate(gr_poly_t poly, const gr_vec_t xs, const gr_vec_t ys, gr_ctx_t ctx)
+
+    Given vectors *xs* and *ys* of length *len* where the entries of *xs*
+    are pairwise distinct, set *res* to the
+    interpolating polynomial *f* of length (up to) *len* such that
+    `y_0 = f(x_0), \ldots, y_{len-1} = f(x_{len-1})`.
+
+    We presume, but do not check, that the ring is an integral domain.
+    These functions may succeed over non-integral domains, but
+    the result might not be an interpolating polynomial.
+
+    These functions return ``GR_DOMAIN`` (and/or ``GR_UNABLE``)
+    in either of the following situations:
+
+    * The vectors *xs* and *ys* do not have the same length (checked by the
+      non-underscore functions only).
+    * The evaluation points *xs* are not pairwise distinct.
+    * The interpolating polynomial *f* has coefficients in the fraction field
+      of *R* but not in *R* itself.
+
+    The *exact* versions presume that the evaluation points are distinct
+    and that *f* has coefficients in *R*; they may silently output some
+    arbitary polynomial otherwise.
+
+.. function:: int _gr_poly_interpolation_weights(gr_ptr w, const gr_ptr * tree, slong len, gr_ctx_t ctx)
+              int _gr_poly_interpolate_fast_precomp(gr_ptr poly, gr_srcptr ys, const gr_ptr * tree, gr_srcptr weights, slong len, gr_ctx_t ctx)
+              int _gr_poly_interpolate_fast(gr_ptr res, gr_srcptr xs, gr_srcptr ys, slong len, gr_ctx_t ctx)
+              int gr_poly_interpolate_fast(gr_poly_t poly, const gr_vec_t xs, const gr_vec_t ys, gr_ctx_t ctx)
+
+    Fast polynomial interpolation using a subproduct tree. The *precomp*
+    version requires a precomputed subproduct tree generated using
+    :func:`_gr_poly_tree_build` and precomputed interpolation weights
+    generated using :func:`_gr_poly_interpolation_weights`.
+
+    This currently requires a field.
 
 
 Composition
@@ -530,6 +810,8 @@ Monic polynomials
 .. function:: truth_t _gr_poly_is_monic(gr_srcptr poly, slong len, gr_ctx_t ctx)
               truth_t gr_poly_is_monic(const gr_poly_t res, gr_ctx_t ctx)
 
+.. function:: int gr_poly_canonical_associate(gr_poly_t res, gr_poly_t u, const gr_poly_t src, gr_ctx_t ctx)
+
 GCD
 -------------------------------------------------------------------------------
 
@@ -558,19 +840,31 @@ GCD
               int gr_poly_gcd_hgcd(gr_poly_t G, const gr_poly_t A, const gr_poly_t B, slong inner_cutoff, slong cutoff, gr_ctx_t ctx)
               int _gr_poly_gcd_euclidean(gr_ptr G, slong * lenG, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_ctx_t ctx)
               int gr_poly_gcd_euclidean(gr_poly_t G, const gr_poly_t A, const gr_poly_t B, gr_ctx_t ctx)
+              int _gr_poly_gcd_subresultant(gr_ptr G, slong * lenG, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_ctx_t ctx)
+              int gr_poly_gcd_subresultant(gr_poly_t G, const gr_poly_t A, const gr_poly_t B, gr_ctx_t ctx)
               int _gr_poly_gcd_generic(gr_ptr G, slong * lenG, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_ctx_t ctx)
               int _gr_poly_gcd(gr_ptr G, slong * lenG, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_ctx_t ctx)
               int gr_poly_gcd(gr_poly_t G, const gr_poly_t A, const gr_poly_t B, gr_ctx_t ctx)
 
-    Polynomial GCD. Currently only useful over fields.
+    GCD in the polynomial ring `R[x]`.
+
+    The *gcd_subresultant* algorithm assumes that *R* is a unique factorization
+    domain. The *euclidean* and *hgcd* algorithms assume that *R* is a field.
+    The time complexity of the half-GCD algorithm is `\mathcal{O}(n \log^2 n)`
+    field operations. For further details, see [ThullYap1990]_.
+
+    The *gcd_generic* fallback implementation checks if *R* is a field
+    or UFD and dispatches to an appropriate algorithm, and otherwise
+    returns ``GR_UNABLE``. The main *gcd* function is synonymous with
+    *gcd_generic* unless overridden by a particular ring.
+
+    The non-underscore methods canonicalise the leading coefficient of the output
+    by calling ``gr_poly_canonical_associate``. Over a field, this corresponds
+    to making the output monic. The underscore methods need not perform this
+    canonicalisation.
 
     The underscore methods assume ``lenA >= lenB >= 1`` and that both
     *A* and *B* have nonzero leading coefficient.
-    The underscore methods do not attempt to make the result monic.
-
-    The time complexity of the half-GCD algorithm is `\mathcal{O}(n \log^2 n)`
-    ring operations. For further details, see [ThullYap1990]_.
-
 
 .. function:: int _gr_poly_xgcd_euclidean(slong * lenG, gr_ptr G, gr_ptr S, gr_ptr T, gr_srcptr A, slong lenA, gr_srcptr B, slong lenB, gr_ctx_t ctx)
               int gr_poly_xgcd_euclidean(gr_poly_t G, gr_poly_t S, gr_poly_t T, const gr_poly_t A, const gr_poly_t B, gr_ctx_t ctx)
@@ -655,6 +949,82 @@ TODO: currently only fields of characteristic 0 are supported.
 
     Sets *res* to the squarefreepart of *poly*.
 
+Shift equivalence
+-------------------------------------------------------------------------------
+
+.. function:: truth_t gr_poly_shift_equivalent(fmpz_t shift, const gr_poly_t p, const gr_poly_t q, gr_ctx_t ctx)
+
+    Returns whether there exists an integer *n* such that `p(x + n) = q(x)`. If
+    the result is ``T_TRUE`` and *shift* is not ``NULL``, *shift* is set to
+    such an *n*.
+
+.. function:: int gr_poly_leading_taylor_shift(gr_ptr shift, const gr_poly_t p, const gr_poly_t q, gr_ctx_t ctx)
+
+    Computes (if possible) *s* such that `p(x+s) = q(x)(1+O(x^2))`.
+
+.. function:: int gr_poly_dispersion_resultant(fmpz_t disp, gr_vec_t disp_set, const gr_poly_t f, const gr_poly_t g, gr_ctx_t ctx);
+              int gr_poly_dispersion_factor(fmpz_t disp, gr_vec_t disp_set, const gr_poly_t f, const gr_poly_t g, gr_ctx_t ctx);
+              int gr_poly_dispersion(fmpz_t disp, gr_vec_t disp_set, const gr_poly_t f, const gr_poly_t g, gr_ctx_t ctx);
+
+    Computes the dispersion and/or the dispersion set of *f* and *g*.
+
+    The dispersion set of two polynomials *f* and *g* (over a unique
+    factorization domain of characteristic zero) is the set of nonnegative
+    integers *n* such that `f(x + n)` and `g(x)` have a nonconstant common
+    factor. The dispersion is the largest element of the dispersion set.
+
+    The output variables *disp* and/or *disp_set* can be ``NULL``, in which case
+    the corresponding result is not stored.
+    When the dispersion set is empty, *disp* is left unchanged.
+    The elements of *disp_set* are sorted in increasing order.
+
+    The *factor* version uses the algorithm described in [ManWright1994]_.
+    The *resultant* version computes the integer roots of a bivariate resultant
+    and is mainly intended for testing.
+
+.. function:: int gr_poly_dispersion_from_factors(fmpz_t disp, gr_vec_t disp_set, const gr_vec_t ffac, const gr_vec_t gfac, gr_ctx_t ctx);
+
+    Same as :func:`gr_poly_dispersion_factor` for nonzero *f* and *g* but takes
+    as input their nonconstant irreducible factors (without multiplicities)
+    instead of the polynomials themselves.
+
+.. function:: int gr_poly_shiftless_decomposition_factor(gr_ptr c, gr_vec_t slfac, gr_vec_t slshifts, gr_vec_t slmult, const gr_poly_t f, gr_ctx_t ctx)
+              int gr_poly_shiftless_decomposition(gr_ptr c, gr_vec_t slfac, gr_vec_t slshifts, gr_vec_t slmult, const gr_poly_t f, gr_ctx_t ctx)
+
+
+    Computes a decomposition of *f* of the form
+
+        .. math:: c \prod_i \prod_j g_i(x + h_{i,j})^{e_{i,j}}
+
+    where
+
+    * `c` is a constant,
+    * the `g_i` are squarefree polynomials of degree at least one,
+    * `g_i(x)` and `g_j(x + h)` (with `i \neq j`) are coprime for all
+      `h \in \mathbb Z`,
+    * `g_i(x)` and `g_i(x + h)` are coprime for all nonzero `h \in \mathbb Z`,
+    * `e_{i,j}` and `h_{i,j}` are integers with `e_{i,j} \geq 1`
+      and `0 = h_{i,1} < h_{i,2} < \cdots`.
+
+    The output variable *slfac* must be initialized to a vector of polynomials
+    of the same type as *f*. The other two output vectors *slshift* and
+    *slmult* must be initialized to vectors *of vectors* with entries of type
+    *fmpz*.
+
+    The *factor* version computes an irreducible factorization and sorts the
+    factors into shift-equivalence classes.
+
+    No algorithm avoiding a full irreducible factorization is currently
+    implemented.
+
+.. function:: int _gr_poly_shiftless_decomposition_from_factors(gr_vec_t slfac, gr_vec_t slshifts, gr_vec_t slmult, const gr_vec_t fac, const gr_vec_t mult, gr_ctx_t ctx)
+              int gr_poly_shiftless_decomposition_from_factors(gr_vec_t slfac, gr_vec_t slshifts, gr_vec_t slmult, const gr_vec_t fac, const gr_vec_t mult, gr_ctx_t ctx)
+
+    Same as :func:`gr_poly_shiftless_decomposition_factor` but takes as input
+    an irreducible factorization (*fac*, *mult*) of *f* (without the
+    prefactor *c*). The underscore method does not support aliasing of *slfac*
+    with *fac*.
+
 Roots
 -------------------------------------------------------------------------------
 
@@ -680,6 +1050,35 @@ Roots
 
     We consider roots of the zero polynomial to be ill-defined and return
     ``GR_DOMAIN`` in that case.
+
+.. function:: int _gr_poly_refine_roots_aberth(gr_ptr w, gr_srcptr f, gr_srcptr f_prime, slong deg, gr_srcptr z, int progressive, gr_ctx_t ctx)
+              int _gr_poly_refine_roots_wdk(gr_ptr w, gr_srcptr f, slong deg, gr_srcptr z, int progressive, gr_ctx_t ctx)
+
+    Given a vector of approximate complex roots `z_1, \ldots, z_{deg}`
+    of `f = \sum_{i=0}^{deg} f_i x^i`,
+    computes a vector of corrections `w_1, \ldots, w_{deg}` such that
+    `z_k - w_k` is a closer approximation of the respective root
+    provided that the initial approximations are close enough
+    and that the polynomial evaluation is numerically accurate.
+    The user will typically call these methods in a loop.
+
+    The *wdk* version performs the Weierstrass-Durand-Kerner update
+
+    .. math ::
+
+        w_k = \frac{f(z_k)}{\prod_{j \ne k} (z_k - z_j)}, \quad k = 1, \ldots, deg.
+
+    The *aberth* version performs the Aberth-Ehrlich update
+
+    .. math ::
+
+        w_k = \frac{g(z_k)}{1 - g(z_k) \sum_{j \ne k} (z_k - z_j)^{-1}}, \quad g(z_k) = \frac{f(z_k)}{f'(z_k)} \quad k = 1, \ldots, deg.
+
+    requiring the coefficients of `f'` as an extra input *f_prime*.
+
+    If *progressive* flag is set, corrected roots `z_j - w_j` that
+    have already been computed are used in place of `z_j` in the
+    update loop, which can improve the rate of convergence.
 
 Power series special functions
 --------------------------------------------------------------------------------
@@ -737,6 +1136,127 @@ Power series special functions
               int gr_poly_tan_series_newton(gr_poly_t f, const gr_poly_t h, slong n, slong cutoff, gr_ctx_t ctx)
               int _gr_poly_tan_series(gr_ptr f, gr_srcptr h, slong hlen, slong n, gr_ctx_t ctx)
               int gr_poly_tan_series(gr_poly_t f, const gr_poly_t h, slong n, gr_ctx_t ctx)
+
+Modular arithmetic and composition
+--------------------------------------------------------------------------------
+
+.. function:: int _gr_poly_mulmod(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, gr_srcptr f, slong lenf, gr_ctx_t ctx)
+
+    Sets ``res`` to the remainder of the product of ``poly1``
+    and ``poly2`` upon polynomial division by ``f``.
+
+    It is required that ``len1 + len2 - lenf > 0``, which is
+    equivalent to requiring that the result will actually be
+    reduced. Otherwise, simply use ``_fq_poly_mul`` instead.
+
+    Aliasing of ``f`` and ``res`` is not permitted.
+
+.. function:: int gr_poly_mulmod(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t f, gr_ctx_t ctx)
+
+    Sets ``res`` to the remainder of the product of ``poly1``
+    and ``poly2`` upon polynomial division by ``f``.
+
+.. function:: int _gr_poly_mulmod_preinv(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, gr_srcptr f, slong lenf, gr_srcptr finv, slong lenfinv, gr_ctx_t ctx)
+
+    Sets ``res`` to the remainder of the product of ``poly1``
+    and ``poly2`` upon polynomial division by ``f``.
+
+    It is required that ``finv`` is the inverse of the reverse of
+    ``f`` mod ``x^lenf``.
+
+    Aliasing of ``res`` with any of the inputs is not permitted.
+
+.. function:: int gr_poly_mulmod_preinv(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t f, const gr_poly_t finv, gr_ctx_t ctx)
+
+    Sets ``res`` to the remainder of the product of ``poly1``
+    and ``poly2`` upon polynomial division by ``f``. ``finv``
+    is the inverse of the reverse of ``f``.
+
+.. function:: int _gr_poly_powmod_fmpz_binexp(gr_ptr res, gr_srcptr poly, const fmpz_t e, gr_srcptr f, slong lenf, gr_ctx_t ctx)
+              int gr_poly_powmod_fmpz_binexp(gr_poly_t res, const gr_poly_t poly, const fmpz_t e, const gr_poly_t f, gr_ctx_t ctx)
+              int _gr_poly_powmod_fmpz_binexp_preinv(gr_ptr res, gr_srcptr poly, const fmpz_t e, gr_srcptr f, slong lenf, gr_srcptr finv, slong lenfinv, gr_ctx_t ctx)
+              int gr_poly_powmod_fmpz_binexp_preinv(gr_poly_t res, const gr_poly_t poly, const fmpz_t e, const gr_poly_t f, const gr_poly_t finv, gr_ctx_t ctx)
+              int _gr_poly_powmod_x_fmpz_preinv(gr_ptr res, const fmpz_t e, gr_srcptr f, slong lenf, gr_srcptr finv, slong lenfinv, gr_ctx_t ctx)
+              int gr_poly_powmod_x_fmpz_preinv(gr_poly_t res, const fmpz_t e, const gr_poly_t f, const gr_poly_t finv, gr_ctx_t ctx)
+              int _gr_poly_powmod_ui_binexp(gr_ptr res, gr_srcptr poly, ulong e, gr_srcptr f, slong lenf, gr_ctx_t ctx)
+              int gr_poly_powmod_ui_binexp(gr_poly_t res, const gr_poly_t poly, ulong e, const gr_poly_t f, gr_ctx_t ctx)
+              int _gr_poly_powmod_ui_binexp_preinv(gr_ptr res, gr_srcptr poly, ulong e, gr_srcptr f, slong lenf, gr_srcptr finv, slong lenfinv, gr_ctx_t ctx)
+              int gr_poly_powmod_ui_binexp_preinv(gr_poly_t res, const gr_poly_t poly, ulong e, const gr_poly_t f, const gr_poly_t finv, gr_ctx_t ctx)
+              int _gr_poly_powmod_fmpz_sliding_preinv(gr_ptr res, gr_srcptr poly, const fmpz_t e, ulong k, gr_srcptr f, slong lenf, gr_srcptr finv, slong lenfinv, gr_ctx_t ctx)
+              int gr_poly_powmod_fmpz_sliding_preinv(gr_poly_t res, const gr_poly_t poly, const fmpz_t e, ulong k, const gr_poly_t f, const gr_poly_t finv, gr_ctx_t ctx)
+
+    Sets ``res`` to ``poly`` raised to the power ``e``
+    modulo ``f``.
+
+.. function:: int _gr_poly_compose_mod_horner(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_ctx_t ctx)
+              int gr_poly_compose_mod_horner(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, gr_ctx_t ctx)
+              int _gr_poly_compose_mod_brent_kung(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_ctx_t ctx)
+              int gr_poly_compose_mod_brent_kung(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, gr_ctx_t ctx)
+              int _gr_poly_compose_mod(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_ctx_t ctx)
+              int gr_poly_compose_mod(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, gr_ctx_t ctx)
+
+    Sets ``res`` to the composition `f(g)` modulo `h` where *f*, *g*
+    and *h* are given by *poly1*, *poly2* and *poly3*.
+
+    The underscore methods require that the lengths are nonzero
+    and that the length of `g` is one less than the length of `h` (possibly
+    with zero padding). We also require that the length of `f` is less than
+    the length of `h`. The underscore methods do not support aliasing.
+
+.. function:: int _gr_poly_compose_mod_horner_preinv(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_srcptr poly3inv, slong inv3len, gr_ctx_t ctx)
+              int gr_poly_compose_mod_horner_preinv(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, const gr_poly_t poly3inv, gr_ctx_t ctx)
+              int _gr_poly_compose_mod_brent_kung_preinv(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_srcptr poly3inv, slong inv3len, gr_ctx_t ctx)
+              int gr_poly_compose_mod_brent_kung_preinv(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, const gr_poly_t poly3inv, gr_ctx_t ctx)
+              int _gr_poly_compose_mod_preinv(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, gr_srcptr poly3, slong len3, gr_srcptr poly3inv, slong inv3len, gr_ctx_t ctx)
+              int gr_poly_compose_mod_preinv(gr_poly_t res, const gr_poly_t poly1, const gr_poly_t poly2, const gr_poly_t poly3, const gr_poly_t poly3inv, gr_ctx_t ctx)
+
+    Versions accepting an additional precomputed argument ``poly3inv``
+    representing the inverse of the reverse of ``poly3``.
+
+.. function:: int _gr_poly_reduce_matrix_mod_poly(gr_mat_t A, const gr_mat_t B, const gr_poly_t f, gr_ctx_t ctx)
+
+    Sets the ith row of ``A`` to the reduction of the ith row of `B` modulo
+    `f` for `i=1,\ldots,\sqrt{\deg(f)}`. We require `B` to be at least
+    a `\sqrt{\deg(f)}\times \deg(f)` matrix and `f` to be nonzero.
+
+.. function:: int _gr_poly_precompute_matrix(gr_mat_t A, gr_srcptr f, gr_srcptr g, slong leng, gr_srcptr ginv, slong lenginv, gr_ctx_t ctx)
+
+    Sets the ith row of ``A`` to `f^i` modulo `g` for
+    `i=1,\ldots,\sqrt{\deg(g)}`. We require `A` to be a
+    `\sqrt{\deg(g)}\times \deg(g)` matrix. We require ``ginv`` to
+    be the inverse of the reverse of ``g`` and `g` to be nonzero.
+
+.. function:: int gr_poly_precompute_matrix(gr_mat_t A, const gr_poly_t f, const gr_poly_t g, const gr_poly_t ginv, gr_ctx_t ctx)
+
+    Sets the ith row of ``A`` to `f^i` modulo `g` for
+    `i=1,\ldots,\sqrt{\deg(g)}`. We require `A` to be a
+    `\sqrt{\deg(g)}\times \deg(g)` matrix. We require ``ginv`` to
+    be the inverse of the reverse of ``g``.
+
+.. function:: int _gr_poly_compose_mod_brent_kung_precomp_preinv(gr_ptr res, gr_srcptr f, slong lenf, const gr_mat_t A, gr_srcptr h, slong lenh, gr_srcptr hinv, slong lenhinv, gr_ctx_t ctx)
+
+    Sets ``res`` to the composition `f(g)` modulo `h`. We require
+    that `h` is nonzero. We require that the ith row of `A` contains
+    `g^i` for `i=1,\ldots,\sqrt{\deg(h)}`, i.e. `A` is a
+    `\sqrt{\deg(h)}\times \deg(h)` matrix. We also require that the
+    length of `f` is less than the length of `h`. Furthermore, we
+    require ``hinv`` to be the inverse of the reverse of ``h``.
+    The output is not allowed to be aliased with any of the inputs.
+
+    The algorithm used is the Brent-Kung matrix algorithm.
+
+.. function:: int gr_poly_compose_mod_brent_kung_precomp_preinv(gr_poly_t res, const gr_poly_t f, const gr_mat_t A, const gr_poly_t h, const gr_poly_t hinv, gr_ctx_t ctx)
+
+    Sets ``res`` to the composition `f(g)` modulo `h`. We require
+    that the ith row of `A` contains `g^i` for
+    `i=1,\ldots,\sqrt{\deg(h)}`, i.e. `A` is a `\sqrt{\deg(h)}\times
+    \deg(h)` matrix. We require that `h` is nonzero and that `f` has
+    smaller degree than `h`. Furthermore, we require ``hinv`` to be
+    the inverse of the reverse of ``h``. This version of Brent-Kung
+    modular composition is particularly useful if one has to perform
+    several modular composition of the form `f(g)` modulo `h` for
+    fixed `g` and `h`.
+
 
 Test functions
 -------------------------------------------------------------------------------

@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz_poly.h"
 #include "fmpz_poly_mat.h"
 
@@ -20,8 +19,7 @@ fmpz_poly_mat_swap_rows(fmpz_poly_mat_t mat, slong * perm, slong r, slong s)
 {
     if (r != s)
     {
-        fmpz_poly_struct * u;
-        slong t;
+        slong i, t;
 
         if (perm)
         {
@@ -30,9 +28,8 @@ fmpz_poly_mat_swap_rows(fmpz_poly_mat_t mat, slong * perm, slong r, slong s)
             perm[r] = t;
         }
 
-        u = mat->rows[s];
-        mat->rows[s] = mat->rows[r];
-        mat->rows[r] = u;
+        for (i = 0; i < mat->c; i++)
+            FLINT_SWAP(fmpz_poly_struct, *fmpz_poly_mat_entry(mat, r, i), *fmpz_poly_mat_entry(mat, s, i));
     }
 }
 

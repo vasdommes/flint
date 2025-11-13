@@ -26,14 +26,18 @@
  extern "C" {
 #endif
 
-#define FMPZ_MOD_MAT_MUL_TRANSPOSE_CUTOFF 10
-
 /* Element access  ********************************************************/
 
 FMPZ_MOD_MAT_INLINE
 fmpz * fmpz_mod_mat_entry(const fmpz_mod_mat_t mat, slong i, slong j)
 {
     return fmpz_mat_entry(mat, i, j);
+}
+
+FMPZ_MOD_MAT_INLINE
+fmpz * fmpz_mod_mat_row(const fmpz_mod_mat_t mat, slong i)
+{
+    return fmpz_mod_mat_entry(mat, i, 0);
 }
 
 void fmpz_mod_mat_set_entry(fmpz_mod_mat_t mat, slong i, slong j, const fmpz_t val, const fmpz_mod_ctx_t FLINT_UNUSED(ctx));
@@ -113,6 +117,10 @@ FMPZ_MOD_MAT_INLINE void _fmpz_mod_mat_reduce(fmpz_mod_mat_t mat, const fmpz_mod
 /* Random matrix generation */
 
 void fmpz_mod_mat_randtest(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx);
+
+void fmpz_mod_mat_randfull(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx);
+
+void fmpz_mod_mat_rand(fmpz_mod_mat_t mat, flint_rand_t state, const fmpz_mod_ctx_t ctx);
 
 void fmpz_mod_mat_randrank(fmpz_mod_mat_t mat, flint_rand_t state, slong rank, const fmpz_mod_ctx_t ctx);
 
@@ -202,6 +210,8 @@ void fmpz_mod_mat_mul_classical_threaded(fmpz_mod_mat_t C,
 
 void fmpz_mod_mat_sqr(fmpz_mod_mat_t B, const fmpz_mod_mat_t A, const fmpz_mod_ctx_t ctx);
 
+void fmpz_mod_mat_pow_ui(fmpz_mod_mat_t B, const fmpz_mod_mat_t A, ulong exp, const fmpz_mod_ctx_t ctx);
+
 void fmpz_mod_mat_submul(fmpz_mod_mat_t D, const fmpz_mod_mat_t C,
                                const fmpz_mod_mat_t A, const fmpz_mod_mat_t B, const fmpz_mod_ctx_t ctx);
 
@@ -227,7 +237,7 @@ void fmpz_mod_mat_det(fmpz_t res, const fmpz_mod_mat_t mat, const fmpz_mod_ctx_t
 
 slong fmpz_mod_mat_rref(fmpz_mod_mat_t res, const fmpz_mod_mat_t mat, const fmpz_mod_ctx_t ctx);
 
-slong fmpz_mod_mat_reduce_row(fmpz_mod_mat_t A, slong * P, slong * L, slong m, const fmpz_mod_ctx_t ctx);
+int fmpz_mod_mat_reduce_row(slong * column, fmpz_mod_mat_t A, slong * P, slong * L, slong m, const fmpz_mod_ctx_t ctx);
 
 slong fmpz_mod_mat_lu(slong * P, fmpz_mod_mat_t A, int rank_check, const fmpz_mod_ctx_t ctx);
 

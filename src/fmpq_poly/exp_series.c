@@ -10,6 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
 #include "ulong_extras.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
@@ -18,7 +19,7 @@
 
 static ulong _fmpz_gcd_big_small(const fmpz_t g, ulong h)
 {
-    __mpz_struct * z = COEFF_TO_PTR(*g);
+    mpz_ptr z = COEFF_TO_PTR(*g);
 
     return n_gcd(mpn_mod_1(z->_mp_d, FLINT_ABS(z->_mp_size), h), h);
 }
@@ -35,7 +36,7 @@ static ulong _fmpz_gcd_small(const fmpz_t g, ulong h)
 /* Basecase algorithm, given a precomputed derivative of
    of the input series (Alen still refers to the length
    of the original series). */
-void
+static void
 _fmpq_poly_exp_series_basecase_deriv(fmpz * B, fmpz_t Bden,
     const fmpz * Aprime, const fmpz_t Aden, slong Alen, slong n)
 {
@@ -68,7 +69,7 @@ _fmpq_poly_exp_series_basecase_deriv(fmpz * B, fmpz_t Bden,
 }
 
 /* Basecase algorithm; supports aliasing and guarantees canonical output. */
-void
+static void
 _fmpq_poly_exp_series_basecase(fmpz * B, fmpz_t Bden,
     const fmpz * A, const fmpz_t Aden, slong Alen, slong n)
 {
@@ -98,12 +99,12 @@ _fmpq_poly_exp_series_basecase(fmpz * B, fmpz_t Bden,
 }
 
 /* c_k x^k -> c_k x^k / (m+k) */
-void _fmpq_poly_integral_offset(fmpz * rpoly, fmpz_t rden,
+static void _fmpq_poly_integral_offset(fmpz * rpoly, fmpz_t rden,
                            const fmpz * poly, const fmpz_t den, slong len, slong m)
 {
     slong k;
     ulong v, c, d;
-    mp_ptr divisors;
+    nn_ptr divisors;
     fmpz_t t, u;
     TMP_INIT;
 
@@ -234,7 +235,7 @@ CONCATENATE(fmpz * poly, fmpz_t den, const fmpz_t high_den, slong m, slong n)
 /* Newton iteration. If g == NULL, computes {f, fden, n} = exp({h, hden, hlen}).
    If g != NULL, simultaneously computes {g, gden, n} = exp(-{h, hden, hlen}).
    Allows aliasing between (f, fden) and (h, hden) but not with (g, gden). */
-void
+static void
 _fmpq_poly_exp_series_newton(fmpz * f, fmpz_t fden,
     fmpz * g, fmpz * gden,
     const fmpz * h, const fmpz_t hden,

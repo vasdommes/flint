@@ -10,7 +10,6 @@
 */
 
 #include <time.h>
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fft.h"
 #include "mpn_extras.h"
@@ -170,8 +169,9 @@ main(void)
 
     flint_printf("#define FFT_MULMOD_2EXPP1_CUTOFF %wd\n\n", ((mp_limb_t) 1 << best_d)*best_w/(2*FLINT_BITS));
 
-    flint_randclear(state);
-
     flint_printf("#endif\n");
+
+    FLINT_TEST_CLEAR(state);
+
     return 0;
 }

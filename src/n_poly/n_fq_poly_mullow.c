@@ -9,17 +9,19 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "mpn_extras.h"
 #include "fq_nmod.h"
 #include "n_poly.h"
+#include "n_poly/impl.h"
 
 #if FLINT_WANT_ASSERT
 # include "fq_nmod_poly.h"
 #endif
 
-void _n_fq_poly_mullow_(
-    mp_limb_t * rop,
-    const mp_limb_t * op1, slong len1,
-    const mp_limb_t * op2, slong len2,
+static void _n_fq_poly_mullow_(
+    ulong * rop,
+    const ulong * op1, slong len1,
+    const ulong * op2, slong len2,
     slong n,
     const fq_nmod_ctx_t ctx,
     n_poly_stack_t St)
@@ -34,8 +36,8 @@ void _n_fq_poly_mullow_(
     const slong clen1 = pfqlen*len1;
     const slong clen2 = pfqlen*len2;
     slong i;
-    mp_limb_t * tmp;
-    mp_ptr cop1, cop2, crop;
+    ulong * tmp;
+    nn_ptr cop1, cop2, crop;
 
     if (len1 < 1 || len2 < 1)
     {

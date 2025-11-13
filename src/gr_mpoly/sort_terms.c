@@ -9,6 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
+#include "mpoly.h"
 #include "gr_mpoly.h"
 
 /*
@@ -17,7 +19,7 @@
     and assuming exponent vectors fit into one word
     and assuming that all bit positions that need to be sorted are in totalmask
 */
-void _gr_mpoly_radix_sort1(
+static void _gr_mpoly_radix_sort1(
     gr_ptr Acoeffs,
     ulong * Aexps,
     slong left, slong right,
@@ -101,7 +103,7 @@ void _gr_mpoly_radix_sort1(
     sort terms in [left, right) by exponent
     assuming that bits in position >= pos are already sorted
 */
-void _gr_mpoly_radix_sort(
+static void _gr_mpoly_radix_sort(
     gr_ptr Acoeffs,
     ulong * Aexps,
     slong left, slong right,
@@ -185,8 +187,10 @@ void _gr_mpoly_radix_sort(
     sort the terms in A by exponent
     assuming that the exponents are valid (other than being in order)
 */
-void gr_mpoly_sort_terms(gr_mpoly_t A, const mpoly_ctx_t mctx, gr_ctx_t cctx)
+void gr_mpoly_sort_terms(gr_mpoly_t A, gr_mpoly_ctx_t ctx)
 {
+    mpoly_ctx_struct * mctx = GR_MPOLY_MCTX(ctx);
+    gr_ctx_struct * cctx = GR_MPOLY_CCTX(ctx);
     slong i, N;
     flint_bitcnt_t pos;
     gr_ptr Acoeffs = A->coeffs;

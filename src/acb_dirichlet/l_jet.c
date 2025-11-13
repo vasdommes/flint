@@ -13,10 +13,6 @@
 #include "acb_dirichlet.h"
 #include "acb_poly.h"
 
-/* todo: move implemetation to the acb_dirichlet module */
-void _acb_poly_zeta_cpx_reflect(acb_ptr t, const acb_t h,
-    const acb_t a, int deflate, slong len, slong prec);
-
 void
 acb_dirichlet_l_jet(acb_ptr res, const acb_t s,
     const dirichlet_group_t G, const dirichlet_char_t chi,
@@ -61,7 +57,7 @@ acb_dirichlet_l_jet(acb_ptr res, const acb_t s,
 
     dirichlet_char_one(cn, G);
 
-    prec += n_clog(G->phi_q, 2);
+    prec += FLINT_CLOG2(G->phi_q);
 
     order = dirichlet_order_char(G, chi);
     mult = G->expo / order;

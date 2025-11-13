@@ -35,6 +35,10 @@
 #include "fmpq_poly.h"
 #include "arb_poly.h"
 #include "acb_poly.h"
+#include "gr.h"
+#include "gr_vec.h"
+#include "gr_poly.h"
+#include "gr_mat.h"
 
 #define STR(x) TEMPLATE_STR(x)
 
@@ -425,6 +429,39 @@ do                      \
 } while (0)
 #define ACB_POLY_STRING "([-1e+1 +/- 3.11] - i) * x^3 + x^2 - x"
 
+/* Generics */
+
+#define MY_GR_CTX_INIT(xgr_ctx) gr_ctx_init_fmpzi(xgr_ctx)
+#define MY_GR_INIT(xgr, xgr_ctx) xgr = gr_heap_init(xgr_ctx)
+#define MY_GR_VEC_INIT(xgr_vec, xgr_ctx) xgr_vec = gr_heap_init_vec(GR_VEC_LEN, xgr_ctx)
+#define MY_GR_POLY_INIT(xgr_poly, xgr_ctx) gr_poly_init(xgr_poly, xgr_ctx)
+#define MY_GR_MAT_INIT(xgr_mat, xgr_ctx) gr_mat_init(xgr_mat, 1, 2, xgr_ctx)
+
+#define MY_GR_SET(xgr, xgr_ctx) GR_IGNORE(gr_set_ui(xgr, 5, xgr_ctx))
+#define MY_GR_VEC_SET(xgr_vec, xgr_ctx) \
+        GR_IGNORE(gr_set_ui(GR_ENTRY(xgr_vec, 0, xgr_ctx->sizeof_elem), 1, xgr_ctx)); \
+        GR_IGNORE(gr_set_ui(GR_ENTRY(xgr_vec, 1, xgr_ctx->sizeof_elem), 2, xgr_ctx)); \
+        GR_IGNORE(gr_set_str(GR_ENTRY(xgr_vec, 2, xgr_ctx->sizeof_elem), "I", xgr_ctx));
+#define MY_GR_POLY_SET(xgr_poly, xgr_ctx) GR_IGNORE(gr_poly_set_coeff_si(xgr_poly, 1, -1, xgr_ctx))
+#define MY_GR_MAT_SET(xgr_mat, xgr_ctx) \
+        GR_IGNORE(gr_set_ui(gr_mat_entry_ptr(xgr_mat, 0, 0, xgr_ctx), 4, xgr_ctx)); \
+        GR_IGNORE(gr_set_ui(gr_mat_entry_ptr(xgr_mat, 0, 1, xgr_ctx), 3, xgr_ctx))
+
+#define MY_GR_CLEAR(xgr, xgr_ctx) gr_heap_clear(xgr, xgr_ctx)
+#define MY_GR_VEC_CLEAR(xgr_vec, GR_VEC_LEN, xgr_ctx) gr_heap_clear_vec(xgr_vec, GR_VEC_LEN, xgr_ctx)
+#define MY_GR_POLY_CLEAR(xgr_poly, xgr_ctx) gr_poly_clear(xgr_poly, xgr_ctx)
+#define MY_GR_MAT_CLEAR(xgr_mat, xgr_ctx) gr_mat_clear(xgr_mat, xgr_ctx)
+#define MY_GR_CTX_CLEAR(xgr_ctx) gr_ctx_clear(xgr_ctx)
+
+#define TRUTH_STRING "T_TRUE T_FALSE T_UNKNOWN"
+
+#define GR_VEC_LEN WORD(3)
+#define GR_STRING "5"
+#define GR_VEC_STRING "[1, 2, I]"
+#define GR_POLY_STRING "-x"
+#define GR_MAT_STRING "[[4, 3]]"
+#define GR_CTX_STRING "Gaussian integer ring (fmpzi)"
+
 #define TMP_FILENAME "tmp"
 
 TEST_FUNCTION_START(flint_fprintf, state)
@@ -468,11 +505,17 @@ TEST_FUNCTION_START(flint_fprintf, state)
         mpq_t xmpq1, xmpq2;
 
         slong xslong_vec[SLONG_VEC_LEN];
-        mp_ptr xnmod_vec;
+        nn_ptr xnmod_vec;
         fmpz * xfmpz_vec;
         fmpq * xfmpq_vec;
         arb_ptr xarb_vec;
         acb_ptr xacb_vec;
+
+        gr_ctx_t xgr_ctx;
+        gr_ptr xgr;
+        gr_ptr xgr_vec;
+        gr_poly_t xgr_poly;
+        gr_mat_t xgr_mat;
 
         /* Matrix printing relies on vector printing, so no need to check other
          * types */
@@ -480,7 +523,7 @@ TEST_FUNCTION_START(flint_fprintf, state)
         nmod_mat_t xnmod_mat; nmod_mat_t xnmod_mat_window;
         fmpz_mat_t xfmpz_mat;
 
-        /* NOTE: We need extra checks with fmpq_poly as it is treated differntly in
+        /* NOTE: We need extra checks with fmpq_poly as it is treated differently in
          * __flint_poly_fprint. */
         nmod_poly_t xnmod_poly_zero, xnmod_poly_constant, xnmod_poly;
         fmpz_poly_t xfmpz_poly;
@@ -539,6 +582,12 @@ TEST_FUNCTION_START(flint_fprintf, state)
         ARB_POLY_INIT(xarb_poly);
         ACB_POLY_INIT(xacb_poly);
 
+        MY_GR_CTX_INIT(xgr_ctx);
+        MY_GR_INIT(xgr, xgr_ctx);
+        MY_GR_VEC_INIT(xgr_vec, xgr_ctx);
+        MY_GR_POLY_INIT(xgr_poly, xgr_ctx);
+        MY_GR_MAT_INIT(xgr_mat, xgr_ctx);
+
         /* Set *******************************************************************/
         NMOD_SET(xnmod);
         FMPZ1_SET(xfmpz1);
@@ -589,13 +638,18 @@ TEST_FUNCTION_START(flint_fprintf, state)
         FMPQ_POLY2_SET(xfmpq_poly2);
         ARB_POLY_SET(xarb_poly);
         ACB_POLY_SET(xacb_poly);
+ 
+        MY_GR_SET(xgr, xgr_ctx);
+        MY_GR_VEC_SET(xgr_vec, xgr_ctx);
+        MY_GR_POLY_SET(xgr_poly, xgr_ctx);
+        MY_GR_MAT_SET(xgr_mat, xgr_ctx);
 
         /* Print *****************************************************************/
 #define STR_SIZE 10000 /* 10 kB should suffice. */
         str1 = flint_calloc(STR_SIZE, sizeof(char));
         str2 = flint_calloc(STR_SIZE, sizeof(char));
 
-#if defined(_LONG_LONG_LIMB)
+#if FLINT_LONG_LONG
 # define ULONG_SLONG_STR \
                 "Here we print a ulong: %020llu\n" \
                 "Here we print a slong: %20lld\n"
@@ -693,7 +747,13 @@ TEST_FUNCTION_START(flint_fprintf, state)
                 "fmpq_poly (1): " FMPQ_POLY1_STRING "\n"
                 "fmpq_poly (2): " FMPQ_POLY2_STRING "\n"
                 "arb_poly: " ARB_POLY_STRING "\n"
-                "acb_poly: " ACB_POLY_STRING "\n",
+                "acb_poly: " ACB_POLY_STRING "\n"
+                "truth: " TRUTH_STRING "\n"
+                "gr: " GR_STRING "\n"
+                "gr_vec: " GR_VEC_STRING "\n"
+                "gr_poly: " GR_POLY_STRING "\n"
+                "gr_mat: " GR_MAT_STRING "\n"
+                "gr_ctx: " GR_CTX_STRING "\n",
                 xulong1,
                 xslong,
                 xulong2,
@@ -814,7 +874,13 @@ TEST_FUNCTION_START(flint_fprintf, state)
                 "fmpq_poly (1): %{fmpq_poly}\n"
                 "fmpq_poly (2): %{fmpq_poly}\n"
                 "arb_poly: %{arb_poly}\n"
-                "acb_poly: %{acb_poly}\n",
+                "acb_poly: %{acb_poly}\n"
+                "truth: %{truth} %{truth} %{truth}\n"
+                "gr: %{gr}\n"
+                "gr_vec: %{gr*}\n"
+                "gr_poly: %{gr_poly}\n"
+                "gr_mat: %{gr_mat}\n"
+                "gr_ctx: %{gr_ctx}\n",
                 xulong1,
                 xslong,
                 xulong2,
@@ -880,7 +946,13 @@ TEST_FUNCTION_START(flint_fprintf, state)
                 xfmpq_poly1,
                 xfmpq_poly2,
                 xarb_poly,
-                xacb_poly);
+                xacb_poly,
+                T_TRUE, T_FALSE, T_UNKNOWN,
+                xgr, xgr_ctx,
+                xgr_vec, GR_VEC_LEN, xgr_ctx,
+                xgr_poly, xgr_ctx,
+                xgr_mat, xgr_ctx,
+                xgr_ctx);
 
         if (res2 > STR_SIZE - 1)
             TEST_FUNCTION_FAIL(
@@ -1013,6 +1085,8 @@ TEST_FUNCTION_START(flint_fprintf, state)
         ACB8_CLEAR(xacb8);
         MPZ1_CLEAR(xmpz1);
         MPZ2_CLEAR(xmpz2);
+        MPQ1_CLEAR(xmpq1);
+        MPQ2_CLEAR(xmpq2);
 
         SLONG_VEC_CLEAR(xslong_vec);
         NMOD_VEC_CLEAR(xnmod_vec);
@@ -1035,6 +1109,12 @@ TEST_FUNCTION_START(flint_fprintf, state)
         FMPQ_POLY2_CLEAR(xfmpq_poly2);
         ARB_POLY_CLEAR(xarb_poly);
         ACB_POLY_CLEAR(xacb_poly);
+
+        MY_GR_CLEAR(xgr, xgr_ctx);
+        MY_GR_VEC_CLEAR(xgr_vec, GR_VEC_LEN, xgr_ctx);
+        MY_GR_POLY_CLEAR(xgr_poly, xgr_ctx);
+        MY_GR_MAT_CLEAR(xgr_mat, xgr_ctx);
+        MY_GR_CTX_CLEAR(xgr_ctx);
     }
 
     fs = freopen(TMP_FILENAME, "w+", fs);

@@ -9,9 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
+#include "gr_generic.h"
 #include "gr_mat.h"
-
-int gr_generic_addmul(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx);
 
 /* swap (a, b) and (c, d) using (t, u) as tmp space */
 static void

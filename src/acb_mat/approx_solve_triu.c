@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
 static void
@@ -34,7 +35,7 @@ acb_approx_div(acb_t z, const acb_t x, const acb_t y, acb_t t, slong prec)
     acb_approx_mul(z, x, t, prec);
 }
 
-void
+static void
 acb_mat_approx_solve_triu_classical(acb_mat_t X, const acb_mat_t U,
     const acb_mat_t B, int unit, slong prec)
 {
@@ -56,10 +57,10 @@ acb_mat_approx_solve_triu_classical(acb_mat_t X, const acb_mat_t U,
 
         for (j = n - 1; j >= 0; j--)
         {
-            acb_approx_dot(s, acb_mat_entry(B, j, i), 1, U->rows[j] + j + 1, 1, tmp + j + 1, 1, n - j - 1, prec);
+            acb_approx_dot(s, acb_mat_entry(B, j, i), 1, acb_mat_entry(U, j, j + 1), 1, tmp + j + 1, 1, n - j - 1, prec);
 
             if (!unit)
-                acb_approx_div(tmp + j, s, arb_mat_entry(U, j, j), t, prec);
+                acb_approx_div(tmp + j, s, acb_mat_entry(U, j, j), t, prec);
             else
                 acb_swap(tmp + j, s);
         }
@@ -73,7 +74,7 @@ acb_mat_approx_solve_triu_classical(acb_mat_t X, const acb_mat_t U,
     acb_clear(t);
 }
 
-void
+static void
 acb_mat_approx_solve_triu_recursive(acb_mat_t X,
         const acb_mat_t U, const acb_mat_t B, int unit, slong prec)
 {

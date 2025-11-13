@@ -9,16 +9,17 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_hypgeom.h"
+#include "arb_hypgeom/impl.h"
 
-int
-_arf_increment_fast(arf_t x, slong prec)
+int _arf_increment_fast(arf_t x, slong prec)
 {
     if (arf_sgn(x) > 0)
     {
-        mp_limb_t hi, v, cy;
-        mp_ptr xptr;
-        mp_size_t xn;
+        ulong hi, v, cy;
+        nn_ptr xptr;
+        slong xn;
         slong xexp;
 
         xexp = ARF_EXP(x);
@@ -42,8 +43,7 @@ _arf_increment_fast(arf_t x, slong prec)
     return arf_add_ui(x, x, 1, prec, ARF_RND_DOWN);
 }
 
-void
-_arb_increment_fast(arb_t x, slong prec)
+void _arb_increment_fast(arb_t x, slong prec)
 {
     if (_arf_increment_fast(arb_midref(x), prec))
         arf_mag_add_ulp(arb_radref(x), arb_radref(x), arb_midref(x), prec);

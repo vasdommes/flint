@@ -9,6 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
+#include "longlong.h"
 #include "fmpzi.h"
 
 slong fmpzi_bits(const fmpzi_t x)
@@ -39,7 +41,7 @@ slong fmpzi_bits(const fmpzi_t x)
         }
         else
         {
-            __mpz_struct *z1, *z2;
+            mpz_ptr z1, z2;
             slong s1, s2;
 
             z1 = COEFF_TO_PTR(a);

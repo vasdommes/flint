@@ -25,13 +25,16 @@
 
 int main(void)
 {
-    mp_ptr x, y, r, s;
+    nn_ptr x, y, r, s;
     slong n;
+    flint_rand_t state;
 
-    x = flint_malloc(sizeof(mp_limb_t) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
-    y = flint_malloc(sizeof(mp_limb_t) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
-    r = flint_malloc(2 * sizeof(mp_limb_t) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
-    s = flint_malloc(2 * sizeof(mp_limb_t) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
+    flint_rand_init(state);
+
+    x = flint_malloc(sizeof(ulong) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
+    y = flint_malloc(sizeof(ulong) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
+    r = flint_malloc(2 * sizeof(ulong) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
+    s = flint_malloc(2 * sizeof(ulong) * FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
 
     flint_mpn_rrandom(x, state, FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
     flint_mpn_rrandom(y, state, FLINT_MAX(N_MAX_MUL, N_MAX_SQR));
@@ -44,13 +47,13 @@ int main(void)
 
         flint_printf("n = %4wd: ", n);
 
-        TIMEIT_START
+        TIMEIT_START;
         mpn_mul_n(r, x, y, n);
-        TIMEIT_STOP_VALUES(__, t1)
+        TIMEIT_STOP_VALUES(__, t1);
 
-        TIMEIT_START
+        TIMEIT_START;
         mpn_mul_default_mpn_ctx(s, x, n, y, n);
-        TIMEIT_STOP_VALUES(__, t2)
+        TIMEIT_STOP_VALUES(__, t2);
 
         flint_printf("%.2f\n", t1 / t2);
     }
@@ -63,13 +66,13 @@ int main(void)
 
         flint_printf("n = %4wd: ", n);
 
-        TIMEIT_START
+        TIMEIT_START;
         mpn_sqr(r, x, n);
-        TIMEIT_STOP_VALUES(__, t1)
+        TIMEIT_STOP_VALUES(__, t1);
 
-        TIMEIT_START
+        TIMEIT_START;
         mpn_mul_default_mpn_ctx(s, x, n, x, n);
-        TIMEIT_STOP_VALUES(__, t2)
+        TIMEIT_STOP_VALUES(__, t2);
 
         flint_printf("%.2f\n", t1 / t2);
     }
@@ -78,6 +81,8 @@ int main(void)
     flint_free(y);
     flint_free(r);
     flint_free(s);
+
+    flint_rand_clear(state);
 
     flint_cleanup_master();
 

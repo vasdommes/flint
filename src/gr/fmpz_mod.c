@@ -34,7 +34,7 @@ _gr_fmpz_mod_ctx_struct;
 #define FMPZ_MOD_IS_PRIME(ring_ctx) (((_gr_fmpz_mod_ctx_struct *)(ring_ctx))->is_prime)
 #define FMPZ_MOD_CTX_A(ring_ctx) (&((((_gr_fmpz_mod_ctx_struct *)(ring_ctx))->a)))
 
-int
+static int
 _gr_fmpz_mod_ctx_write(gr_stream_t out, gr_ctx_t ctx)
 {
     gr_stream_write(out, "Integers mod ");
@@ -43,7 +43,7 @@ _gr_fmpz_mod_ctx_write(gr_stream_t out, gr_ctx_t ctx)
     return GR_SUCCESS;
 }
 
-void
+static void
 _gr_fmpz_mod_ctx_clear(gr_ctx_t ctx)
 {
     fmpz_mod_ctx_clear(FMPZ_MOD_CTX(ctx));
@@ -51,14 +51,14 @@ _gr_fmpz_mod_ctx_clear(gr_ctx_t ctx)
     fmpz_clear(FMPZ_MOD_CTX_A(ctx));
 }
 
-int
+static int
 _gr_fmpz_mod_ctx_set_is_field(gr_ctx_t ctx, truth_t is_field)
 {
     FMPZ_MOD_IS_PRIME(ctx) = is_field;
     return GR_SUCCESS;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_ctx_is_field(gr_ctx_t ctx)
 {
 /*
@@ -69,19 +69,19 @@ _gr_fmpz_mod_ctx_is_field(gr_ctx_t ctx)
     return FMPZ_MOD_IS_PRIME(ctx);
 }
 
-void
+static void
 _gr_fmpz_mod_init(fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_init(x);
 }
 
-void
+static void
 _gr_fmpz_mod_clear(fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_clear(x);
 }
 
-void
+static void
 _gr_fmpz_mod_swap(fmpz_t x, fmpz_t y, const gr_ctx_t ctx)
 {
     fmpz_t t;
@@ -90,34 +90,34 @@ _gr_fmpz_mod_swap(fmpz_t x, fmpz_t y, const gr_ctx_t ctx)
     *y = *t;
 }
 
-void
+static void
 _gr_fmpz_mod_set_shallow(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     *res = *x;
 }
 
-int
+static int
 _gr_fmpz_mod_randtest(fmpz_t res, flint_rand_t state, const gr_ctx_t ctx)
 {
     fmpz_mod_rand(res, state, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_write(gr_stream_t out, const fmpz_t x, const gr_ctx_t ctx)
 {
     gr_stream_write_fmpz(out, x);
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_zero(fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_zero(x);
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_one(fmpz_t x, const gr_ctx_t ctx)
 {
     if (fmpz_is_one(FMPZ_MOD_CTX(ctx)->n))
@@ -127,25 +127,33 @@ _gr_fmpz_mod_one(fmpz_t x, const gr_ctx_t ctx)
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_set_si(fmpz_t res, slong v, const gr_ctx_t ctx)
 {
     fmpz_mod_set_si(res, v, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_set_ui(fmpz_t res, ulong v, const gr_ctx_t ctx)
 {
     fmpz_mod_set_ui(res, v, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
+static int
+_gr_fmpz_mod_get_fmpz(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
+{
+    fmpz_set(res, x);
+    return GR_SUCCESS;
+}
+
+
 /* todo: public interface */
 #define NMOD_CTX_REF(ring_ctx) (((nmod_t *)((ring_ctx))))
 #define NMOD_CTX(ring_ctx) (*NMOD_CTX_REF(ring_ctx))
 
-int
+static int
 _gr_fmpz_mod_set_other(fmpz_t res, gr_ptr v, gr_ctx_t v_ctx, const gr_ctx_t ctx)
 {
     if (v_ctx->which_ring == GR_CTX_FMPZ_MOD)
@@ -169,26 +177,26 @@ _gr_fmpz_mod_set_other(fmpz_t res, gr_ptr v, gr_ctx_t v_ctx, const gr_ctx_t ctx)
     return GR_UNABLE;
 }
 
-int
+static int
 _gr_fmpz_mod_set_fmpz(fmpz_t res, const fmpz_t v, const gr_ctx_t ctx)
 {
     fmpz_mod_set_fmpz(res, v, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_is_zero(const fmpz_t x, const gr_ctx_t ctx)
 {
     return fmpz_is_zero(x) ? T_TRUE : T_FALSE;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_is_one(const fmpz_t x, const gr_ctx_t ctx)
 {
     return fmpz_mod_is_one(x, FMPZ_MOD_CTX(ctx)) ? T_TRUE : T_FALSE;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_is_neg_one(const fmpz_t x, const gr_ctx_t ctx)
 {
     truth_t res;
@@ -200,55 +208,69 @@ _gr_fmpz_mod_is_neg_one(const fmpz_t x, const gr_ctx_t ctx)
     return res;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_equal(const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     return fmpz_equal(x, y) ? T_TRUE : T_FALSE;
 }
 
-int
+static int
 _gr_fmpz_mod_set(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_set(res, x);
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_neg(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_mod_neg(res, x, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_add(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     fmpz_mod_add(res, x, y, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_add_si(fmpz_t res, const fmpz_t x, slong y, const gr_ctx_t ctx)
 {
     fmpz_mod_add_si(res, x, y, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_add_ui(fmpz_t res, const fmpz_t x, ulong y, const gr_ctx_t ctx)
 {
     fmpz_mod_add_ui(res, x, y, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_sub(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     fmpz_mod_sub(res, x, y, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
+_gr_fmpz_mod_sub_si(fmpz_t res, const fmpz_t x, slong y, const gr_ctx_t ctx)
+{
+    fmpz_mod_sub_si(res, x, y, FMPZ_MOD_CTX(ctx));
+    return GR_SUCCESS;
+}
+
+static int
+_gr_fmpz_mod_sub_ui(fmpz_t res, const fmpz_t x, ulong y, const gr_ctx_t ctx)
+{
+    fmpz_mod_sub_ui(res, x, y, FMPZ_MOD_CTX(ctx));
+    return GR_SUCCESS;
+}
+
+static int
 _gr_fmpz_mod_mul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
 #if 1
@@ -260,14 +282,21 @@ _gr_fmpz_mod_mul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_mul_si(fmpz_t res, const fmpz_t x, slong y, const gr_ctx_t ctx)
 {
     fmpz_mod_mul_si(res, x, y, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
+_gr_fmpz_mod_mul_ui(fmpz_t res, const fmpz_t x, ulong y, const gr_ctx_t ctx)
+{
+    fmpz_mod_mul_ui(res, x, y, FMPZ_MOD_CTX(ctx));
+    return GR_SUCCESS;
+}
+
+static int
 _gr_fmpz_mod_addmul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     fmpz_t t;
@@ -279,7 +308,7 @@ _gr_fmpz_mod_addmul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t c
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_submul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     fmpz_t t;
@@ -291,21 +320,21 @@ _gr_fmpz_mod_submul(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t c
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_mul_two(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_mod_add(res, x, x, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_sqr(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     fmpz_mod_mul(res, x, x, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_inv(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     /* todo: also check for -1 when fast? */
@@ -337,7 +366,7 @@ _gr_fmpz_mod_inv(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
     }
 }
 
-int
+static int
 _gr_fmpz_mod_div(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     int status;
@@ -354,7 +383,7 @@ _gr_fmpz_mod_div(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
     return status;
 }
 
-int
+static int
 _gr_fmpz_mod_div_nonunique(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     int status;
@@ -382,7 +411,7 @@ _gr_fmpz_mod_div_nonunique(fmpz_t res, const fmpz_t x, const fmpz_t y, const gr_
     return status;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_divides(const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
 {
     truth_t res;
@@ -393,26 +422,26 @@ _gr_fmpz_mod_divides(const fmpz_t x, const fmpz_t y, const gr_ctx_t ctx)
     return res;
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_is_invertible(const fmpz_t x, const gr_ctx_t ctx)
 {
     return fmpz_mod_is_invertible(x, FMPZ_MOD_CTX(ctx)) ? T_TRUE : T_FALSE;
 }
 
-int
+static int
 _gr_fmpz_mod_pow_ui(fmpz_t res, const fmpz_t x, ulong exp, const gr_ctx_t ctx)
 {
     fmpz_mod_pow_ui(res, x, exp, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_pow_fmpz(fmpz_t res, const fmpz_t x, const fmpz_t exp, const gr_ctx_t ctx)
 {
     return fmpz_mod_pow_fmpz(res, x, exp, FMPZ_MOD_CTX(ctx)) ? GR_SUCCESS : GR_DOMAIN;
 }
 
-int
+static int
 _gr_fmpz_mod_sqrt(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
 {
     if (fmpz_is_zero(x) || fmpz_is_one(x))
@@ -431,7 +460,7 @@ _gr_fmpz_mod_sqrt(fmpz_t res, const fmpz_t x, const gr_ctx_t ctx)
     }
 }
 
-truth_t
+static truth_t
 _gr_fmpz_mod_is_square(const fmpz_t x, const gr_ctx_t ctx)
 {
     if (fmpz_is_zero(x) || fmpz_is_one(x))
@@ -455,7 +484,7 @@ _gr_fmpz_mod_is_square(const fmpz_t x, const gr_ctx_t ctx)
 }
 
 /* todo: len 1 */
-int
+static int
 _gr_fmpz_mod_vec_dot(fmpz_t res, const fmpz_t initial, int subtract, const fmpz * vec1, const fmpz * vec2, slong len, gr_ctx_t ctx)
 {
     if (len <= 0)
@@ -473,7 +502,7 @@ _gr_fmpz_mod_vec_dot(fmpz_t res, const fmpz_t initial, int subtract, const fmpz 
 }
 
 /* todo: len 1 */
-int
+static int
 _gr_fmpz_mod_vec_dot_rev(fmpz_t res, const fmpz_t initial, int subtract, const fmpz * vec1, const fmpz * vec2, slong len, gr_ctx_t ctx)
 {
     if (len <= 0)
@@ -490,21 +519,21 @@ _gr_fmpz_mod_vec_dot_rev(fmpz_t res, const fmpz_t initial, int subtract, const f
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_vec_mul_scalar(fmpz * res, const fmpz * vec, slong len, const fmpz_t c, gr_ctx_t ctx)
 {
     _fmpz_mod_vec_scalar_mul_fmpz_mod(res, vec, len, c, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_scalar_mul_vec(fmpz * res, fmpz_t c, const fmpz * vec, slong len, gr_ctx_t ctx)
 {
     _fmpz_mod_vec_scalar_mul_fmpz_mod(res, vec, len, c, FMPZ_MOD_CTX(ctx));
     return GR_SUCCESS;
 }
 
-int
+static int
 _gr_fmpz_mod_vec_addmul_scalar(fmpz * res, const fmpz * vec, slong len, const fmpz_t c, gr_ctx_t ctx)
 {
     _fmpz_mod_vec_scalar_addmul_fmpz_mod(res, vec, len, c, FMPZ_MOD_CTX(ctx));
@@ -512,7 +541,7 @@ _gr_fmpz_mod_vec_addmul_scalar(fmpz * res, const fmpz * vec, slong len, const fm
 }
 
 
-int
+static int
 _gr_fmpz_mod_poly_mullow(fmpz * res,
     const fmpz * poly1, slong len1,
     const fmpz * poly2, slong len2, slong n, gr_ctx_t ctx)
@@ -526,7 +555,7 @@ _gr_fmpz_mod_poly_mullow(fmpz * res,
 }
 
 /* fixme: duplicate _fmpz_mod_poly methods for error handling */
-int
+static int
 _gr_fmpz_mod_poly_divrem(fmpz * Q, fmpz * R, const fmpz * A, slong lenA,
                                   const fmpz * B, slong lenB, gr_ctx_t ctx)
 {
@@ -566,7 +595,7 @@ static const slong find_cutoff(const short * tab, slong b)
     return tab[i];
 }
 
-int
+static int
 _gr_fmpz_mod_poly_inv_series(fmpz * Q, const fmpz * B, slong lenB, slong len, gr_ctx_t ctx)
 {
     slong cutoff, bits;
@@ -585,7 +614,7 @@ _gr_fmpz_mod_poly_inv_series(fmpz * Q, const fmpz * B, slong lenB, slong len, gr
 }
 
 /* todo: the fmpz_mod_poly module has better basecase code */
-int
+static int
 _gr_fmpz_mod_poly_div_series(fmpz * Q, const fmpz * A, slong lenA, const fmpz * B, slong lenB, slong len, gr_ctx_t ctx)
 {
     slong cutoff, bits;
@@ -605,7 +634,7 @@ _gr_fmpz_mod_poly_div_series(fmpz * Q, const fmpz * A, slong lenA, const fmpz * 
         return _gr_poly_div_series_newton(Q, A, lenA, B, lenB, len, cutoff, ctx);
 }
 
-int _gr_fmpz_mod_poly_gcd(mp_ptr G, slong * lenG, mp_srcptr A, slong lenA, mp_srcptr B, slong lenB, gr_ctx_t ctx)
+static int _gr_fmpz_mod_poly_gcd(nn_ptr G, slong * lenG, nn_srcptr A, slong lenA, nn_srcptr B, slong lenB, gr_ctx_t ctx)
 {
     if (FLINT_MIN(lenA, lenB) < FMPZ_MOD_POLY_GCD_CUTOFF)
         return _gr_poly_gcd_euclidean(G, lenG, A, lenA, B, lenB, ctx);
@@ -617,7 +646,7 @@ int _gr_fmpz_mod_poly_gcd(mp_ptr G, slong * lenG, mp_srcptr A, slong lenA, mp_sr
 /* todo: also need the _other version ... ? */
 /* todo: implement generically */
 
-int
+static int
 _gr_fmpz_mod_roots_gr_poly(gr_vec_t roots, gr_vec_t mult, const fmpz_mod_poly_t poly, int flags, gr_ctx_t ctx)
 {
     if (poly->length == 0)
@@ -686,7 +715,7 @@ _gr_fmpz_mod_roots_gr_poly(gr_vec_t roots, gr_vec_t mult, const fmpz_mod_poly_t 
     }
 }
 
-int
+static int
 _gr_fmpz_mod_mat_mul(fmpz_mod_mat_t res, const fmpz_mod_mat_t x, const fmpz_mod_mat_t y, gr_ctx_t ctx)
 {
     fmpz_mat_mul(res, x, y);
@@ -696,7 +725,7 @@ _gr_fmpz_mod_mat_mul(fmpz_mod_mat_t res, const fmpz_mod_mat_t x, const fmpz_mod_
 
 /* todo: tune cutoff for different bit sizes */
 /* also tune cutoff for triangular solving */
-int
+static int
 _gr_fmpz_mod_mat_lu(slong * rank, slong * P, fmpz_mod_mat_t LU, const fmpz_mod_mat_t A, int rank_check, gr_ctx_t ctx)
 {
     slong cutoff = 8;
@@ -707,12 +736,39 @@ _gr_fmpz_mod_mat_lu(slong * rank, slong * P, fmpz_mod_mat_t LU, const fmpz_mod_m
         return gr_mat_lu_recursive(rank, P, (gr_mat_struct *) LU, (const gr_mat_struct *) A, rank_check, ctx);
 }
 
-int
+static int
 _gr_fmpz_mod_mat_det(fmpz_t res, const fmpz_mod_mat_t mat, gr_ctx_t ctx)
 {
-    fmpz_mod_mat_det(res, mat, FMPZ_MOD_CTX(ctx));
-    return GR_SUCCESS;
+    slong n = mat->r;
+
+    if (n <= 4)
+        return gr_mat_det_cofactor(res, (const gr_mat_struct *) mat, ctx);
+
+    if (gr_mat_det_lu(res, (const gr_mat_struct *) mat, ctx) == GR_SUCCESS)
+        return GR_SUCCESS;
+
+    /* Fall back on division-free algorithm if we encountered an impossible inverse */
+    /* Could try something else here: faddeev_bsgs (O(n^3.5)) or Howell form. */
+    return gr_mat_det_berkowitz(res, (const gr_mat_struct *) mat, ctx);
 }
+
+static int
+_gr_fmpz_mod_mat_charpoly(fmpz * res, const fmpz_mod_mat_t mat, gr_ctx_t ctx)
+{
+    slong n = mat->r;
+
+    if (n >= 16 && _gr_mat_charpoly_danilevsky(res, (const gr_mat_struct *) mat, ctx) == GR_SUCCESS)
+        return GR_SUCCESS;
+
+    return _gr_mat_charpoly_berkowitz(res, (const gr_mat_struct *) mat, ctx);
+}
+
+static int
+_gr_fmpz_mod_mat_reduce_row(slong * column, fmpz_mod_mat_t mat, slong * P, slong * L, slong n, gr_ctx_t ctx)
+{
+    return fmpz_mod_mat_reduce_row(column, mat, P, L, n, FMPZ_MOD_CTX(ctx));
+}
+
 
 int _fmpz_mod_methods_initialized = 0;
 
@@ -753,13 +809,17 @@ gr_method_tab_input _fmpz_mod_methods_input[] =
     {GR_METHOD_SET_UI,          (gr_funcptr) _gr_fmpz_mod_set_ui},
     {GR_METHOD_SET_FMPZ,        (gr_funcptr) _gr_fmpz_mod_set_fmpz},
     {GR_METHOD_SET_OTHER,       (gr_funcptr) _gr_fmpz_mod_set_other},
+    {GR_METHOD_GET_FMPZ,        (gr_funcptr) _gr_fmpz_mod_get_fmpz},
     {GR_METHOD_NEG,             (gr_funcptr) _gr_fmpz_mod_neg},
     {GR_METHOD_ADD,             (gr_funcptr) _gr_fmpz_mod_add},
     {GR_METHOD_ADD_UI,          (gr_funcptr) _gr_fmpz_mod_add_ui},
     {GR_METHOD_ADD_SI,          (gr_funcptr) _gr_fmpz_mod_add_si},
     {GR_METHOD_SUB,             (gr_funcptr) _gr_fmpz_mod_sub},
+    {GR_METHOD_SUB_UI,          (gr_funcptr) _gr_fmpz_mod_sub_ui},
+    {GR_METHOD_SUB_SI,          (gr_funcptr) _gr_fmpz_mod_sub_si},
     {GR_METHOD_MUL,             (gr_funcptr) _gr_fmpz_mod_mul},
     {GR_METHOD_MUL_SI,          (gr_funcptr) _gr_fmpz_mod_mul_si},
+    {GR_METHOD_MUL_UI,          (gr_funcptr) _gr_fmpz_mod_mul_ui},
     {GR_METHOD_ADDMUL,          (gr_funcptr) _gr_fmpz_mod_addmul},
     {GR_METHOD_SUBMUL,          (gr_funcptr) _gr_fmpz_mod_submul},
     {GR_METHOD_MUL_TWO,         (gr_funcptr) _gr_fmpz_mod_mul_two},
@@ -800,6 +860,8 @@ gr_method_tab_input _fmpz_mod_methods_input[] =
     {GR_METHOD_MAT_MUL,         (gr_funcptr) _gr_fmpz_mod_mat_mul},
     {GR_METHOD_MAT_LU,          (gr_funcptr) _gr_fmpz_mod_mat_lu},
     {GR_METHOD_MAT_DET,         (gr_funcptr) _gr_fmpz_mod_mat_det},
+    {GR_METHOD_MAT_CHARPOLY,    (gr_funcptr) _gr_fmpz_mod_mat_charpoly},
+    {GR_METHOD_MAT_REDUCE_ROW,  (gr_funcptr) _gr_fmpz_mod_mat_reduce_row},
     {0,                         (gr_funcptr) NULL},
 };
 

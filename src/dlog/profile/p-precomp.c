@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         flint_abort();
     }
 
-    flint_randinit(state);
+    flint_rand_init(state);
     for (nbits = 10; nbits <= 40; nbits += 5)
     {
 
@@ -158,10 +158,10 @@ int main(int argc, char *argv[])
                     flint_printf("{ \"name\": \"%s\", \"bits\": %d, \"nlogs\": %d, \"nprimes\": %d, \"time\": ",
                             n[f],nbits,l[i],np);
 
-                TIMEIT_ONCE_START
+                TIMEIT_ONCE_START;
                     for (j = 0; j < np; j ++)
                         (func[f])(p[j], a[j], l[i]);
-                TIMEIT_ONCE_STOP
+                TIMEIT_ONCE_STOP;
 
                     if (out == JSON)
                         flint_printf("}\n");
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-    flint_randclear(state);
+    flint_rand_clear(state);
     flint_cleanup();
     flint_printf("PASS\n");
     return 0;

@@ -9,12 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fmpz.h"
 
 #ifndef FLINT64
-mp_limb_t flint_fmpz_pseudosquares[][3] =
+ulong flint_fmpz_pseudosquares[][3] =
 {
    { 17, 0, 0 },
    { 73, 0, 0 },
@@ -92,7 +91,7 @@ mp_limb_t flint_fmpz_pseudosquares[][3] =
    { 1411295841u, 761797252u, 229581u }
 };
 #else
-mp_limb_t flint_fmpz_pseudosquares[][2] =
+ulong flint_fmpz_pseudosquares[][2] =
 {
    { 17, 0 },
    { 73, 0 },
@@ -173,7 +172,7 @@ mp_limb_t flint_fmpz_pseudosquares[][2] =
 
 #define FLINT_NUM_FMPZ_PSEUDOSQUARES 74
 
-void fmpz_set_pseudosquare(fmpz_t f, unsigned int i)
+static void fmpz_set_pseudosquare(fmpz_t f, unsigned int i)
 {
 #ifndef FLINT64
    if (i < 25)
@@ -210,10 +209,10 @@ void fmpz_set_pseudosquare(fmpz_t f, unsigned int i)
 int fmpz_is_prime_pseudosquare(const fmpz_t n)
 {
     unsigned int i, j, m1;
-    mp_limb_t p, B, mod8;
+    ulong p, B, mod8;
     fmpz_t NB, f, exp, mod, nm1;
     int ret;
-    const mp_limb_t * primes;
+    const ulong * primes;
 
     if (fmpz_sgn(n) <= 0)
        return 0;

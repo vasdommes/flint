@@ -36,7 +36,7 @@ static slong ecm_tuning[][3] =
     {100, 470000, 430}
 };
 
-int _is_prime(const fmpz_t n, int proved)
+static int _is_prime(const fmpz_t n, int proved)
 {
     if (proved)
         return fmpz_is_prime(n);
@@ -44,7 +44,7 @@ int _is_prime(const fmpz_t n, int proved)
     	return fmpz_is_probabprime(n);
 }
 
-void remove_found_factors(fmpz_factor_t factor, fmpz_t n, fmpz_t f)
+static void remove_found_factors(fmpz_factor_t factor, fmpz_t n, fmpz_t f)
 {
     slong i;
     fmpz_factor_t fac;
@@ -66,15 +66,15 @@ int fmpz_factor_smooth(fmpz_factor_t factor, const fmpz_t n,
 		                                        slong bits, int proved)
 {
     ulong exp;
-    mp_limb_t p;
-    __mpz_struct * xsrc;
-    mp_ptr xd;
-    mp_size_t xsize;
+    ulong p;
+    mpz_ptr xsrc;
+    nn_ptr xd;
+    slong xsize;
     slong found;
     slong trial_stop;
     slong * idx;
     slong i, b, bits2, istride;
-    const mp_limb_t * primes;
+    const ulong * primes;
     int ret = 0;
 
     TMP_INIT;
@@ -109,7 +109,7 @@ int fmpz_factor_smooth(fmpz_factor_t factor, const fmpz_t n,
 
     /* Create a temporary copy to be mutated */
     TMP_START;
-    xd = TMP_ALLOC(xsize * sizeof(mp_limb_t));
+    xd = TMP_ALLOC(xsize * sizeof(ulong));
     flint_mpn_copyi(xd, xsrc->_mp_d, xsize);
 
     /* Factor out powers of two */
@@ -179,7 +179,7 @@ int fmpz_factor_smooth(fmpz_factor_t factor, const fmpz_t n,
     else
     {
         fmpz_t n2, f;
-        __mpz_struct * data;
+        mpz_ptr data;
 
         fmpz_init2(n2, xsize);
 
@@ -219,7 +219,7 @@ int fmpz_factor_smooth(fmpz_factor_t factor, const fmpz_t n,
                 flint_rand_t state;
 
                 fmpz_init(f);
-                flint_randinit(state);
+                flint_rand_init(state);
 
                 /* currently only tuning values up to factors of 100 bits */
                 bits = FLINT_MIN(bits, 100);
@@ -268,7 +268,7 @@ int fmpz_factor_smooth(fmpz_factor_t factor, const fmpz_t n,
                     }
                 }
 
-                flint_randclear(state);
+                flint_rand_clear(state);
                 fmpz_clear(f);
             }
         }

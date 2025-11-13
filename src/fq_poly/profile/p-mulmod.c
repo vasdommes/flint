@@ -12,7 +12,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fq.h"
 #include "fq_poly.h"
@@ -87,7 +86,7 @@ sample(void *arg, ulong count)
     fq_poly_clear(d, ctx);
     fq_poly_clear(dinv, ctx);
     fq_ctx_clear(ctx);
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
 }
 
 int

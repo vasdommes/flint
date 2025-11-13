@@ -275,7 +275,7 @@ static int _factor_irred_compressed(
 
     Abits = A->bits;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     strides = FLINT_ARRAY_ALLOC(2*nvars, ulong);
     texps = strides + nvars;
@@ -550,7 +550,7 @@ static int _factor_irred_compressed(
 
 cleanup:
 
-    flint_randclear(state);
+    flint_rand_clear(state);
     flint_free(strides);
     flint_free(perm);
 
@@ -815,7 +815,7 @@ cleanup_less:
     Assume each factor in f is sep.
     Replace f by an irreducible factorization.
 */
-int nmod_mpoly_factor_irred(
+static int nmod_mpoly_factor_irred(
     nmod_mpoly_factor_t f,
     const nmod_mpoly_ctx_t ctx,
     unsigned int algo)

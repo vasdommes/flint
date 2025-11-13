@@ -9,16 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-addmod.c"
 #include "t-cbrt_binary_search.c"
 #include "t-cbrt.c"
 #include "t-cbrt_chebyshev_approx.c"
-#include "t-cbrt_newton_iteration.c"
 #include "t-cbrtrem.c"
 #include "t-clog_2exp.c"
 #include "t-clog.c"
@@ -77,6 +73,7 @@
 #include "t-mulmod_precomp.c"
 #include "t-mulmod_preinv.c"
 #include "t-mulmod_shoup.c"
+#include "t-mulmod_and_precomp_shoup.c"
 #include "t-nextprime.c"
 #include "t-nth_prime_bounds.c"
 #include "t-urandint.c"
@@ -116,7 +113,6 @@ test_struct tests[] =
     TEST_FUNCTION(n_cbrt_binary_search),
     TEST_FUNCTION(n_cbrt),
     TEST_FUNCTION(n_cbrt_chebyshev_approx),
-    TEST_FUNCTION(n_cbrt_newton_iteration),
     TEST_FUNCTION(n_cbrtrem),
     TEST_FUNCTION(n_clog_2exp),
     TEST_FUNCTION(n_clog),
@@ -175,6 +171,7 @@ test_struct tests[] =
     TEST_FUNCTION(n_mulmod_precomp),
     TEST_FUNCTION(n_mulmod_preinv),
     TEST_FUNCTION(n_mulmod_shoup),
+    TEST_FUNCTION(n_mulmod_and_precomp_shoup),
     TEST_FUNCTION(n_nextprime),
     TEST_FUNCTION(n_nth_prime_bounds),
     TEST_FUNCTION(n_urandint),

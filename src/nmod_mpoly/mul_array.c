@@ -14,9 +14,8 @@
 #include "mpoly.h"
 #include "nmod_mpoly.h"
 
-/* Currently we do not -funroll-loops by default in the nmod_mpoly module,
-   but it is worthwhile for the functions in this file. */
-#pragma GCC optimize("-funroll-loops")
+PUSH_OPTIONS
+OPTIMIZE_UNROLL_LOOPS
 
 /* improve locality */
 #define BLOCK 128
@@ -248,7 +247,7 @@ void _nmod_mpoly_mul_array_chunked_LEX(
         {
             /* compute bound on coeffs of output chunk */
             slong len = 0;
-            mp_limb_t t2, t1, t0, u1, u0;
+            ulong t2, t1, t0, u1, u0;
 
             for (i = 0, j = Pi; i < Al && j >= 0; i++, j--)
             {
@@ -720,7 +719,7 @@ void _nmod_mpoly_mul_array_chunked_DEG(
         {
             /* compute bound on coeffs of output chunk */
             slong len = 0;
-            mp_limb_t t2, t1, t0, u1, u0;
+            ulong t2, t1, t0, u1, u0;
 
             for (i = 0, j = Pi; i < Al && j >= 0; i++, j--)
             {
@@ -941,3 +940,5 @@ int nmod_mpoly_mul_array(nmod_mpoly_t A, const nmod_mpoly_t B,
     TMP_END;
     return success;
 }
+
+POP_OPTIONS

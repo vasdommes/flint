@@ -9,18 +9,17 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
-slong
+static slong
 arb_mat_gauss_partial(arb_mat_t A, slong prec)
 {
     arb_t e;
-    arb_ptr * a;
     slong j, m, n, r, rank, row, col, sign;
 
     m = A->r;
     n = A->c;
-    a = A->rows;
     rank = row = col = 0;
     sign = 1;
 
@@ -44,9 +43,9 @@ arb_mat_gauss_partial(arb_mat_t A, slong prec)
 
         for (j = row + 1; j < m; j++)
         {
-            arb_div(e, a[j] + col, a[row] + col, prec);
+            arb_div(e, arb_mat_entry(A, j, col), arb_mat_entry(A, row, col), prec);
             arb_neg(e, e);
-            _arb_vec_scalar_addmul(a[j] + col + 1, a[row] + col + 1, n - col - 1, e, prec);
+            _arb_vec_scalar_addmul(arb_mat_entry(A, j, col + 1), arb_mat_entry(A, row, col + 1), n - col - 1, e, prec);
         }
 
         row++;
@@ -58,7 +57,7 @@ arb_mat_gauss_partial(arb_mat_t A, slong prec)
     return rank * sign;
 }
 
-void
+static void
 arb_vec_get_arf_2norm_squared_bound(arf_t s, arb_srcptr vec, slong len, slong prec)
 {
     slong i;
@@ -76,7 +75,7 @@ arb_vec_get_arf_2norm_squared_bound(arf_t s, arb_srcptr vec, slong len, slong pr
     arf_clear(t);
 }
 
-void
+static void
 arb_mat_det_lu_inplace(arb_t det, arb_mat_t A, slong prec)
 {
     slong i, n, sign, rank;
@@ -105,7 +104,7 @@ arb_mat_det_lu_inplace(arb_t det, arb_mat_t A, slong prec)
 
         for (i = rank; i < n; i++)
         {
-            arb_vec_get_arf_2norm_squared_bound(t, A->rows[i] + rank,  n - rank, MAG_BITS);
+            arb_vec_get_arf_2norm_squared_bound(t, arb_mat_entry(A, i, rank),  n - rank, MAG_BITS);
             arf_mul(d, d, t, MAG_BITS, ARF_RND_UP);
         }
 

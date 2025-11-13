@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 
 #define ITERS 1000
@@ -25,7 +24,7 @@ void sample(void * arg, ulong count)
 {
    fac_one_line_t * params = (fac_one_line_t *) arg;
    ulong i, j;
-   mp_limb_t n2;
+   ulong n2;
 
    for (i = 0; i < count; i++)
    {
@@ -83,7 +82,7 @@ int main(void)
 		  i, max/(double)ITERS);
    }
 
-   flint_randclear(state);
    flint_free(params.composites);
+   FLINT_TEST_CLEAR(state);
    return 0;
 }

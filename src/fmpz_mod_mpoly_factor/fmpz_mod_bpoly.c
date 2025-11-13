@@ -61,7 +61,7 @@ void fmpz_mod_bpoly_fit_length(
     A->alloc = len;
 }
 
-void fmpz_mod_bpoly_zero(fmpz_mod_bpoly_t A, const fmpz_mod_ctx_t ctx)
+void fmpz_mod_bpoly_zero(fmpz_mod_bpoly_t A, const fmpz_mod_ctx_t FLINT_UNUSED(ctx))
 {
     A->length = 0;
 }
@@ -119,7 +119,7 @@ void fmpz_mod_bpoly_one(fmpz_mod_bpoly_t A, const fmpz_mod_ctx_t ctx)
 
 slong fmpz_mod_bpoly_degree1(
     const fmpz_mod_bpoly_t A,
-    const fmpz_mod_ctx_t ctx)
+    const fmpz_mod_ctx_t FLINT_UNUSED(ctx))
 {
     slong i, len = 0;
     for (i = 0; i < A->length; i++)
@@ -166,7 +166,7 @@ void fmpz_mod_bpoly_set(
         fmpz_mod_poly_set(A->coeffs + i, B->coeffs + i, ctx);
 }
 
-void _fmpz_mod_poly_taylor_shift_horner(
+static void _fmpz_mod_poly_taylor_shift_horner(
     fmpz * a,
     const fmpz_t c,
     slong n,
@@ -603,7 +603,7 @@ int fmpz_mod_bpoly_divides(
         {
             for (j = order - 1; j >= 0; j--)
             {
-                mp_limb_t qc = n_poly_get_coeff(q, order*i + j);
+                ulong qc = n_poly_get_coeff(q, order*i + j);
                 if (qc == 0)
                     continue;
 

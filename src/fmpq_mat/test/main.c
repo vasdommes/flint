@@ -9,9 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-add.c"
@@ -38,6 +35,7 @@
 #include "t-mul_fmpz_vec.c"
 #include "t-neg.c"
 #include "t-one.c"
+#include "t-permanent.c"
 #include "t-rref.c"
 #include "t-scalar_div_fmpz.c"
 #include "t-scalar_mul_fmpq.c"
@@ -83,6 +81,7 @@ test_struct tests[] =
     TEST_FUNCTION(fmpq_mat_mul_fmpz_vec),
     TEST_FUNCTION(fmpq_mat_neg),
     TEST_FUNCTION(fmpq_mat_one),
+    TEST_FUNCTION(fmpq_mat_permanent),
     TEST_FUNCTION(fmpq_mat_rref),
     TEST_FUNCTION(fmpq_mat_scalar_div_fmpz),
     TEST_FUNCTION(fmpq_mat_scalar_mul_fmpq),

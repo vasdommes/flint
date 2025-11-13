@@ -12,10 +12,8 @@
 #include "thread_support.h"
 #include "fmpz_vec.h"
 #include "arb.h"
+#include "arb/impl.h"
 #include "acb.h"
-
-slong _arb_compute_bs_exponents(slong * tab, slong n);
-slong _arb_get_exp_pos(const slong * tab, slong step);
 
 static void
 bsplit(fmpz_t T, fmpz_t Q, flint_bitcnt_t * Qexp,
@@ -188,7 +186,7 @@ bsplit2(fmpz_t T, fmpz_t Q, flint_bitcnt_t * Qexp,
 }
 
 /* todo: also allow computing cos, using the same table... */
-void
+static void
 _arb_sin_sum_bs_powtab(fmpz_t T, fmpz_t Q, flint_bitcnt_t * Qexp,
     const fmpz_t x, flint_bitcnt_t r, slong N)
 {
@@ -390,7 +388,20 @@ pmerge(acb_t res, acb_t a, acb_t b, pwork_t * work)
     arb_clear(tmp1);
 }
 
-void
+static void
+pinit(acb_t x, void * args)
+{
+    acb_init(x);
+}
+
+static void
+pclear(acb_t x, void * args)
+{
+    acb_clear(x);
+}
+
+
+static void
 _acb_vec_prod_bsplit_threaded(acb_t res, acb_ptr vec, slong len, slong prec)
 {
     pwork_t work;
@@ -402,8 +413,8 @@ _acb_vec_prod_bsplit_threaded(acb_t res, acb_ptr vec, slong len, slong prec)
         (bsplit_basecase_func_t) pbasecase,
         (bsplit_merge_func_t) pmerge,
         sizeof(acb_struct),
-        (bsplit_init_func_t) acb_init,
-        (bsplit_clear_func_t) acb_clear,
+        (bsplit_init_func_t) pinit,
+        (bsplit_clear_func_t) pclear,
         &work, 0, len, 1, -1, FLINT_PARALLEL_BSPLIT_LEFT_INPLACE);
 }
 

@@ -23,7 +23,7 @@ info_t;
 
 static ulong _fmpz_gcd_big_small_old(const fmpz_t g, ulong h)
 {
-    __mpz_struct * z = COEFF_TO_PTR(*g);
+    mpz_ptr z = COEFF_TO_PTR(*g);
 
     return n_gcd(mpn_mod_1(z->_mp_d, FLINT_ABS(z->_mp_size), h), h);
 }
@@ -83,8 +83,8 @@ fmpz_gcd3_old(fmpz_t res, const fmpz_t a, const fmpz_t b, const fmpz_t c)
     else
     {
         /* Three-way mpz_gcd. */
-        __mpz_struct *rp, *ap, *bp, *cp, *tp;
-        mp_size_t an, bn, cn, mn;
+        mpz_ptr rp, ap, bp, cp, tp;
+        slong an, bn, cn, mn;
 
         /* If res is small, it cannot be aliased with a, b, c, so promoting is fine. */
         rp = _fmpz_promote(res);
@@ -126,7 +126,7 @@ fmpz_gcd3_old(fmpz_t res, const fmpz_t a, const fmpz_t b, const fmpz_t c)
             /* It would be more efficient to allocate temporary space for
                gcd(a, b), but we can't be sure that mpz_gcd never attempts
                to reallocate the output. */
-            t->_mp_d = TMP_ALLOC(sizeof(mp_limb_t) * cn);
+            t->_mp_d = TMP_ALLOC(sizeof(ulong) * cn);
             t->_mp_size = t->_mp_alloc = cn;
             flint_mpn_copyi(t->_mp_d, cp->_mp_d, cn);
 
@@ -178,7 +178,7 @@ sample_new(void * arg, ulong count)
     fmpz_clear(a);
     fmpz_clear(b);
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 }
 
 void
@@ -210,7 +210,7 @@ sample_old(void * arg, ulong count)
     fmpz_clear(a);
     fmpz_clear(b);
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 }
 
 int

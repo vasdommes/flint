@@ -64,7 +64,7 @@ typedef struct
     ulong * exps;
     slong length;
     flint_bitcnt_t bits;    /* number of bits per exponent */
-    slong coeffs_alloc;     /* abs size in mp_limb_t units */
+    slong coeffs_alloc;     /* abs size in ulong units */
     slong exps_alloc;       /* abs size in ulong units */
 }
 fmpz_mod_mpoly_struct;
@@ -82,6 +82,15 @@ typedef struct
 fmpz_mod_mpoly_factor_struct;
 
 typedef fmpz_mod_mpoly_factor_struct fmpz_mod_mpoly_factor_t[1];
+
+typedef struct
+{
+    fmpz_mod_mpoly_struct num;
+    fmpz_mod_mpoly_struct den;
+}
+fmpz_mod_mpoly_q_struct;
+
+typedef fmpz_mod_mpoly_q_struct fmpz_mod_mpoly_q_t[1];
 
 #ifdef __cplusplus
 }

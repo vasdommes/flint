@@ -119,7 +119,7 @@ slong fq_zech_bpoly_degree0(const fq_zech_bpoly_t A, const fq_zech_ctx_t FLINT_U
     return A->length - 1;
 }
 
-slong fq_zech_bpoly_degree1(const fq_zech_bpoly_t A, const fq_zech_ctx_t ctx);
+slong fq_zech_bpoly_degree1(const fq_zech_bpoly_t A, const fq_zech_ctx_t FLINT_UNUSED(ctx));
 
 void fq_zech_bpoly_set_poly_var1(fq_zech_bpoly_t A, const fq_zech_poly_t B, const fq_zech_ctx_t ctx);
 
@@ -290,7 +290,7 @@ void fq_zech_polyu_init(fq_zech_polyu_t A, const fq_zech_ctx_t FLINT_UNUSED(ctx)
     A->alloc = 0;
 }
 
-void fq_zech_polyu_clear(fq_zech_polyu_t A, const fq_zech_ctx_t ctx);
+void fq_zech_polyu_clear(fq_zech_polyu_t A, const fq_zech_ctx_t FLINT_UNUSED(ctx));
 
 void fq_zech_polyu_realloc(fq_zech_polyu_t A, slong len, const fq_zech_ctx_t ctx);
 
@@ -633,7 +633,7 @@ typedef fq_zech_mpoly_pfrac_struct fq_zech_mpoly_pfrac_t[1];
 
 
 int fq_zech_mpoly_pfrac_init(
-    fq_zech_mpoly_pfrac_t I,
+    fq_zech_mpoly_pfrac_t Iv,
     flint_bitcnt_t bits,
     slong l, slong r,
     const fq_zech_mpoly_struct * betas,
@@ -641,14 +641,14 @@ int fq_zech_mpoly_pfrac_init(
     const fq_zech_mpoly_ctx_t ctx);
 
 void fq_zech_mpoly_pfrac_clear(
-    fq_zech_mpoly_pfrac_t I,
+    fq_zech_mpoly_pfrac_t Iv,
     const fq_zech_mpoly_ctx_t ctx);
 
 int fq_zech_mpoly_pfrac(
     slong r,
     fq_zech_mpoly_t t,
     const slong * deg,
-    fq_zech_mpoly_pfrac_t I,
+    fq_zech_mpoly_pfrac_t Iv,
     const fq_zech_mpoly_ctx_t ctx);
 
 int fq_zech_mpoly_hlift(
@@ -742,6 +742,10 @@ void _fq_zech_mpoly_set_fq_zech_bpoly_var1_zero(
     const fq_zech_bpoly_t B,
     slong var,
     const fq_zech_mpoly_ctx_t ctx);
+
+/* misc **********************************************************************/
+
+int fq_zech_next(fq_zech_t x, const fq_zech_ctx_t FLINT_UNUSED(ctx));
 
 #ifdef __cplusplus
 }

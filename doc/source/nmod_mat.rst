@@ -12,7 +12,7 @@ The :type:`nmod_mat_t` type is defined as an array of
 parameters of type :type:`nmod_mat_t` by reference.
 
 An :type:`nmod_mat_t` internally consists of a single array of
-``mp_limb_t``'s, representing a dense matrix in row-major order. This
+``ulong``'s, representing a dense matrix in row-major order. This
 array is only directly indexed during memory allocation and
 deallocation. A separate array holds pointers to the start of each
 row, and is used for all indexing. This allows the rows of a matrix to
@@ -31,8 +31,7 @@ perform some kind of division, solving, or Gaussian elimination
 in functions that only perform basic manipulation and ring operations
 (e.g. transpose and matrix multiplication).
 
-The user can manipulate matrix entries directly, but must assume
-responsibility for normalising all values to the range `[0, n)`.
+Unless indicated, functions may assume that the stored values are in the range `[0, n)`. The user can manipulate matrix entries directly, but must assume responsibility for normalising all values to the range `[0, n)`.
 
 Types, macros and constants
 -------------------------------------------------------------------------------
@@ -45,7 +44,7 @@ Memory management
 --------------------------------------------------------------------------------
 
 
-.. function:: void nmod_mat_init(nmod_mat_t mat, slong rows, slong cols, mp_limb_t n)
+.. function:: void nmod_mat_init(nmod_mat_t mat, slong rows, slong cols, ulong n)
 
     Initialises ``mat`` to a ``rows``-by-``cols`` matrix with
     coefficients modulo `n`, where `n` can be any nonzero integer that
@@ -76,6 +75,16 @@ Memory management
     Swaps two matrices by swapping the individual entries rather than swapping
     the contents of the structs.
 
+.. function:: nmod_t nmod_mat_mod(const nmod_mat_t mat)
+
+    Returns the modulus of a matrix.
+
+.. function:: void nmod_mat_set_mod(nmod_mat_t mat, ulong n)
+
+    Sets the modulus of an already initialized matrix ``mat`` to be `n`. Row
+    and column dimensions are unchanged, and allocated memory is unaffected.
+    Caution: this does not reduce the entries of ``mat`` modulo `n`.
+
 
 Basic properties and manipulation
 --------------------------------------------------------------------------------
@@ -87,16 +96,16 @@ Basic properties and manipulation
     indexed from zero. No bounds checking is performed. This macro can be
     used both for reading and writing coefficients.
 
-.. function:: mp_limb_t nmod_mat_get_entry(const nmod_mat_t mat, slong i, slong j)
+.. function:: ulong nmod_mat_get_entry(const nmod_mat_t mat, slong i, slong j)
 
     Get the entry at row `i` and column `j` of the matrix ``mat``.
 
-.. function:: mp_limb_t * nmod_mat_entry_ptr(const nmod_mat_t mat, slong i, slong j)
+.. function:: ulong * nmod_mat_entry_ptr(const nmod_mat_t mat, slong i, slong j)
 
     Return a pointer to the entry at row `i` and column `j` of the matrix
     ``mat``.
 
-.. function:: void nmod_mat_set_entry(nmod_mat_t mat, slong i, slong j, mp_limb_t x)
+.. function:: void nmod_mat_set_entry(nmod_mat_t mat, slong i, slong j, ulong x)
 
     Set the entry at row `i` and column `j` of the matrix ``mat`` to
     ``x``.
@@ -142,7 +151,7 @@ Concatenate
 
 .. function:: void nmod_mat_concat_vertical(nmod_mat_t res, const nmod_mat_t mat1, const nmod_mat_t mat2)
 
-    Sets ``res`` to vertical concatenation of (`mat1`, ``mat2``) in that order. Matrix dimensions : ``mat1`` : `m \times n`, ``mat2`` : `k \times n`, ``res`` : `(m + k) \times n`.
+    Sets ``res`` to vertical concatenation of (``mat1``, ``mat2``) in that order. Matrix dimensions : ``mat1`` : `m \times n`, ``mat2`` : `k \times n`, ``res`` : `(m + k) \times n`.
 
 .. function:: void nmod_mat_concat_horizontal(nmod_mat_t res, const nmod_mat_t mat1, const nmod_mat_t mat2)
 
@@ -190,10 +199,14 @@ Random matrix generation
 
 .. function:: void nmod_mat_randfull(nmod_mat_t mat, flint_rand_t state)
 
-    Sets the element to random numbers likely to be close to the modulus
+    Sets the element to random numbers in `[0, n)`, likely to be close to the modulus ``n``
     of the matrix. This is used to test potential overflow-related bugs.
 
-.. function:: int nmod_mat_randpermdiag(nmod_mat_t mat, flint_rand_t state, mp_srcptr diag, slong n)
+.. function:: void nmod_mat_rand(nmod_mat_t mat, flint_rand_t state)
+
+    Sets the element to uniformly generated random numbers in `[0, n)`, where `n` is the modulus of the matrix.
+
+.. function:: int nmod_mat_randpermdiag(nmod_mat_t mat, flint_rand_t state, nn_srcptr diag, slong n)
 
     Sets ``mat`` to a random permutation of the diagonal matrix
     with `n` leading entries given by the vector ``diag``. It is
@@ -256,7 +269,7 @@ Transposition and permutations
 .. function:: void nmod_mat_transpose(nmod_mat_t B, const nmod_mat_t A)
 
     Sets `B` to the transpose of `A`. Dimensions must be compatible.
-    `B` and `A` may be the same object if and only if the matrix is square.
+    Aliasing is allowed for square matrices.
 
 .. function:: void nmod_mat_swap_rows(nmod_mat_t mat, slong * perm, slong r, slong s)
 
@@ -307,18 +320,18 @@ Matrix-scalar arithmetic
 --------------------------------------------------------------------------------
 
 
-.. function:: void nmod_mat_scalar_mul(nmod_mat_t B, const nmod_mat_t A, mp_limb_t c)
+.. function:: void nmod_mat_scalar_mul(nmod_mat_t B, const nmod_mat_t A, ulong c)
 
-    Sets `B = cA`, where the scalar `c` is assumed to be reduced
-    modulo the modulus. Dimensions of `A` and `B` must be identical.
+    Sets `B = cA`, where the scalar `c` is assumed to be reduced modulo the
+    modulus. Dimensions of `A` and `B` must be identical.
 
-.. function:: void nmod_mat_scalar_addmul_ui(nmod_mat_t dest, const nmod_mat_t X, const nmod_mat_t Y, const mp_limb_t b)
+.. function:: void nmod_mat_scalar_addmul_ui(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B, const ulong c)
 
-    Sets `dest = X + bY`, where the scalar `b` is assumed to be reduced
-    modulo the modulus. Dimensions of dest, X and Y must be identical.
-    dest can be aliased with X or Y.
+    Sets `C = A + cB`, where the scalar `c` is assumed to be reduced modulo the
+    modulus. Dimensions of `C`, `A` and `B` must be identical.  `C` can be
+    aliased with `A` or `B`.
 
-.. function:: void nmod_mat_scalar_mul_fmpz(nmod_mat_t res, const nmod_mat_t M, const fmpz_t c)
+.. function:: void nmod_mat_scalar_mul_fmpz(nmod_mat_t B, const nmod_mat_t A, const fmpz_t c)
 
     Sets `B = cA`, where the scalar `c` is of type ``fmpz_t``. Dimensions of `A`
     and `B` must be identical.
@@ -381,15 +394,15 @@ Matrix multiplication
     Sets `D = C + AB`. `C` and `D` may be aliased with each other but
     not with `A` or `B`.
 
-.. function:: void nmod_mat_mul_nmod_vec(mp_limb_t * c, const nmod_mat_t A, const mp_limb_t * b, slong blen)
-              void nmod_mat_mul_nmod_vec_ptr(mp_limb_t * const * c, const nmod_mat_t A, const mp_limb_t * const * b, slong blen)
+.. function:: void nmod_mat_mul_nmod_vec(ulong * c, const nmod_mat_t A, const ulong * b, slong blen)
+              void nmod_mat_mul_nmod_vec_ptr(ulong * const * c, const nmod_mat_t A, const ulong * const * b, slong blen)
 
     Compute a matrix-vector product of ``A`` and ``(b, blen)`` and store the result in ``c``.
     The vector ``(b, blen)`` is either truncated or zero-extended to the number of columns of ``A``.
     The number entries written to ``c`` is always equal to the number of rows of ``A``.
 
-.. function:: void nmod_mat_nmod_vec_mul(mp_limb_t * c, const mp_limb_t * a, slong alen, const nmod_mat_t B)
-              void nmod_mat_nmod_vec_mul_ptr(mp_limb_t * const * c, const mp_limb_t * const * a, slong alen, const nmod_mat_t B)
+.. function:: void nmod_mat_nmod_vec_mul(ulong * c, const ulong * a, slong alen, const nmod_mat_t B)
+              void nmod_mat_nmod_vec_mul_ptr(ulong * const * c, const ulong * const * a, slong alen, const nmod_mat_t B)
 
     Compute a vector-matrix product of ``(a, alen)`` and ``B`` and and store the result in ``c``.
     The vector ``(a, alen)`` is either truncated or zero-extended to the number of rows of ``B``.
@@ -414,7 +427,7 @@ Trace
 --------------------------------------------------------------------------------
 
 
-.. function:: mp_limb_t nmod_mat_trace(const nmod_mat_t mat)
+.. function:: ulong nmod_mat_trace(const nmod_mat_t mat)
 
     Computes the trace of the matrix, i.e. the sum of the entries on
     the main diagonal. The matrix is required to be square.
@@ -423,11 +436,11 @@ Trace
 Determinant and rank
 --------------------------------------------------------------------------------
 
-.. function:: mp_limb_t nmod_mat_det_howell(const nmod_mat_t A)
+.. function:: ulong nmod_mat_det_howell(const nmod_mat_t A)
 
     Returns the determinant of `A`.
 
-.. function:: mp_limb_t nmod_mat_det(const nmod_mat_t A)
+.. function:: ulong nmod_mat_det(const nmod_mat_t A)
 
     Returns the determinant of `A`.
 
@@ -568,7 +581,7 @@ Nonsingular square solving
 
     There are no restrictions on the shape of `A` and it may be singular.
 
-.. function:: int nmod_mat_solve_vec(mp_ptr x, const nmod_mat_t A, mp_srcptr b)
+.. function:: int nmod_mat_solve_vec(nn_ptr x, const nmod_mat_t A, nn_srcptr b)
 
     Solves the matrix-vector equation `Ax = b` over `\mathbb{Z} / p \mathbb{Z}` where `p`
     is the modulus of `A` which must be a prime number.
@@ -587,7 +600,7 @@ LU decomposition
               slong nmod_mat_lu_classical_delayed(slong * P, nmod_mat_t A, int rank_check)
               slong nmod_mat_lu_recursive(slong * P, nmod_mat_t A, int rank_check)
 
-    Computes a generalised LU decomposition `LU = PA` of a given
+    Computes a generalised LU decomposition `PLU = A` of a given
     matrix `A`, returning the rank of `A`.
 
     If `A` is a nonsingular square matrix, it will be overwritten with

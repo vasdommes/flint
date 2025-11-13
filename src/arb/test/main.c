@@ -9,9 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-acos.c"
@@ -147,6 +144,7 @@
 #include "t-mul_more.c"
 #include "t-mul_si.c"
 #include "t-mul_ui.c"
+#include "t-nint.c"
 #include "t-nonnegative_abs.c"
 #include "t-overlaps.c"
 #include "t-partitions_fmpz.c"
@@ -354,6 +352,7 @@ test_struct tests[] =
     TEST_FUNCTION(arb_mul_more),
     TEST_FUNCTION(arb_mul_si),
     TEST_FUNCTION(arb_mul_ui),
+    TEST_FUNCTION(arb_nint),
     TEST_FUNCTION(arb_nonnegative_abs),
     TEST_FUNCTION(arb_overlaps),
     TEST_FUNCTION(arb_partitions_fmpz),

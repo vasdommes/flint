@@ -18,6 +18,7 @@
 #include "n_poly.h"
 #include "mpoly.h"
 #include "fq_nmod_mpoly.h"
+#include "fq_nmod_mpoly/impl.h"
 
 int fq_nmod_next(fq_nmod_t alpha, const fq_nmod_ctx_t fqctx)
 {
@@ -216,13 +217,13 @@ static int fq_nmod_mpolyu_evalfromsk(
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong i, j;
     int ret = 0;
-    mp_limb_t * pp, * acc;
+    ulong * pp, * acc;
     fq_nmod_t acct;
 
     FLINT_ASSERT(A->length == SK->length);
 
-    pp = FLINT_ARRAY_ALLOC(d, mp_limb_t);
-    acc = FLINT_ARRAY_ALLOC(d, mp_limb_t);
+    pp = FLINT_ARRAY_ALLOC(d, ulong);
+    acc = FLINT_ARRAY_ALLOC(d, ulong);
     fq_nmod_init(acct, ctx->fqctx);
 
     fq_nmod_poly_zero(e, ctx->fqctx);
@@ -281,7 +282,7 @@ void fq_nmod_poly_product_roots(fq_nmod_poly_t P, fq_nmod_struct * r,
 
     for x
 */
-int fq_nmod_vandsolve(mp_limb_t * X, mp_limb_t * A, fq_nmod_struct * b,
+static int fq_nmod_vandsolve(ulong * X, ulong * A, fq_nmod_struct * b,
                                             slong n, const fq_nmod_ctx_t fqctx)
 {
     slong d = fq_nmod_ctx_degree(fqctx);
@@ -588,7 +589,7 @@ pick_evaluation_point:
         {
             for (k = 0; k < (f->coeffs + j)->length; k++)
             {
-                n_fq_get_fq_nmod((M + j)->rows[i] + k,
+                n_fq_get_fq_nmod(fq_nmod_mat_entry(M + j, i, k),
                                (fevalski->coeffs + j)->coeffs + d*k, ctx->fqctx);
             }
         }
@@ -658,10 +659,10 @@ pick_evaluation_point:
             {
                 for (j = 0; j < (f->coeffs + s)->length; j++)
                 {
-                    fq_nmod_set((ML + s)->rows[i] + j,
-                                 (M + s)->rows[i] + j, ctx->fqctx);
+                    fq_nmod_set(fq_nmod_mat_entry(ML + s, i, j),
+                                 fq_nmod_mat_entry(M + s, i, j), ctx->fqctx);
                 }
-                fq_nmod_set((ML + s)->rows[i] + (f->coeffs + s)->length + i,
+                fq_nmod_set(fq_nmod_mat_entry(ML + s, i, (f->coeffs + s)->length + i),
                                                       W + l*s + i, ctx->fqctx);
             }
         } else {
@@ -669,18 +670,16 @@ pick_evaluation_point:
             {
                 for (j = 0; j < (f->coeffs + s)->length; j++)
                 {
-                    fq_nmod_set((ML + s)->rows[i] + j,
-                                             (M + s)->rows[i] + j, ctx->fqctx);
+                    fq_nmod_set(fq_nmod_mat_entry(ML + s, i, j),
+                                             fq_nmod_mat_entry(M + s, i, j), ctx->fqctx);
                 }
                 for (j = 0; j < l; j++) {
                     if (j == i)
                     {
-                        fq_nmod_set((ML + s)->rows[i]
-                                     + (f->coeffs + s)->length + j,
+                        fq_nmod_set(fq_nmod_mat_entry(ML + s, i, (f->coeffs + s)->length + j),
                                                       W + l*s + i, ctx->fqctx);
                     } else {
-                        fq_nmod_zero((ML + s)->rows[i]
-                                     + (f->coeffs + s)->length + j,
+                        fq_nmod_zero(fq_nmod_mat_entry(ML + s, i, (f->coeffs + s)->length + j),
                                                                    ctx->fqctx);
                     }
                 }
@@ -691,7 +690,7 @@ pick_evaluation_point:
 
         for (i = 0; i < (f->coeffs + s)->length; i++)
         {
-            if (!fq_nmod_is_one((ML + s)->rows[i] + i, ctx->fqctx))
+            if (!fq_nmod_is_one(fq_nmod_mat_entry(ML + s, i, i), ctx->fqctx))
             {
                 /* evaluation points produced a singular vandermonde matrix */
                 goto pick_evaluation_point;
@@ -756,7 +755,7 @@ pick_evaluation_point:
         {
             FLINT_ASSERT((f->coeffs + i)->length <= l);
             FLINT_ASSERT(j < (f->coeffs + tlen[f->length - 1])->length);
-            fq_nmod_mul(b + j, W + l*i + j, Msol->rows[j] + 0, ctx->fqctx);
+            fq_nmod_mul(b + j, W + l*i + j, fq_nmod_mat_entry(Msol, j, 0), ctx->fqctx);
         }
         success = fq_nmod_vandsolve((G->coeffs + i)->coeffs,
                                  (fevalsk1->coeffs + i)->coeffs, b,
@@ -782,11 +781,11 @@ pick_evaluation_point:
             for (j = 0; j < (f->coeffs + s)->length; j++)
             {
                 n_fq_get_fq_nmod(u, (G->coeffs + s)->coeffs + d*j, ctx->fqctx);
-                fq_nmod_mul(pp, (M + s)->rows[i] + j, u, ctx->fqctx);
+                fq_nmod_mul(pp, fq_nmod_mat_entry(M + s, i, j), u, ctx->fqctx);
                 fq_nmod_add(acc, acc, pp, ctx->fqctx);
             }
 
-            fq_nmod_mul(u, W + l*s + i, Msol->rows[i] + 0, ctx->fqctx);
+            fq_nmod_mul(u, W + l*s + i, fq_nmod_mat_entry(Msol, i, 0), ctx->fqctx);
             if (!fq_nmod_equal(acc, u, ctx->fqctx))
             {
                 fq_nmod_clear(acc, ctx->fqctx);
@@ -846,7 +845,7 @@ finished:
 
 
 /* setform copies the exponents and zeros the coefficients */
-void fq_nmod_mpoly_setform_mpolyn(
+static void fq_nmod_mpoly_setform_mpolyn(
     fq_nmod_mpoly_t A,
     fq_nmod_mpolyn_t B,
     const fq_nmod_mpoly_ctx_t ctx)
@@ -867,7 +866,7 @@ void fq_nmod_mpoly_setform_mpolyn(
     A->length = B->length;
 }
 
-void fq_nmod_mpolyu_setform_mpolyun(fq_nmod_mpolyu_t A, fq_nmod_mpolyun_t B,
+static void fq_nmod_mpolyu_setform_mpolyun(fq_nmod_mpolyu_t A, fq_nmod_mpolyun_t B,
                                                  const fq_nmod_mpoly_ctx_t ctx)
 {
     slong i;
@@ -942,7 +941,7 @@ int fq_nmod_mpolyu_gcdp_zippel_univar_no_cofactors(
 }
 
 
-int fq_nmod_mpolyu_gcdp_zippel_bivar(
+static int fq_nmod_mpolyu_gcdp_zippel_bivar(
     fq_nmod_mpolyu_t G,
     fq_nmod_mpolyu_t Abar,
     fq_nmod_mpolyu_t Bbar,

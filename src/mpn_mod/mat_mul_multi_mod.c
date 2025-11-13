@@ -18,6 +18,7 @@
 #include "nmod.h"
 #include "nmod_mat.h"
 #include "mpn_mod.h"
+#include "gr_mat.h"
 
 typedef struct {
     slong m;
@@ -29,50 +30,55 @@ typedef struct {
     slong Bstoprow;
     slong Cstartrow;
     slong Cstoprow;
-    mp_ptr * Arows;
-    mp_ptr * Brows;
-    mp_ptr * Crows;
+    nn_ptr Aentries;
+    slong Astride;
+    nn_ptr Bentries;
+    slong Bstride;
+    nn_ptr Centries;
+    slong Cstride;
     nmod_mat_t * mod_A;
     nmod_mat_t * mod_B;
     nmod_mat_t * mod_C;
     slong num_primes;
-    mp_ptr primes;
+    nn_ptr primes;
     gr_ctx_struct * ctx;
 } _worker_arg;
 
-FLINT_FORCE_INLINE mp_limb_t
-nmod_set_mpn_2(mp_srcptr ad, nmod_t mod)
+FLINT_FORCE_INLINE ulong
+nmod_set_mpn_2(nn_srcptr ad, nmod_t mod)
 {
-    mp_limb_t r = 0;
+    ulong r = 0;
     NMOD_RED2(r, r, ad[1], mod);
     NMOD_RED2(r, r, ad[0], mod);
     return r;
 }
 
-FLINT_FORCE_INLINE mp_limb_t
-nmod_set_mpn_3(mp_srcptr ad, nmod_t mod)
+#if 0
+FLINT_FORCE_INLINE ulong
+nmod_set_mpn_3(nn_srcptr ad, nmod_t mod)
 {
-    mp_limb_t r = 0;
+    ulong r = 0;
     NMOD_RED2(r, r, ad[2], mod);
     NMOD_RED2(r, r, ad[1], mod);
     NMOD_RED2(r, r, ad[0], mod);
     return r;
 }
 
-FLINT_FORCE_INLINE mp_limb_t
-nmod_set_mpn_4(mp_srcptr ad, nmod_t mod)
+FLINT_FORCE_INLINE ulong
+nmod_set_mpn_4(nn_srcptr ad, nmod_t mod)
 {
-    mp_limb_t r = 0;
+    ulong r = 0;
     NMOD_RED2(r, r, ad[3], mod);
     NMOD_RED2(r, r, ad[2], mod);
     NMOD_RED2(r, r, ad[1], mod);
     NMOD_RED2(r, r, ad[0], mod);
     return r;
 }
+#endif
 
 /* todo: precomputed inverse */
-FLINT_FORCE_INLINE mp_limb_t
-nmod_set_mpn(mp_srcptr ad, mp_size_t an, nmod_t mod)
+FLINT_FORCE_INLINE ulong
+nmod_set_mpn(nn_srcptr ad, slong an, nmod_t mod)
 {
     return mpn_mod_1(ad, an, mod.n);
 }
@@ -87,15 +93,17 @@ static void _mod_worker(void * varg)
     slong Astoprow = arg->Astoprow;
     slong Bstartrow = arg->Bstartrow;
     slong Bstoprow = arg->Bstoprow;
-    mp_ptr * Arows = arg->Arows;
-    mp_ptr * Brows = arg->Brows;
+    nn_ptr Aentries = arg->Aentries;
+    slong Astride = arg->Astride;
+    nn_ptr Bentries = arg->Bentries;
+    slong Bstride = arg->Bstride;
     nmod_mat_t * mod_A = arg->mod_A;
     nmod_mat_t * mod_B = arg->mod_B;
     slong num_primes = arg->num_primes;
 
     slong nlimbs = MPN_MOD_CTX_NLIMBS(arg->ctx);
 
-    mp_limb_t first_prime = UWORD(1) << (FLINT_BITS - 1);
+    ulong first_prime = UWORD(1) << (FLINT_BITS - 1);
 
     if (nlimbs == 2 && arg->primes[0] == first_prime)
     {
@@ -103,9 +111,9 @@ static void _mod_worker(void * varg)
         {
             for (j = 0; j < k; j++)
             {
-                nmod_mat_entry(mod_A[0], i, j) = (Arows[i] + j * nlimbs)[0] & (first_prime - 1);
+                nmod_mat_entry(mod_A[0], i, j) = (Aentries + (i * Astride + j) * nlimbs)[0] & (first_prime - 1);
                 for (l = 1; l < num_primes; l++)
-                    nmod_mat_entry(mod_A[l], i, j) = nmod_set_mpn_2(Arows[i] + j * nlimbs, mod_A[l]->mod);
+                    nmod_mat_entry(mod_A[l], i, j) = nmod_set_mpn_2(Aentries + (i * Astride + j) * nlimbs, mod_A[l]->mod);
             }
         }
 
@@ -114,9 +122,9 @@ static void _mod_worker(void * varg)
             for (i = Bstartrow; i < Bstoprow; i++)
                 for (j = 0; j < n; j++)
                 {
-                    nmod_mat_entry(mod_B[0], i, j) = (Brows[i] + j * nlimbs)[0] & (first_prime - 1);
+                    nmod_mat_entry(mod_B[0], i, j) = (Bentries + (i * Bstride + j) * nlimbs)[0] & (first_prime - 1);
                     for (l = 1; l < num_primes; l++)
-                        nmod_mat_entry(mod_B[l], i, j) = nmod_set_mpn_2(Brows[i] + j * nlimbs, mod_A[l]->mod);
+                        nmod_mat_entry(mod_B[l], i, j) = nmod_set_mpn_2(Bentries + (i * Bstride + j) * nlimbs, mod_A[l]->mod);
                 }
         }
     }
@@ -125,14 +133,14 @@ static void _mod_worker(void * varg)
         for (i = Astartrow; i < Astoprow; i++)
             for (j = 0; j < k; j++)
                 for (l = 0; l < num_primes; l++)
-                    nmod_mat_entry(mod_A[l], i, j) = nmod_set_mpn(Arows[i] + j * nlimbs, nlimbs, mod_A[l]->mod);
+                    nmod_mat_entry(mod_A[l], i, j) = nmod_set_mpn(Aentries + (i * Astride + j) * nlimbs, nlimbs, mod_A[l]->mod);
 
         if (mod_B != NULL)
         {
             for (i = Bstartrow; i < Bstoprow; i++)
                 for (j = 0; j < n; j++)
                     for (l = 0; l < num_primes; l++)
-                        nmod_mat_entry(mod_B[l], i, j) = nmod_set_mpn(Brows[i] + j * nlimbs, nlimbs, mod_A[l]->mod);
+                        nmod_mat_entry(mod_B[l], i, j) = nmod_set_mpn(Bentries + (i * Bstride + j) * nlimbs, nlimbs, mod_A[l]->mod);
         }
     }
 }
@@ -144,9 +152,10 @@ static void _crt_worker(void * varg)
     slong n = arg->n;
     slong Cstartrow = arg->Cstartrow;
     slong Cstoprow = arg->Cstoprow;
-    mp_ptr * Crows = arg->Crows;
+    nn_ptr Centries = arg->Centries;
+    slong Cstride = arg->Cstride;
     nmod_mat_t * mod_C = arg->mod_C;
-    mp_limb_t * primes = arg->primes;
+    ulong * primes = arg->primes;
     slong num_primes = arg->num_primes;
     gr_ctx_struct * ctx = arg->ctx;
     slong nlimbs = MPN_MOD_CTX_NLIMBS(ctx);
@@ -156,11 +165,11 @@ static void _crt_worker(void * varg)
              for small entries */
 
     {
-        mp_ptr M, Ns, T, U;
-        mp_size_t Msize, Nsize;
-        mp_limb_t cy, ri;
+        nn_ptr M, Ns, T, U;
+        slong Msize, Nsize;
+        ulong cy, ri;
 
-        M = FLINT_ARRAY_ALLOC(num_primes + 1, mp_limb_t);
+        M = FLINT_ARRAY_ALLOC(num_primes + 1, ulong);
 
         M[0] = primes[0];
         Msize = 1;
@@ -176,9 +185,9 @@ static void _crt_worker(void * varg)
            do not require an extra limb. */
         Nsize = Msize + 2;
 
-        Ns = FLINT_ARRAY_ALLOC(Nsize*num_primes, mp_limb_t);
-        T = FLINT_ARRAY_ALLOC(Nsize, mp_limb_t);
-        U = FLINT_ARRAY_ALLOC(Nsize, mp_limb_t);
+        Ns = FLINT_ARRAY_ALLOC(Nsize*num_primes, ulong);
+        T = FLINT_ARRAY_ALLOC(Nsize, ulong);
+        U = FLINT_ARRAY_ALLOC(Nsize, ulong);
 
         for (i = 0; i < num_primes; i++)
         {
@@ -209,7 +218,7 @@ static void _crt_worker(void * varg)
             /* todo: see what fft_small does here */
             mpn_tdiv_qr(U, T, 0, T, Nsize, M, Msize);
 
-            mpn_mod_set_mpn(Crows[i] + j * nlimbs, T, Msize, ctx);
+            mpn_mod_set_mpn(Centries + (i * Cstride + j) * nlimbs, T, Msize, ctx);
         }
 
         flint_free(M);
@@ -252,9 +261,12 @@ int mpn_mod_mat_mul_multi_mod(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr
 
     mainarg.ctx = ctx;
 
-    mainarg.Arows = (mp_ptr *) A->rows;
-    mainarg.Brows = (mp_ptr *) B->rows;
-    mainarg.Crows = (mp_ptr *) C->rows;
+    mainarg.Aentries = (nn_ptr) A->entries;
+    mainarg.Astride = A->stride;
+    mainarg.Bentries = (nn_ptr) B->entries;
+    mainarg.Bstride = B->stride;
+    mainarg.Centries = (nn_ptr) C->entries;
+    mainarg.Cstride = C->stride;
 
     /* TUNING */
     primes_bits = NMOD_MAT_OPTIMAL_MODULUS_BITS;
@@ -272,7 +284,7 @@ int mpn_mod_mat_mul_multi_mod(gr_mat_t C, const gr_mat_t A, const gr_mat_t B, gr
     }
 
     /* Initialize */
-    mainarg.primes = FLINT_ARRAY_ALLOC(mainarg.num_primes, mp_limb_t);
+    mainarg.primes = FLINT_ARRAY_ALLOC(mainarg.num_primes, ulong);
     mainarg.primes[0] = first_prime;
     if (mainarg.num_primes > 1)
     {

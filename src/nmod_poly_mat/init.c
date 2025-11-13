@@ -9,41 +9,34 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
+#include "long_extras.h"
 #include "nmod_poly.h"
 #include "nmod_poly_mat.h"
 
 void
-nmod_poly_mat_init(nmod_poly_mat_t A, slong rows, slong cols, mp_limb_t n)
+nmod_poly_mat_init(nmod_poly_mat_t A, slong rows, slong cols, ulong n)
 {
     slong i;
-
-    if (rows > 0)
-        A->rows = (nmod_poly_struct **) flint_malloc(rows * sizeof(nmod_poly_struct *));
-    else
-        A->rows = NULL;
-
-    if (rows > 0 && cols > 0)
-    {
-        A->entries = (nmod_poly_struct *) flint_malloc(flint_mul_sizes(rows, cols) * sizeof(nmod_poly_struct));
-
-        for (i = 0; i < rows * cols; i++)
-            nmod_poly_init(A->entries + i, n);
-
-        for (i = 0; i < rows; i++)
-            A->rows[i] = A->entries + i * cols;
-    }
-    else
-    {
-        A->entries = NULL;
-	if (rows > 0)
-        {
-            for (i = 0; i < rows; i++)
-                A->rows[i] = NULL;
-        }
-    }
 
     A->modulus = n;
     A->r = rows;
     A->c = cols;
+    A->entries = NULL;
+    A->stride = cols;
+
+    if (rows != 0 && cols != 0)
+    {
+        slong num;
+        int of;
+
+        of = z_mul_checked(&num, rows, cols);
+
+        if (of)
+            flint_throw(FLINT_ERROR, "Overflow creating a %wd x %wd object\n", rows, cols);
+
+        A->entries = flint_malloc(num * sizeof(nmod_poly_struct));
+
+        for (i = 0; i < rows * cols; i++)
+            nmod_poly_init(A->entries + i, n);
+    }
 }

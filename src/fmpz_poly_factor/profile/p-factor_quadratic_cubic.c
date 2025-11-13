@@ -7,7 +7,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz.h"
 #include "fmpz_poly.h"
 #include "fmpz_poly_factor.h"
@@ -339,7 +338,7 @@ main(void)
         flint_printf(" %06wu", tab[10][i]);
     printf("\n");
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
 
     flint_printf("factors found: %wd\n", omega);
     return 0;

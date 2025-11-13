@@ -10,6 +10,7 @@
 */
 
 #include <math.h>
+#include <gmp.h>
 #include "double_extras.h"
 #include "fmpzi.h"
 
@@ -73,7 +74,7 @@ fmpzi_divexact(fmpzi_t q, const fmpzi_t x, const fmpzi_t y)
 
     if (ybits == 0)
     {
-        flint_throw(FLINT_ERROR, "fmpzi_divexact: division by zero\n");
+        flint_throw(FLINT_DIVZERO, "fmpzi_divexact: division by zero\n");
     }
 
     if (xbits == 0)

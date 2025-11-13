@@ -9,16 +9,14 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-add_sub_neg.c"
 #include "t-discrete_log_pohlig_hellman.c"
-#include "t-dot_bound_limbs.c"
+#include "t-dot_nlimbs.c"
 #include "t-dot.c"
 #include "t-dot_ptr.c"
+#include "t-invert.c"
 #include "t-nmod.c"
 #include "t-nmod_pow_fmpz.c"
 #include "t-reduce.c"
@@ -32,9 +30,10 @@ test_struct tests[] =
 {
     TEST_FUNCTION(nmod_vec_add_sub_neg),
     TEST_FUNCTION(nmod_vec_discrete_log_pohlig_hellman),
-    TEST_FUNCTION(nmod_vec_dot_bound_limbs),
+    TEST_FUNCTION(_nmod_vec_dot_params),
     TEST_FUNCTION(nmod_vec_dot),
     TEST_FUNCTION(nmod_vec_dot_ptr),
+    TEST_FUNCTION(nmod_vec_invert),
     TEST_FUNCTION(nmod_vec_nmod),
     TEST_FUNCTION(nmod_vec_nmod_pow_fmpz),
     TEST_FUNCTION(nmod_vec_reduce),

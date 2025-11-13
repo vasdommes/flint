@@ -21,7 +21,7 @@ extern "C" {
 typedef struct
 {
     fmpz exp;
-    mp_limb_t man;
+    ulong man;
 }
 mag_struct;
 
@@ -45,7 +45,7 @@ typedef struct
     arb_ptr entries;
     slong r;
     slong c;
-    arb_ptr * rows;
+    slong stride;
 }
 arb_mat_struct;
 

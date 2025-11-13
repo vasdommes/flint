@@ -9,17 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "arb_poly.h"
 #include "arb_hypgeom.h"
 #include "arb_fmpz_poly.h"
-
-#ifdef __GNUC__
-# define ldexp __builtin_ldexp
-# define log __builtin_log
-# define sqrt __builtin_sqrt
-#else
-# include <math.h>
-#endif
 
 /* Actually an enclosure for |x| < 0.99. */
 static void
@@ -219,7 +212,7 @@ arb_hypgeom_erfinv_guess(arb_t res, const arb_t x, const arb_t one_sub_x, slong 
     }
 }
 
-void
+static void
 arb_hypgeom_erfinv_precise(arb_t res, const arb_t x, const arb_t one_sub_x, int near_one, slong prec)
 {
     slong wp;

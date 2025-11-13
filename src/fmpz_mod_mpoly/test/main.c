@@ -9,15 +9,14 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-add_sub.c"
 #include "t-add_sub_fmpz.c"
 #include "t-add_sub_si.c"
+#include "t-buchberger_naive.c"
 #include "t-cmp.c"
+#include "t-compose_fmpz_mod_mpoly.c"
 #include "t-degree.c"
 #include "t-degrees_term_exp_fits_ui_si.c"
 #include "t-derivative.c"
@@ -57,6 +56,7 @@
 #include "t-scalar_addmul_fmpz.c"
 #include "t-scalar_mul_fmpz.c"
 #include "t-sqrt.c"
+#include "t-to_from_fmpz_mpoly.c"
 #include "t-total_degree.c"
 #include "t-univar_resultant.c"
 #include "t-used_vars.c"
@@ -68,6 +68,8 @@ test_struct tests[] =
     TEST_FUNCTION(fmpz_mod_mpoly_add_sub),
     TEST_FUNCTION(fmpz_mod_mpoly_add_sub_fmpz),
     TEST_FUNCTION(fmpz_mod_mpoly_add_sub_si),
+    TEST_FUNCTION(fmpz_mod_mpoly_buchberger_naive),
+    TEST_FUNCTION(fmpz_mod_mpoly_compose),
     TEST_FUNCTION(fmpz_mod_mpoly_cmp),
     TEST_FUNCTION(fmpz_mod_mpoly_degree),
     TEST_FUNCTION(fmpz_mod_mpoly_degrees_term_exp_fits_ui_si),
@@ -78,6 +80,7 @@ test_struct tests[] =
     TEST_FUNCTION(fmpz_mod_mpoly_div_monagan_pearce),
     TEST_FUNCTION(fmpz_mod_mpoly_divrem),
     TEST_FUNCTION(fmpz_mod_mpoly_divrem_ideal_monagan_pearce),
+    TEST_FUNCTION(fmpz_mod_mpoly_get_fmpz_mpoly),
     TEST_FUNCTION(fmpz_mod_mpoly_evaluate),
     TEST_FUNCTION(fmpz_mod_mpoly_gcd_brown),
     TEST_FUNCTION(fmpz_mod_mpoly_gcd_cofactors),

@@ -10,6 +10,7 @@
 */
 
 #include "fmpz.h"
+#include "fmpz_mat.h"
 #include "acb_theta.h"
 
 /* todo: move out? */
@@ -223,7 +224,7 @@ sp2gz_decompose_nonsimplified(slong * nb, const fmpz_mat_t mat)
         nb_vec++;
     }
 
-    /* Now r < g: make HNF on colums for the bottom of delta and recursive call */
+    /* Now r < g: make HNF on columns for the bottom of delta and recursive call */
     fmpz_mat_init(last, g, g - r);
     for (k = 0; k < g - r; k++)
     {

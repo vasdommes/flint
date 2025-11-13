@@ -10,9 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "gmpcompat.h"
-#include "ulong_extras.h"
 #include "fmpz.h"
 
 void
@@ -27,9 +25,9 @@ fmpz_mul_si_tdiv_q_2exp(fmpz_t f, const fmpz_t g, slong x, ulong exp)
    }
    else if (!COEFF_IS_MPZ(c2)) /* c2 is small */
    {
-       mp_limb_t prod[2];
-       mp_limb_t uc2;
-       mp_limb_t ux;
+       ulong prod[2];
+       ulong uc2;
+       ulong ux;
 
        if (exp >= 2 * FLINT_BITS)
        {
@@ -38,7 +36,7 @@ fmpz_mul_si_tdiv_q_2exp(fmpz_t f, const fmpz_t g, slong x, ulong exp)
        }
 
        uc2 = FLINT_ABS(c2);
-       ux = FLINT_ABS(x);
+       ux = FLINT_UABS(x);
 
        umul_ppmm(prod[1], prod[0], uc2, ux);
 
@@ -65,18 +63,18 @@ fmpz_mul_si_tdiv_q_2exp(fmpz_t f, const fmpz_t g, slong x, ulong exp)
        }
        else /* result takes two limbs */
        {
-           __mpz_struct * mf = _fmpz_promote(f);
+           mpz_ptr mf = _fmpz_promote(f);
 
            /* two limbs, least significant first, native endian, no
 nails, stored in prod */
-           mpz_import(mf, 2, -1, sizeof(mp_limb_t), 0, 0, prod);
+           mpz_import(mf, 2, -1, sizeof(ulong), 0, 0, prod);
            if ((c2 ^ x) < WORD(0))
                mpz_neg(mf, mf);
        }
    }
    else /* c2 is large */
    {
-       __mpz_struct * mf = _fmpz_promote(f); /* ok without val as
+       mpz_ptr mf = _fmpz_promote(f); /* ok without val as
             if aliased both are large */
        flint_mpz_mul_si(mf, COEFF_TO_PTR(c2), x);
        mpz_tdiv_q_2exp(mf, mf, exp);

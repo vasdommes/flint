@@ -12,11 +12,11 @@
 
 #include <string.h>
 #include <ctype.h>
+#include <gmp.h>
+#include "thread_pool.h"
+#include "thread_support.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
-#include "thread_support.h"
-#include "thread_pool.h"
-#include "profiler.h"
 
 #define BASECASE_CUTOFF 24000
 
@@ -42,8 +42,7 @@ typedef struct
 }
 worker_args_struct;
 
-static void
-_fmpz_get_str_recursive(fmpz_t res, const char * s, slong slen, const slong * exps, slong cur_depth, slong depth, const fmpz * pows);
+static void _fmpz_get_str_recursive(fmpz_t res, const char * s, slong slen, const slong * exps, slong cur_depth, slong depth, const fmpz * pows);
 
 static void
 worker(void * arg)
@@ -55,16 +54,16 @@ worker(void * arg)
 static void
 _fmpz_set_str_basecase(fmpz_t res, const char * s, slong slen)
 {
-    mp_ptr tmp;
+    nn_ptr tmp;
     unsigned char * stmp;
-    mp_size_t n;
+    slong n;
     slong i;
     TMP_INIT;
 
     TMP_START;
 
     stmp = TMP_ALLOC(sizeof(char) * slen);
-    tmp = TMP_ALLOC(sizeof(mp_limb_t) * (slen / DIGITS_PER_LIMB + 2));
+    tmp = TMP_ALLOC(sizeof(ulong) * (slen / DIGITS_PER_LIMB + 2));
 
     for (i = 0; i < slen; i++)
         stmp[i] = s[i] - '0';
@@ -154,7 +153,7 @@ _fmpz_get_str_recursive(fmpz_t res, const char * s, slong slen, const slong * ex
     }
 }
 
-void
+static void
 fmpz_set_str_bsplit_threaded(fmpz_t res, const char * s, slong slen)
 {
     slong k, depth;
@@ -188,7 +187,7 @@ static int
 fmpz_set_str_fallback(fmpz_t res, const char * str, int b, int neg)
 {
     int err;
-    __mpz_struct * z = _fmpz_promote(res);
+    mpz_ptr z = _fmpz_promote(res);
     err = mpz_set_str(z, str, b);
     if (neg)
         mpz_neg(z, z);
@@ -202,10 +201,6 @@ fmpz_set_str(fmpz_t res, const char * str, int base)
     slong slen, i;
     int neg = 0;
 
-    /* Let GMP handle unusual bases. */
-    if (base != 10)
-        return fmpz_set_str_fallback(res, str, base, 0);
-
     /* Allow leading whitespace. */
     while (isspace(str[0]))
         str++;
@@ -214,7 +209,17 @@ fmpz_set_str(fmpz_t res, const char * str, int base)
     {
         str++;
         neg = 1;
+
+        while (isspace(str[0]))
+            str++;
+        /* Checked specially, otherwise GMP might handle the second minus */
+        if (str[0] == '-')
+            return -1;
     }
+
+    /* Let GMP handle unusual bases. */
+    if (base != 10)
+        return fmpz_set_str_fallback(res, str, base, neg);
 
     slen = strlen(str);
 

@@ -10,7 +10,6 @@
 */
 
 #include <float.h>
-#include "flint.h"
 #include "fmpz.h"
 #include "fmpz_poly.h"
 #include "ulong_extras.h"
@@ -67,7 +66,7 @@ main(void)
 
         for (len2 = len2lo, i = 0; len2 <= len2hi; len2 += len2h, i++)
         {
-            int c, n, reps = 0;
+            int c, n;
 
             for (c = 0; c < nalgs; c++)
                 s[c] = WORD(0);
@@ -118,7 +117,6 @@ main(void)
 
                 for (c = 0; c < nalgs; c++)
                     s[c] += t[c]->cpu;
-                reps += loops;
             }
 
             if (s[0] <= s[1])
@@ -142,7 +140,7 @@ main(void)
         flint_printf("\n");
     }
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 }

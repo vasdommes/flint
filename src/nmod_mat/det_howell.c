@@ -25,10 +25,10 @@
    Find s, t such that g = s*a - t*b is the gcd of a and b mod n and where
    s is a unit mod n. Assumes a and b are reduced mod n and no aliasing.
 */
-static inline mp_limb_t
-_nmod_xgcd_unit(mp_limb_t * s, mp_limb_t * t, mp_limb_t a, mp_limb_t b, nmod_t mod)
+static inline ulong
+_nmod_xgcd_unit(ulong * s, ulong * t, ulong a, ulong b, nmod_t mod)
 {
-   mp_limb_t g, ag, bg;
+   ulong g, ag, bg;
 
    if (a >= b)
       g = n_xgcd(s, t, a, b);
@@ -55,7 +55,6 @@ static inline int
 _nmod_mat_pivot(nmod_mat_t A, slong start_row, slong col)
 {
     slong j;
-    mp_ptr u;
 
     if (nmod_mat_entry(A, start_row, col) != 0)
         return 1;
@@ -64,10 +63,7 @@ _nmod_mat_pivot(nmod_mat_t A, slong start_row, slong col)
     {
         if (nmod_mat_entry(A, j, col) != 0)
         {
-            u = A->rows[j];
-            A->rows[j] = A->rows[start_row];
-            A->rows[start_row] = u;
-
+            nmod_mat_swap_rows(A, NULL, j, start_row);
             return -1;
         }
     }
@@ -76,9 +72,9 @@ _nmod_mat_pivot(nmod_mat_t A, slong start_row, slong col)
 
 /* test whether q*a = b mod N has a solution */
 static int
-_n_is_divisible(mp_ptr q, mp_limb_t b, mp_limb_t a, nmod_t N)
+_n_is_divisible(nn_ptr q, ulong b, ulong a, nmod_t N)
 {
-    mp_limb_t e, g;
+    ulong e, g;
     g = n_gcdinv(&e, a, N.n);
 
     if (( b % g ) == 0)
@@ -90,9 +86,9 @@ _n_is_divisible(mp_ptr q, mp_limb_t b, mp_limb_t a, nmod_t N)
     return 0;
 }
 
-mp_limb_t _nmod_mat_det_howell(nmod_mat_t A)
+ulong _nmod_mat_det_howell(nmod_mat_t A)
 {
-    mp_limb_t s, t, t1, det = 1, unit = 1;
+    ulong s, t, t1, det = 1, unit = 1;
     slong m, n, row, col, i, k;
     nmod_t mod = A->mod;
 
@@ -158,11 +154,11 @@ mp_limb_t _nmod_mat_det_howell(nmod_mat_t A)
     return nmod_mul(det, unit, mod);
 }
 
-mp_limb_t
+ulong
 nmod_mat_det_howell(const nmod_mat_t A)
 {
     nmod_mat_t tmp;
-    mp_limb_t det;
+    ulong det;
     slong dim = A->r;
 
     if (dim != A->c)

@@ -10,18 +10,18 @@
 */
 
 #include <stdio.h>
-#include "ca.h"
-#include "ca_ext.h"
-#include "ca_field.h"
-
 #include "fmpz_mat.h"
 #include "fmpz_lll.h"
 #include "qqbar.h"
 #include "fmpz_mpoly.h"
-
+#include "ca.h"
+#include "ca/impl.h"
+#include "ca_ext.h"
+#include "ca_field.h"
+#include "ca_field/impl.h"
 #include "gr.h"
 
-slong
+static slong
 acb_multi_lindep(fmpz_mat_t rel, acb_srcptr vec, slong len, int check, slong prec)
 {
     fmpz_mat_t A;
@@ -140,13 +140,13 @@ acb_multi_lindep(fmpz_mat_t rel, acb_srcptr vec, slong len, int check, slong pre
         for (i = 0; i < len; i++)
             acb_addmul_fmpz(z2, vec + i, fmpz_mat_entry(A, row, i), prec + 10);
 
-        if (!_fmpz_vec_is_zero(A->rows[row], len) && acb_contains_zero(z2))
+        if (!_fmpz_vec_is_zero(fmpz_mat_row(A, row), len) && acb_contains_zero(z2))
         {
             found++;
         }
         else
         {
-            _fmpz_vec_zero(A->rows[row], fmpz_mat_ncols(A));
+            _fmpz_vec_zero(fmpz_mat_row(A, row), fmpz_mat_ncols(A));
         }
     }
 
@@ -155,9 +155,9 @@ acb_multi_lindep(fmpz_mat_t rel, acb_srcptr vec, slong len, int check, slong pre
     i = 0;
     for (row = 0; row < len; row++)
     {
-        if (!_fmpz_vec_is_zero(A->rows[row], len))
+        if (!_fmpz_vec_is_zero(fmpz_mat_row(A, row), len))
         {
-            _fmpz_vec_set(rel->rows[i], A->rows[row], len);
+            _fmpz_vec_set(fmpz_mat_row(rel, i), fmpz_mat_row(A, row), len);
             i++;
         }
     }
@@ -181,8 +181,6 @@ acb_multi_lindep(fmpz_mat_t rel, acb_srcptr vec, slong len, int check, slong pre
     return found;
 }
 
-void _nf_elem_get_fmpz_poly_den_shallow(fmpz_poly_t pol, fmpz_t den, const nf_elem_t a, const nf_t nf);
-
 void
 _ca_field_ideal_insert_clear_mpoly(ca_field_t K, fmpz_mpoly_t poly, fmpz_mpoly_ctx_t mctx, ca_ctx_t ctx)
 {
@@ -199,7 +197,7 @@ _ca_field_ideal_insert_clear_mpoly(ca_field_t K, fmpz_mpoly_t poly, fmpz_mpoly_c
     fmpz_mpoly_clear(poly, mctx);
 }
 
-int ext_as_pow_pq(slong *p, slong *q, const ca_ext_t x, ca_ctx_t ctx)
+static int ext_as_pow_pq(slong *p, slong *q, const ca_ext_t x, ca_ctx_t ctx)
 {
     if (CA_EXT_HEAD(x) == CA_Sqrt)
     {
@@ -226,7 +224,7 @@ int ext_as_pow_pq(slong *p, slong *q, const ca_ext_t x, ca_ctx_t ctx)
     return 0;
 }
 
-int
+static int
 ca_field_prove_log_relation(ca_field_t K, const fmpz * rel,
     acb_srcptr z,
     const slong * logs,
@@ -315,7 +313,7 @@ ca_field_prove_log_relation(ca_field_t K, const fmpz * rel,
     return success;
 }
 
-slong
+static slong
 ca_field_insert_log_relation(ca_field_t K,
     fmpz * rel,
     const slong * logs,
@@ -375,7 +373,7 @@ ca_field_insert_log_relation(ca_field_t K,
 
 
 /* Find log relations. */
-void
+static void
 ca_field_build_ideal_logs(ca_field_t K, ca_ctx_t ctx)
 {
     slong * logs;
@@ -464,7 +462,7 @@ ca_field_build_ideal_logs(ca_field_t K, ca_ctx_t ctx)
 
             for (row = 0; row < fmpz_mat_nrows(A); row++)
             {
-                rel = A->rows[row];
+                rel = fmpz_mat_row(A, row);
 
                 if (!_fmpz_vec_is_zero(rel, num_logs_with_pi_i) && FLINT_ABS(_fmpz_vec_max_bits(rel, num_logs_with_pi_i)) <= 10)
                 {
@@ -517,7 +515,7 @@ ca_field_build_ideal_logs(ca_field_t K, ca_ctx_t ctx)
     flint_free(logs);
 }
 
-int
+static int
 ca_field_prove_multiplicative_relation(ca_field_t K, const fmpz * rel,
     acb_srcptr z,
     const slong * powers,
@@ -676,7 +674,7 @@ qqbar_end:
     return success;
 }
 
-slong
+static slong
 ca_field_insert_multiplicative_relation(ca_field_t K,
     fmpz * rel,
     const slong * powers,
@@ -735,7 +733,7 @@ ca_field_insert_multiplicative_relation(ca_field_t K,
 
 /* Find relations involving exponentials, powers and roots. */
 /* Todo: more special cases (including roots of unity) */
-void
+static void
 ca_field_build_ideal_multiplicative(ca_field_t K, ca_ctx_t ctx)
 {
     slong i, len;
@@ -838,7 +836,7 @@ ca_field_build_ideal_multiplicative(ca_field_t K, ca_ctx_t ctx)
 
             for (row = 0; row < fmpz_mat_nrows(A); row++)
             {
-                rel = A->rows[row];
+                rel = fmpz_mat_row(A, row);
 
                 if (!_fmpz_vec_is_zero(rel, num_powers + 1) && FLINT_ABS(_fmpz_vec_max_bits(rel, num_powers + 1)) <= 10)
                 {
@@ -890,13 +888,6 @@ ca_field_build_ideal_multiplicative(ca_field_t K, ca_ctx_t ctx)
 
     flint_free(powers);
 }
-
-/* todo: move to utils */
-void
-fmpz_mpoly_set_coeff_si_x(fmpz_mpoly_t poly,
-        slong c,
-        slong x_var, slong x_exp,
-        const fmpz_mpoly_ctx_t ctx);
 
 void
 ca_field_build_ideal(ca_field_t K, ca_ctx_t ctx)

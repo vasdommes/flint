@@ -9,13 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 
-mp_limb_t
-n_powmod_ui_precomp(mp_limb_t a, mp_limb_t exp, mp_limb_t n, double npre)
+ulong
+n_powmod_ui_precomp(ulong a, ulong exp, ulong n, double npre)
 {
-    mp_limb_t x, y;
+    ulong x, y;
 
     if (n == UWORD(1))
         return WORD(0);
@@ -35,13 +34,13 @@ n_powmod_ui_precomp(mp_limb_t a, mp_limb_t exp, mp_limb_t n, double npre)
     return x;
 }
 
-mp_limb_t
-n_powmod_precomp(mp_limb_t a, mp_limb_signed_t exp, mp_limb_t n, double npre)
+ulong
+n_powmod_precomp(ulong a, slong exp, ulong n, double npre)
 {
     if (exp < 0)
     {
         a = n_invmod(a, n);
-        exp = -exp;
+        exp = -(ulong) exp;
     }
 
     return n_powmod_ui_precomp(a, exp, n, npre);

@@ -71,7 +71,7 @@ static void n_bpoly_mod_make_monic_mod(n_bpoly_t A, n_poly_t mk, nmod_t mod)
 static void n_bpoly_set_fq_nmod_poly_gen0(
     n_bpoly_t A,
     const fq_nmod_poly_t B,
-    const fq_nmod_ctx_t ectx)
+    const fq_nmod_ctx_t FLINT_UNUSED(ectx))
 {
     slong i;
 
@@ -641,12 +641,11 @@ static void _lattice(
     n_bpoly_t Q, R, dg;
     n_bpoly_struct * ld;
     nmod_mat_t M, T1, T2;
-    int nlimbs;
-    mp_limb_t * trow;
+    ulong * trow;
     slong lift_order = lift_alpha_pow->length - 1;
 
-    nlimbs = _nmod_vec_dot_bound_limbs(r, ctx);
-    trow = (mp_limb_t *) flint_malloc(r*sizeof(mp_limb_t));
+    const dot_params_t params = _nmod_vec_dot_params(r, ctx);
+    trow = (ulong *) flint_malloc(r*sizeof(ulong));
     n_bpoly_init(Q);
     n_bpoly_init(R);
     n_bpoly_init(dg);
@@ -683,7 +682,7 @@ static void _lattice(
 
             for (i = 0; i < d; i++)
                 nmod_mat_entry(M, j - starts[k], i) =
-                             _nmod_vec_dot(trow, N->rows[i], r, ctx, nlimbs);
+                             _nmod_vec_dot(trow, nmod_mat_entry_ptr(N, i, 0), r, ctx, params);
         }
 
         nmod_mat_init_nullspace_tr(T1, M);

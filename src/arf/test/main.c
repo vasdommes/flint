@@ -9,8 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
 #include <mpfr.h>
 
 /* Include functions *********************************************************/
@@ -52,6 +50,7 @@
 #include "t-mul_ui.c"
 #include "t-mul_via_mpfr.c"
 #include "t-neg_round.c"
+#include "t-nint.c"
 #include "t-root.c"
 #include "t-rsqrt.c"
 #include "t-set_d.c"
@@ -116,6 +115,7 @@ test_struct tests[] =
     TEST_FUNCTION(arf_mul_ui),
     TEST_FUNCTION(arf_mul_via_mpfr),
     TEST_FUNCTION(arf_neg_round),
+    TEST_FUNCTION(arf_nint),
     TEST_FUNCTION(arf_root),
     TEST_FUNCTION(arf_rsqrt),
     TEST_FUNCTION(arf_set_d),

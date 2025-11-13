@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
 #include "gr_mat.h"
 
 int
@@ -25,7 +26,7 @@ gr_mat_inv(gr_mat_t res, const gr_mat_t mat, gr_ctx_t ctx)
         return GR_SUCCESS;
 
     if (n == 1)
-        return gr_inv(res->rows[0], mat->rows[0], ctx);
+        return gr_inv(gr_mat_entry_ptr(res, 0, 0, ctx), gr_mat_entry_srcptr(mat, 0, 0, ctx), ctx);
 
     gr_mat_init(T, n, n, ctx);
 

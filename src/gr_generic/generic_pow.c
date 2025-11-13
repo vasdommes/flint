@@ -10,6 +10,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
+#include "longlong.h"
 #include "fmpz.h"
 #include "gr.h"
 #include "gr_generic.h"
@@ -39,14 +41,14 @@ sliding_select_k(ulong bits)
 /* todo: avoid swaps (or perform pointer swaps) */
 /* note: supports aliasing */
 static int
-_gr_pow_mpn_sliding(gr_ptr f, gr_srcptr g, mp_srcptr exp, mp_size_t en, gr_ctx_t ctx)
+_gr_pow_mpn_sliding(gr_ptr f, gr_srcptr g, nn_srcptr exp, slong en, gr_ctx_t ctx)
 {
     slong h, k, value;
     slong i, j, alloc;
     gr_ptr temp;
     fmpz * g_powers;
     slong sz = ctx->sizeof_elem;
-    mp_bitcnt_t ebits;
+    flint_bitcnt_t ebits;
     int status = GR_SUCCESS;
 
     ebits = (en - 1) * FLINT_BITS + FLINT_BIT_COUNT(exp[en - 1]);
@@ -152,7 +154,7 @@ gr_generic_pow_ui_sliding(gr_ptr f, gr_srcptr g, ulong pow, gr_ctx_t ctx)
 }
 
 /* Assumes exp >= 2; res and tmp not not aliased with x. */
-int
+static int
 _gr_generic_pow_ui_binexp(gr_ptr res, gr_ptr tmp, gr_srcptr x, ulong exp, gr_ctx_t ctx)
 {
     gr_ptr R, S, T;

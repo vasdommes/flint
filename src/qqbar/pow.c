@@ -11,12 +11,13 @@
 
 #include "ulong_extras.h"
 #include "fmpz_vec.h"
+#include "fmpz_poly.h"
 #include "fmpq.h"
 #include "fmpz_poly_factor.h"
 #include "arb_fmpz_poly.h"
 #include "qqbar.h"
 
-void
+static void
 _qqbar_sqr_undeflatable(qqbar_t res, const qqbar_t x)
 {
     fmpz_poly_t A, B;
@@ -211,7 +212,7 @@ qqbar_pow_fmpq(qqbar_t res, const qqbar_t x, const fmpq_t y)
     {
         if (fmpq_sgn(y) <= 0)
         {
-            flint_throw(FLINT_ERROR, "qqbar_pow_fmpq: division by zero\n");
+            flint_throw(FLINT_DIVZERO, "qqbar_pow_fmpq: division by zero\n");
         }
 
         qqbar_zero(res);

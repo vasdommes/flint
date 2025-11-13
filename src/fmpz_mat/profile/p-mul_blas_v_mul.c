@@ -10,12 +10,12 @@
 */
 
 #include "flint.h"
-#include "fmpz_mat.h"
-#include "profiler.h"
 
 #if FLINT_USES_BLAS
-
-#include "cblas.h"
+#include <cblas.h>
+#include "longlong.h"  // for FLINT_BIT_COUNT
+#include "fmpz_mat.h"
+#include "profiler.h"
 
 int main(void)
 {
@@ -27,7 +27,7 @@ int main(void)
     FLINT_TEST_INIT(state);
 
     flint_set_num_threads(8);
-    openblas_set_num_threads(8);
+    //openblas_set_num_threads(8);
 
     for (dim = 50; dim <= 3000; dim += 2 + dim/4)
     {
@@ -93,15 +93,13 @@ int main(void)
         fmpz_mat_clear(D);
     }
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
     return 0;
 }
 
 #else
-
 int main(void)
 {
     return 0;
 }
-
 #endif

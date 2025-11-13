@@ -14,8 +14,8 @@
 
 /* TODO try delaying the reductions */
 void nmod_mat_nmod_vec_mul(
-    mp_limb_t * c,
-    const mp_limb_t * a, slong alen,
+    ulong * c,
+    const ulong * a, slong alen,
     const nmod_mat_t B)
 {
     slong i;
@@ -27,29 +27,29 @@ void nmod_mat_nmod_vec_mul(
         return;
 
     if (len > 0)
-        _nmod_vec_scalar_mul_nmod(c, B->rows[0], ncols, a[0], B->mod);
+        _nmod_vec_scalar_mul_nmod(c, nmod_mat_entry_ptr(B, 0, 0), ncols, a[0], B->mod);
     else
         _nmod_vec_zero(c, ncols);
 
     for (i = 1; i < len; i++)
-        _nmod_vec_scalar_addmul_nmod(c, B->rows[i], ncols, a[i], B->mod);
+        _nmod_vec_scalar_addmul_nmod(c, nmod_mat_entry_ptr(B, i, 0), ncols, a[i], B->mod);
 }
 
 void nmod_mat_nmod_vec_mul_ptr(
-    mp_limb_t * const * c,
-    const mp_limb_t * const * a, slong alen,
+    ulong * const * c,
+    const ulong * const * a, slong alen,
     const nmod_mat_t B)
 {
     slong i;
     slong len = FLINT_MIN(B->r, alen);
     slong ncols = B->c;
-    mp_limb_t * aa, * cc;
+    ulong * aa, * cc;
     TMP_INIT;
 
     TMP_START;
 
-    aa = TMP_ARRAY_ALLOC(len, mp_limb_t);
-    cc = TMP_ARRAY_ALLOC(ncols, mp_limb_t);
+    aa = TMP_ARRAY_ALLOC(len, ulong);
+    cc = TMP_ARRAY_ALLOC(ncols, ulong);
 
     for (i = 0; i < len; i++)
         aa[i] = a[i][0];

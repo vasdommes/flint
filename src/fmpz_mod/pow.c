@@ -10,6 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "fmpz.h"
 #include "fmpz_mod.h"
 #include "gr.h"
@@ -17,7 +18,7 @@
 
 #if FLINT_HAVE_FFT_SMALL
 
-void
+static void
 _fmpz_mod_pow_fmpz(fmpz_t res, const fmpz_t x, const fmpz_t e, const fmpz_mod_ctx_t ctx)
 {
     if (*e <= 2)
@@ -92,7 +93,7 @@ int fmpz_mod_pow_fmpz(fmpz_t a, const fmpz_t b, const fmpz_t pow,
 
 #if FLINT_HAVE_FFT_SMALL
 
-void
+static void
 _fmpz_mod_pow_ui(fmpz_t res, const fmpz_t x, ulong e, const fmpz_mod_ctx_t ctx)
 {
     if (e <= 2)

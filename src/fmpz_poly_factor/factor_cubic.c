@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
 #include "nmod.h"
 #include "fmpz.h"
 #include "fmpz_poly.h"
@@ -133,11 +134,11 @@ static slong binary_sqrt(fmpz_t z, fmpz_t x, slong p)
 }
 
 
-static mp_limb_t fmpz_fdiv_r_2exp_flint_bits(const fmpz_t a)
+static ulong fmpz_fdiv_r_2exp_flint_bits(const fmpz_t a)
 {
     if (COEFF_IS_MPZ(*a))
     {
-        const __mpz_struct * A = COEFF_TO_PTR(*a);
+        const mpz_ptr A = COEFF_TO_PTR(*a);
         return A->_mp_size > 0 ? A->_mp_d[0] : -A->_mp_d[0];
     }
     else
@@ -223,7 +224,7 @@ static slong binary_cubic_lift(
 {
     slong n;
     fmpz_t r2, c, d, t;
-    mp_limb_t A, B, C, D, INV, R, R2, S, E;
+    ulong A, B, C, D, INV, R, R2, S, E;
 
     /* start with a factorization mod 2^n */
     n = 1;
@@ -238,7 +239,7 @@ static slong binary_cubic_lift(
 
     while (n <= FLINT_BITS/2)
     {
-        mp_limb_t mask = (UWORD(1) << n);
+        ulong mask = (UWORD(1) << n);
         C = (A - (S - R2*E)) >> n;
         D = (B - (R*S)) >> n;
         R += (((D - C*R)*INV) % mask) << n;
@@ -353,11 +354,11 @@ static slong binary_cubic_lift_continue(
 
 
 /* return f(0)*...*f(largest_prime - 1) mod prime_product */
-static mp_limb_t eval_product_mod_n(
+static ulong eval_product_mod_n(
     const fmpz_t a,
     const fmpz_t b,
-    mp_limb_t prime_product,
-    mp_limb_t largest_prime)
+    ulong prime_product,
+    ulong largest_prime)
 {
     nmod_t ctx;
     ulong A, B, F, G, H, P, i;
@@ -857,7 +858,7 @@ void _fmpz_poly_factor_cubic(fmpz_poly_factor_t fac,
         case 1:
             _raise_linear_factor(p, a, b, r + 0, T);
             fmpz_poly_factor_insert(fac, p, 1*exp);
-            fmpz_poly_divides(p, f, p);
+            fmpz_poly_divexact(p, f, p);
             fmpz_poly_factor_insert(fac, p, 1*exp);
             break;
 

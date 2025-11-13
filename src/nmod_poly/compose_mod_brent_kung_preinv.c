@@ -12,17 +12,18 @@
 */
 
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 #include "nmod_mat.h"
 
 void
-_nmod_poly_compose_mod_brent_kung_preinv(mp_ptr res, mp_srcptr poly1,
-                  slong len1, mp_srcptr poly2, mp_srcptr poly3, slong len3,
-                                 mp_srcptr poly3inv, slong len3inv, nmod_t mod)
+_nmod_poly_compose_mod_brent_kung_preinv(nn_ptr res, nn_srcptr poly1,
+                  slong len1, nn_srcptr poly2, nn_srcptr poly3, slong len3,
+                                 nn_srcptr poly3inv, slong len3inv, nmod_t mod)
 {
     nmod_mat_t A, B, C;
-    mp_ptr t, h;
+    nn_ptr h;
     slong i, n, m;
 
     n = len3 - 1;
@@ -49,34 +50,36 @@ _nmod_poly_compose_mod_brent_kung_preinv(mp_ptr res, mp_srcptr poly1,
     nmod_mat_init(C, m, n, mod.n);
 
     h = _nmod_vec_init(n);
-    t = _nmod_vec_init(n);
 
     /* Set rows of B to the segments of poly1 */
     for (i = 0; i < len1/m; i++)
-        _nmod_vec_set(B->rows[i], poly1 + i*m, m);
+        _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1 + i*m, m);
 
-    _nmod_vec_set(B->rows[i], poly1 + i*m, len1%m);
+    _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1 + i*m, len1%m);
 
     /* Set rows of A to powers of poly2 */
-    _nmod_poly_powers_mod_preinv_naive(A->rows, poly2, n,
-                                       m, poly3, len3, poly3inv, len3inv, mod);
+    {
+        nn_ptr * Arows;
+        slong i;
+        Arows = flint_malloc(sizeof(nn_ptr) * A->r);
+        for (i = 0; i < A->r; i++)
+            Arows[i] = nmod_mat_entry_ptr(A, i, 0);
+
+        _nmod_poly_powers_mod_preinv_naive(Arows, poly2, n,
+                                           m, poly3, len3, poly3inv, len3inv, mod);
+
+        flint_free(Arows);
+    }
 
     nmod_mat_mul(C, B, A);
 
     /* Evaluate block composition using the Horner scheme */
-    _nmod_vec_set(res, C->rows[m - 1], n);
-    _nmod_poly_mulmod_preinv(h, A->rows[m - 1], n, poly2, n,
-                                           poly3, len3, poly3inv, len3inv,mod);
+    _nmod_poly_mulmod_preinv(h, nmod_mat_entry_ptr(A, m / 2, 0), n,
+                nmod_mat_entry_ptr(A, m - (m / 2), 0), n, poly3, len3, poly3inv, len3inv, mod);
 
-    for (i = m - 2; i >= 0; i--)
-    {
-        _nmod_poly_mulmod_preinv(t, res, n, h, n, poly3, len3,
-                                                       poly3inv, len3inv, mod);
-        _nmod_poly_add(res, t, n, C->rows[i], n, mod);
-    }
+    _nmod_poly_mod_matrix_rows_evaluate(res, C, h, n, poly3, len3, poly3inv, len3inv, mod);
 
     _nmod_vec_clear(h);
-    _nmod_vec_clear(t);
 
     nmod_mat_clear(A);
     nmod_mat_clear(B);
@@ -93,11 +96,11 @@ nmod_poly_compose_mod_brent_kung_preinv(nmod_poly_t res,
     slong len3 = poly3->length;
     slong len = len3 - 1;
 
-    mp_ptr ptr2;
+    nn_ptr ptr2;
 
     if (len3 == 0)
     {
-        flint_throw(FLINT_ERROR, "(nmod_poly_compose_mod_brent_kung_preinv): Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "(nmod_poly_compose_mod_brent_kung_preinv): Division by zero.\n");
     }
 
     if (len1 >= len3)

@@ -19,6 +19,7 @@ Todo items present in the original code:
 - Aggressive early deflation
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
 static void
@@ -93,7 +94,7 @@ acb_approx_div(acb_t z, const acb_t x, const acb_t y, slong prec)
     acb_clear(t);
 }
 
-void
+static void
 acb_mat_approx_qr_step(acb_mat_t A, acb_mat_t Q, slong n0, slong n1, const acb_t shift, slong prec)
 {
     slong j, k, n;
@@ -305,7 +306,7 @@ acb_mat_approx_qr_step(acb_mat_t A, acb_mat_t Q, slong n0, slong n1, const acb_t
     arb_clear(u);
 }
 
-void
+static void
 acb_mat_approx_hessenberg_reduce_0(acb_mat_t A, acb_ptr T, slong prec)
 {
     slong i, j, k, n;
@@ -483,7 +484,7 @@ acb_mat_approx_hessenberg_reduce_0(acb_mat_t A, acb_ptr T, slong prec)
     acb_clear(TT);
 }
 
-void
+static void
 acb_mat_approx_hessenberg_reduce_1(acb_mat_t A, acb_srcptr T, slong prec)
 {
     slong i, j, k, n;
@@ -545,7 +546,7 @@ acb_mat_approx_hessenberg_reduce_1(acb_mat_t A, acb_srcptr T, slong prec)
 }
 
 /* Right eigenvectors of a triu matrix. No aliasing. */
-void
+static void
 acb_mat_approx_eig_triu_r(acb_mat_t ER, const acb_mat_t A, slong prec)
 {
     slong i, j, k, n;
@@ -583,7 +584,7 @@ acb_mat_approx_eig_triu_r(acb_mat_t ER, const acb_mat_t A, slong prec)
 
         for (j = i - 1; j >= 0; j--)
         {
-            acb_approx_dot(r, NULL, 0, A->rows[j] + j + 1, 1, ER->rows[i] + j + 1, 1, i - j, prec);
+            acb_approx_dot(r, NULL, 0, acb_mat_entry(A, j, j + 1), 1, acb_mat_entry(ER, i, j + 1), 1, i - j, prec);
             acb_approx_sub(t, acb_mat_entry(A, j, j), s, prec);
 
             /* if abs(t) < smin: t = smin */
@@ -646,7 +647,7 @@ acb_mat_approx_eig_triu_r(acb_mat_t ER, const acb_mat_t A, slong prec)
 }
 
 /* Left eigenvectors of a triu matrix. No aliasing. */
-void
+static void
 acb_mat_approx_eig_triu_l(acb_mat_t EL, const acb_mat_t A, slong prec)
 {
     slong i, j, k, n;
@@ -687,7 +688,7 @@ acb_mat_approx_eig_triu_l(acb_mat_t EL, const acb_mat_t A, slong prec)
 
         for (j = i + 1; j < n; j++)
         {
-            acb_approx_dot(r, NULL, 0, EL->rows[i] + i, 1, AT->rows[j] + i, 1, j - i, prec);
+            acb_approx_dot(r, NULL, 0, acb_mat_entry(EL, i, i), 1, acb_mat_entry(AT, j, i), 1, j - i, prec);
             acb_approx_sub(t, acb_mat_entry(AT, j, j), s, prec);
 
             /* if abs(t) < smin: t = smin */
@@ -749,7 +750,7 @@ acb_mat_approx_eig_triu_l(acb_mat_t EL, const acb_mat_t A, slong prec)
     mag_clear(rmax);
 }
 
-int
+static int
 acb_mat_approx_hessenberg_qr(acb_mat_t A, acb_mat_t Q, const mag_t tol, slong maxiter, slong prec)
 {
     slong n, i, j, k, n0, n1, iter, total_iter;

@@ -386,7 +386,7 @@ Transpose
 .. function:: void fmpz_mat_transpose(fmpz_mat_t B, const fmpz_mat_t A)
 
     Sets `B` to `A^T`, the transpose of `A`. Dimensions must be compatible.
-    `A` and `B` are allowed to be the same object if `A` is a square matrix.
+    Aliasing is allowed for square matrices.
 
 
 
@@ -810,6 +810,16 @@ Determinant
     such that `|\det(A)| / d` is tiny with very high probability.
 
 
+Permanent
+--------------------------------------------------------------------------------
+
+
+.. function:: int fmpz_mat_permanent(fmpz_t res, const fmpz_mat_t A)
+
+    Sets ``res`` to the permanent of the square matrix *A*, returning 1
+    on success. If the matrix is too large, returns 0.
+
+
 Transforms
 --------------------------------------------------------------------------------
 
@@ -1000,7 +1010,7 @@ allowed between arguments.
     Aliasing between input and output matrices is allowed.
 
 
-.. function:: void _fmpz_mat_solve_dixon_den(fmpz_mat_t X, fmpz_t den, const fmpz_mat_t A, const fmpz_mat_t B, const nmod_mat_t Ainv, mp_limb_t p, const fmpz_t N, const fmpz_t D)
+.. function:: void _fmpz_mat_solve_dixon_den(fmpz_mat_t X, fmpz_t den, const fmpz_mat_t A, const fmpz_mat_t B, const nmod_mat_t Ainv, ulong p, const fmpz_t N, const fmpz_t D)
 
     Solves the equation `AX = B` for nonsingular `A`. More precisely, computes
     (``X``, ``den``) such that `AX = B \times \operatorname{den}` using a
@@ -1328,7 +1338,7 @@ Smith normal form
 .. function:: void fmpz_mat_snf_kannan_bachem(fmpz_mat_t S, const fmpz_mat_t A)
 
     Computes an integer matrix ``S`` such that ``S`` is the unique Smith
-    normal form of the diagonal matrix ``A``. The algorithm used here is due
+    normal form of the matrix ``A``. The algorithm used here is due
     to Kannan and Bachem [KanBac1979]_
 
     Aliasing of ``S`` and ``A`` is allowed. The size of ``S`` must be
@@ -1385,24 +1395,32 @@ Special matrices
 Conversions
 --------------------------------------------------------------------------------
 
-
 .. function:: int fmpz_mat_get_d_mat(d_mat_t B, const fmpz_mat_t A)
+              int fmpz_mat_get_d_mat_transpose(d_mat_t B, const fmpz_mat_t A)
 
-    Sets the entries of ``B`` as doubles corresponding to the entries of
-    ``A``, rounding down towards zero if the latter cannot be represented
-    exactly. The return value is -1 if any entry of ``A`` is too large to
-    fit in the normal range of a double, and 0 otherwise.
+    Sets the entries of *B* as doubles corresponding to the entries of *A* and
+    the transpose of *A*, respectively, rounding down towards zero if the latter
+    cannot be represented exactly. The return value is -1 if any entry of ``A``
+    is too large to fit in the normal range of a double, and 0 otherwise.
 
-.. function:: int fmpz_mat_get_d_mat_transpose(d_mat_t B, const fmpz_mat_t A)
+.. note::
 
-    Sets the entries of ``B`` as doubles corresponding to the entries of
-    the transpose of ``A``, rounding down towards zero if the latter cannot
-    be represented exactly. The return value is -1 if any entry of ``A`` is
-    too large to fit in the normal range of a double, and 0 otherwise.
-
+    Requires ``d_mat.h`` to be included before ``fmpz_mat.h`` in order to
+    declare these functions.
 
 Cholesky Decomposition
 --------------------------------------------------------------------------------
+
+.. function:: void fmpz_mat_chol_d(d_mat_t R, const fmpz_mat_t A)
+
+    Computes ``R``, the Cholesky factor of a symmetric, positive definite
+    matrix ``A`` using the Cholesky decomposition process. (Sets ``R``
+    such that `A = RR^{T}` where ``R`` is a lower triangular matrix.)
+
+.. note::
+
+    Requires ``d_mat.h`` to be included before ``fmpz_mat.h`` in order to
+    declare this function.
 
 .. function:: void fmpz_mat_is_spd(const fmpz_mat_t A)
 
@@ -1413,13 +1431,6 @@ Cholesky Decomposition
     :func:`arb_mat_ldl`. If we cannot guarantee that `A` is positive definite,
     we use an exact method instead, computing the characteristic polynomial of
     `A` and applying Descartes' rule of signs.
-
-.. function:: void fmpz_mat_chol_d(d_mat_t R, const fmpz_mat_t A)
-
-    Computes ``R``, the Cholesky factor of a symmetric, positive definite
-    matrix ``A`` using the Cholesky decomposition process. (Sets ``R``
-    such that `A = RR^{T}` where ``R`` is a lower triangular matrix.)
-
 
 LLL
 --------------------------------------------------------------------------------

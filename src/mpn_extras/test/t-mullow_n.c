@@ -12,9 +12,6 @@
 #include "test_helpers.h"
 #include "mpn_extras.h"
 
-#define N_MIN 1
-#define N_MAX 30
-
 TEST_FUNCTION_START(flint_mpn_mullow_n, state)
 {
     slong ix;
@@ -22,15 +19,21 @@ TEST_FUNCTION_START(flint_mpn_mullow_n, state)
 
     mp_ptr rp, rpf, xp, yp;
 
-    for (ix = 0; ix < 100000 * flint_test_multiplier(); ix++)
+    for (ix = 0; ix < 10000 * flint_test_multiplier(); ix++)
     {
         mp_limb_t ret;
         mp_size_t n;
 
-        n = N_MIN + n_randint(state, N_MAX - N_MIN + 1);
+        /* Trigger full multiplication in mulhigh */
+        if (n_randint(state, 1000) == 0)
+            n = 1 + FLINT_MPN_MULHIGH_MUL_CUTOFF +  n_randint(state, 50);
+        else if (n_randint(state, 100) == 0)
+            n = 1 + n_randint(state, FLINT_MPN_MULHIGH_MUL_CUTOFF);
+        else
+            n = 1 + n_randint(state, 2 * FLINT_MPN_MULHIGH_MULDERS_CUTOFF);
 
         rp = flint_malloc(sizeof(mp_limb_t) * n);
-        rpf = flint_malloc(2 * sizeof(mp_limb_t) * n);
+        rpf = flint_malloc(sizeof(mp_limb_t) * (2 * n));
         xp = flint_malloc(sizeof(mp_limb_t) * n);
         yp = flint_malloc(sizeof(mp_limb_t) * n);
 
@@ -61,6 +64,3 @@ TEST_FUNCTION_START(flint_mpn_mullow_n, state)
 
     TEST_FUNCTION_END(state);
 }
-
-#undef N_MIN
-#undef N_MAX

@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "fmpz.h"
 #include "nmod_poly.h"
 #include "mpoly.h"
@@ -40,7 +41,7 @@ int _ff_poly_pow_ui_is_not_feasible(slong length, ulong e)
     }
 }
 
-int _nmod_mpoly_compose_nmod_poly_sp(nmod_poly_t A, const nmod_mpoly_t B,
+static int _nmod_mpoly_compose_nmod_poly_sp(nmod_poly_t A, const nmod_mpoly_t B,
                       nmod_poly_struct * const * C, const nmod_mpoly_ctx_t ctx)
 {
     int success = 1;
@@ -49,7 +50,7 @@ int _nmod_mpoly_compose_nmod_poly_sp(nmod_poly_t A, const nmod_mpoly_t B,
     slong shift, off;
     slong entries, k_len;
     slong Blen = B->length;
-    const mp_limb_t * Bcoeff = B->coeffs;
+    const ulong * Bcoeff = B->coeffs;
     ulong * Bexp = B->exps;
     slong * degrees;
     slong * offs;
@@ -137,7 +138,7 @@ cleanup_degrees:
 }
 
 
-int _nmod_mpoly_compose_nmod_poly_mp(nmod_poly_t A, const nmod_mpoly_t B,
+static int _nmod_mpoly_compose_nmod_poly_mp(nmod_poly_t A, const nmod_mpoly_t B,
                       nmod_poly_struct * const * C, const nmod_mpoly_ctx_t ctx)
 {
     int success = 1;
@@ -146,7 +147,7 @@ int _nmod_mpoly_compose_nmod_poly_mp(nmod_poly_t A, const nmod_mpoly_t B,
     slong i, k, N, nvars = ctx->minfo->nvars;
     slong off, entries, k_len;
     slong Blen = B->length;
-    const mp_limb_t * Bcoeff = B->coeffs;
+    const ulong * Bcoeff = B->coeffs;
     ulong * Bexp = B->exps;
     fmpz * degrees;
     slong * offs;

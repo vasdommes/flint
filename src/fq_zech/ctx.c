@@ -18,7 +18,7 @@
 #include "fq_zech.h"
 
 static ulong
-_nmod_poly_evaluate_ui(mp_srcptr poly, slong len, ulong xd)
+_nmod_poly_evaluate_ui(nn_srcptr poly, slong len, ulong xd)
 {
     slong ix;
     ulong res;
@@ -96,7 +96,7 @@ fq_zech_ctx_init_random_ui(fq_zech_ctx_t ctx, ulong p, slong d, const char * var
 
     fq_nmod_ctx = flint_malloc(sizeof(fq_nmod_ctx_struct));
 
-    flint_randinit(state);
+    flint_rand_init(state);
     nmod_poly_init(poly, p);
 
     poly->coeffs = tmp_coeffs;
@@ -144,7 +144,7 @@ fq_zech_ctx_init_fq_nmod_ctx_check(fq_zech_ctx_t ctx, fq_nmod_ctx_t ctx2)
     fq_nmod_t r, gen;
     ulong result;
     ulong j, nz;
-    mp_ptr n_reverse_table;
+    nn_ptr n_reverse_table;
 
     ctx->fq_nmod_ctx = ctx2;
     ctx->owns_fq_nmod_ctx = 0;

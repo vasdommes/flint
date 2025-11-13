@@ -44,20 +44,20 @@ ulong n_ecm_primorial[] =
 #endif
 
 int
-fmpz_factor_ecm(fmpz_t f, mp_limb_t curves, mp_limb_t B1, mp_limb_t B2,
+fmpz_factor_ecm(fmpz_t f, ulong curves, ulong B1, ulong B2,
                 flint_rand_t state, const fmpz_t n_in)
 {
     fmpz_t sig, nm8;
-    mp_limb_t P, num, maxP, mmin, mmax, mdiff, prod, maxj, n_size, cy;
+    ulong P, num, maxP, mmin, mmax, mdiff, prod, maxj, n_size, cy;
     ulong i, j;
     int ret;
     ecm_t ecm_inf;
-    __mpz_struct *fac, *mptr;
-    mp_ptr n, mpsig;
+    mpz_ptr fac, mptr;
+    nn_ptr n, mpsig;
 
     TMP_INIT;
 
-    const mp_limb_t *prime_array;
+    const ulong *prime_array;
     n_size = fmpz_size(n_in);
 
     if (n_size == 1)
@@ -71,8 +71,8 @@ fmpz_factor_ecm(fmpz_t f, mp_limb_t curves, mp_limb_t B1, mp_limb_t B2,
 
     TMP_START;
 
-    n      = TMP_ALLOC(n_size * sizeof(mp_limb_t));
-    mpsig  = TMP_ALLOC(n_size * sizeof(mp_limb_t));
+    n      = TMP_ALLOC(n_size * sizeof(ulong));
+    mpsig  = TMP_ALLOC(n_size * sizeof(ulong));
 
     if ((!COEFF_IS_MPZ(* n_in)))
     {
@@ -98,8 +98,12 @@ fmpz_factor_ecm(fmpz_t f, mp_limb_t curves, mp_limb_t B1, mp_limb_t B2,
     fmpz_sub_ui(nm8, n_in, 8);
 
     ret = 0;
+    /* FIXME: Wait to promote f until after stage 2 precomputations? */
     fac = _fmpz_promote(f);
-    mpz_realloc(fac, fmpz_size(n_in));
+    {
+        int alloc = fmpz_size(n_in);
+        FLINT_MPZ_REALLOC(fac, alloc);
+    }
 
     /************************ STAGE I PRECOMPUTATIONS ************************/
 

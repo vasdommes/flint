@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "fmpz_poly.h"
 #include "fmpq_poly.h"
 #include "arb_fmpz_poly.h"
 #include "qqbar.h"
@@ -18,7 +19,7 @@
 /* C = A o P  mod B */
 /* todo: rem P by B initially if larger */
 /* todo: brent-kung or something more clever */
-void
+static void
 fmpq_poly_compose_fmpz_poly_mod_fmpz_poly(fmpq_poly_t C, const fmpz_poly_t A, const fmpq_poly_t P, const fmpz_poly_t B)
 {
     slong i, m;

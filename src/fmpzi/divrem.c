@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
 #include "fmpzi.h"
 
 void
@@ -24,7 +25,7 @@ fmpzi_divrem(fmpzi_t q, fmpzi_t r, const fmpzi_t x, const fmpzi_t y)
 
     if (ybits == 0)
     {
-        flint_throw(FLINT_ERROR, "fmpzi_divrem: division by zero\n");
+        flint_throw(FLINT_DIVZERO, "fmpzi_divrem: division by zero\n");
     }
 
     if (xbits == 0)

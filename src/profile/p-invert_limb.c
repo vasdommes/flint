@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 
 typedef struct
@@ -20,7 +19,7 @@ typedef struct
 
 #define invert_limb_naive(ninv, n)                    \
    do {                                               \
-      mp_limb_t dummy;                                \
+      ulong dummy;                                \
       udiv_qrnnd (ninv, dummy, ~(n), ~(WORD(0)), n);  \
    } while (0)
 
@@ -61,8 +60,8 @@ void sample(void * arg, ulong count)
       if (sum == 0) flint_printf("\r");
    }
 
-   flint_randclear(state);
    flint_free(array);
+   FLINT_TEST_CLEAR(state);
 }
 
 int main(void)

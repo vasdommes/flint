@@ -409,7 +409,7 @@ again:
 #endif
 
 /* is A intersect B empty? */
-int point2d_set_disjoint(
+static int point2d_set_disjoint(
     const point2d_set_t A,
     const point2d_set_t B)
 {
@@ -635,7 +635,7 @@ static int convex_hull_is_indecomposable(
 static void z_rand_vec_primitive(
     slong * v, slong len,
     flint_rand_t state,
-    mp_limb_t bound)
+    ulong bound)
 {
     slong i, g;
 
@@ -979,7 +979,7 @@ int mpoly_test_irreducible(
     if (Abits > FLINT_BITS || Alen < 2)
         return 0;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     uexps = FLINT_ARRAY_ALLOC(n*Alen, slong);
     max_exps = FLINT_ARRAY_ALLOC(n, slong);
@@ -1013,7 +1013,7 @@ int mpoly_test_irreducible(
 
     result = _mpoly_test_irreducible(uexps, n, Alen, n, state, tries);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
     flint_free(max_exps);
     flint_free(uexps);
 

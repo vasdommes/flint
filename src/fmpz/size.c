@@ -9,11 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
-#include "ulong_extras.h"
+#include <gmp.h>
 #include "fmpz.h"
 
-mp_size_t
+slong
 fmpz_size(const fmpz_t f)
 {
     fmpz d = *f;

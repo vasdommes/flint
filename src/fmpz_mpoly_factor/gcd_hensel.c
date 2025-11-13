@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "ulong_extras.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
 #include "fmpq.h"
@@ -47,7 +46,7 @@ int fmpz_mpolyl_gcd_hensel(
     FLINT_ASSERT(B->bits == bits);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     Hdegs  = FLINT_ARRAY_ALLOC(n + 1, slong);
 
@@ -385,7 +384,7 @@ got_alpha:
 
 cleanup:
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     flint_free(Hdegs);
 

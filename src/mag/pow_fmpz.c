@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
 #include "mag.h"
 
 void
@@ -30,7 +31,7 @@ mag_pow_fmpz(mag_t z, const mag_t x, const fmpz_t e)
     else
     {
         mag_t y;
-        mp_srcptr elimbs;
+        nn_srcptr elimbs;
         slong i, bits;
 
         mag_init_set(y, x);
@@ -69,7 +70,7 @@ mag_pow_fmpz_lower(mag_t z, const mag_t x, const fmpz_t e)
     else
     {
         mag_t y;
-        mp_srcptr elimbs;
+        nn_srcptr elimbs;
         slong i, bits;
 
         mag_init_set(y, x);

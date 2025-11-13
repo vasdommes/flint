@@ -9,19 +9,13 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "thread_support.h"
 #include "ulong_extras.h"
 #include "arb.h"
 #include "arith.h"
 #include "partitions.h"
-
-#ifdef __GNUC__
-# define log __builtin_log
-# define sinh __builtin_sinh
-# define sqrt __builtin_sqrt
-#else
-# include <math.h>
-#endif
+#include "partitions/impl.h"
 
 #define VERBOSE 0
 
@@ -81,7 +75,7 @@ partitions_term_bound(double n, double k)
 }
 
 /* Bound number of prime factors in k */
-static mp_limb_t primorial_tab[] = {
+static ulong primorial_tab[] = {
     1, 2, 6, 30, 210, 2310, 30030, 510510, 9699690, 223092870,
 #if FLINT64
     UWORD(6469693230), UWORD(200560490130), UWORD(7420738134810),
@@ -94,7 +88,7 @@ bound_primes(ulong k)
 {
     int i;
 
-    for (i = 0; i < sizeof(primorial_tab) / sizeof(mp_limb_t); i++)
+    for (i = 0; i < sizeof(primorial_tab) / sizeof(ulong); i++)
         if (k <= primorial_tab[i])
             return i;
 
@@ -125,7 +119,7 @@ static void
 eval_trig_prod(arb_t sum, trig_prod_t prod, slong prec)
 {
     int i;
-    mp_limb_t v;
+    ulong v;
     arb_t t;
 
     if (prod->prefactor == 0)
@@ -312,9 +306,9 @@ partitions_hrr_sum_arb(arb_t x, const fmpz_t n, slong N0, slong N, int use_doubl
 
     /* C = (pi/6) sqrt(24n-1) */
 #if VERBOSE
-    TIMEIT_ONCE_START
+    TIMEIT_ONCE_START;
     arb_const_pi(C, prec);
-    TIMEIT_ONCE_STOP
+    TIMEIT_ONCE_STOP;
 #else
     arb_const_pi(C, prec);
 #endif
@@ -328,9 +322,9 @@ partitions_hrr_sum_arb(arb_t x, const fmpz_t n, slong N0, slong N, int use_doubl
 
     /* exp1 = exp(C) */
 #if VERBOSE
-    TIMEIT_ONCE_START
+    TIMEIT_ONCE_START;
     arb_exp(exp1, C, prec);
-    TIMEIT_ONCE_STOP
+    TIMEIT_ONCE_STOP;
 #else
     arb_exp(exp1, C, prec);
 #endif

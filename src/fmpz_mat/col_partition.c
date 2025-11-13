@@ -24,7 +24,7 @@ typedef col_hash_struct * col_hash_ptr;
 typedef const col_hash_struct * col_hash_srcptr;
 
 /* cheap hash of all columns of M */
-void
+static void
 fmpz_mat_col_hash(col_hash_ptr col_h, fmpz_mat_t M)
 {
     slong i, j;
@@ -37,7 +37,7 @@ fmpz_mat_col_hash(col_hash_ptr col_h, fmpz_mat_t M)
 
         for (j = 0; j < M->r; j++)
         {
-            hash ^= fmpz_get_ui(M->rows[j] + i);
+            hash ^= fmpz_get_ui(fmpz_mat_entry(M, j, i));
             hash = (hash << 1) + (hash >> (FLINT_BITS - 1));
         }
 
@@ -45,7 +45,7 @@ fmpz_mat_col_hash(col_hash_ptr col_h, fmpz_mat_t M)
     }
 }
 
-int
+static int
 fmpz_mat_col_hash_compare(const void * a, const void * b)
 {
    col_hash_srcptr col_a = a;

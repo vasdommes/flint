@@ -16,7 +16,7 @@
 #include "mpoly.h"
 #include "fmpz_mod_mpoly_factor.h"
 
-void fmpz_mod_mpolyn_interp_lift_sm_polyu1n(
+static void fmpz_mod_mpolyn_interp_lift_sm_polyu1n(
     fmpz_mod_mpolyn_t F,
     fmpz_mod_polyun_t A,
     const fmpz_mod_mpoly_ctx_t ctx)
@@ -51,7 +51,7 @@ void fmpz_mod_mpolyn_interp_lift_sm_polyu1n(
     F->length = Fi;
 }
 
-int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
+static int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
     slong * lastdeg,
     fmpz_mod_mpolyn_t F,
     fmpz_mod_mpolyn_t T,
@@ -252,7 +252,7 @@ static double interp_cost(
                      numABgamma + totnumci + (degxAB*degyAB)*(degxAB*degyAB)));
 }
 
-int fmpz_mod_mpoly_gcd_get_use_new(
+static int fmpz_mod_mpoly_gcd_get_use_new(
     slong rGdeg,
     slong Adeg,
     slong Bdeg,
@@ -337,7 +337,7 @@ void fmpz_mod_mpoly_mock_eval_coeff(
     fmpz_mod_polyun_t mock,
     const fmpz_mod_mpoly_t A,
     const fmpz_mod_polyun_t Aeh_inc,
-    const fmpz_mod_mpoly_ctx_t ctx)
+    const fmpz_mod_mpoly_ctx_t FLINT_UNUSED(ctx))
 {
     slong i, k;
 
@@ -452,7 +452,7 @@ void fmpz_mod_polyu2n_zip_eval_cur_inc_coeff(
     const fmpz_mod_ctx_t ctx)
 {
     slong i, Ei;
-    slong e0, e1;
+    ulong e0, e1;
     fmpz_t c;
 
     FLINT_ASSERT(Acur->length > 0);
@@ -655,7 +655,7 @@ int fmpz_mod_mpolyl_gcd_zippel2_smprime(
 
     betas = _fmpz_vec_init(nvars);
     alphas = _fmpz_vec_init(nvars);
-    flint_randinit(state);
+    flint_rand_init(state);
 
     beta_caches = FLINT_ARRAY_ALLOC(nvars, fmpz_mod_poly_struct);
     alpha_caches = FLINT_ARRAY_ALLOC(nvars, fmpz_mod_poly_struct);
@@ -1242,7 +1242,7 @@ cleanup:
     _fmpz_vec_clear(betas, nvars);
     _fmpz_vec_clear(alphas, nvars);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     for (i = 0; i < nvars; i++)
     {

@@ -18,11 +18,10 @@
 #define GR_GENERIC_INLINE static inline
 #endif
 
-#include "flint.h"
-#include "gr.h"
+#include "gr_types.h"
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 #define GR_GENERIC_DEBUG_RINGS 0
@@ -85,7 +84,10 @@ truth_t gr_generic_ctx_predicate(gr_ctx_t ctx);
 truth_t gr_generic_ctx_predicate_true(gr_ctx_t ctx);
 truth_t gr_generic_ctx_predicate_false(gr_ctx_t ctx);
 
-WARN_UNUSED_RESULT int gr_generic_ctx_clear(gr_ctx_t ctx);
+void gr_generic_ctx_clear(gr_ctx_t ctx);
+
+slong gr_generic_ctx_ngens_0(slong * ngens, gr_ctx_t ctx);
+slong gr_generic_ctx_ngens_1(slong * ngens, gr_ctx_t ctx);
 
 void gr_generic_set_shallow(gr_ptr res, gr_srcptr x, const gr_ctx_t ctx);
 
@@ -200,6 +202,8 @@ WARN_UNUSED_RESULT int gr_generic_cmp(int * res, gr_srcptr x, gr_srcptr y, gr_ct
 WARN_UNUSED_RESULT int gr_generic_cmpabs(int * res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_cmp_other(int * res, gr_srcptr x, gr_srcptr y, gr_ctx_t y_ctx, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_cmpabs_other(int * res, gr_srcptr x, gr_srcptr y, gr_ctx_t y_ctx, gr_ctx_t ctx);
+
+WARN_UNUSED_RESULT int gr_generic_poly_factor_roots( gr_ptr c, gr_vec_t fac, gr_vec_t mult, gr_srcptr elt, int flags, gr_ctx_t ctx);
 
 WARN_UNUSED_RESULT int gr_generic_bernoulli_ui(gr_ptr res, ulong n, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_bernoulli_fmpz(gr_ptr res, const fmpz_t n, gr_ctx_t ctx);

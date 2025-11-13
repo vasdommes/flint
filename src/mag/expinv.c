@@ -9,18 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "mag.h"
-
-#ifdef __GNUC__
-# define ldexp __builtin_ldexp
-#else
-# include <math.h>
-#endif
-
-/* defined in exp.c */
-void _mag_exp_d(mag_t res, double x, int roundup);
-void mag_exp_huge(mag_t res, const mag_t x);
-void mag_exp_huge_lower(mag_t res, const mag_t x);
+#include "mag/impl.h"
 
 void
 mag_expinv(mag_t res, const mag_t x)

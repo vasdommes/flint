@@ -11,10 +11,11 @@
 */
 
 #include "fmpq.h"
+#include "fmpz_poly.h"
 #include "arb_fmpz_poly.h"
 #include "qqbar.h"
 
-void
+static void
 _qqbar_randtest(qqbar_t res, flint_rand_t state, slong deg, slong bits, int real)
 {
     fmpz_poly_t pol;

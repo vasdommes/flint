@@ -11,16 +11,9 @@
 
 #include "fq_nmod.h"
 #include "n_poly.h"
+#include "n_poly/impl.h"
 #include "mpoly.h"
 #include "fq_nmod_mpoly_factor.h"
-
-void n_fq_poly_mullow_(
-    n_fq_poly_t A,
-    const n_fq_poly_t B,
-    const n_fq_poly_t C,
-    slong order,
-    const fq_nmod_ctx_t ctx,
-    n_poly_stack_t St);
 
 void n_fq_bpoly_add(
     n_bpoly_t A,
@@ -348,8 +341,8 @@ void n_fq_bpoly_make_primitive(
     {
         slong d = fq_nmod_ctx_degree(ctx);
         n_poly_struct * Alead = A->coeffs + Alen - 1;
-        mp_limb_t * c, * c_ = Alead->coeffs + d*(Alead->length - 1);
-        c = FLINT_ARRAY_ALLOC(d, mp_limb_t);
+        ulong * c, * c_ = Alead->coeffs + d*(Alead->length - 1);
+        c = FLINT_ARRAY_ALLOC(d, ulong);
         if (!_n_fq_is_one(c_, d))
         {
             n_fq_poly_scalar_mul_n_fq(g, g, c_, ctx);

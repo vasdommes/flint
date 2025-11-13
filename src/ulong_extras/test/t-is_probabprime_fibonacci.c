@@ -17,11 +17,9 @@ TEST_FUNCTION_START(n_is_probabprime_fibonacci, state)
 {
     int i, result;
     ulong count = UWORD(0);
-    mp_limb_t d;
+    ulong d;
     mpz_t d_m;
-    slong test_multiplier;
-
-    test_multiplier = FLINT_MAX(1, flint_test_multiplier());
+    double test_multiplier = FLINT_MAX(1, flint_test_multiplier());
 
     for (i = 0; i < 10000 * test_multiplier; i++) /* Test that primes pass the test */
     {

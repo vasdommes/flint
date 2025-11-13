@@ -17,8 +17,8 @@
 #include "nmod_mpoly.h"
 
 /* store in each coefficient the evaluation of the corresponding monomial */
-void nmod_mpoly_evalsk(nmod_mpoly_t A, nmod_mpoly_t B,
-           slong entries, slong * offs, ulong * masks, mp_limb_t * powers,
+static void nmod_mpoly_evalsk(nmod_mpoly_t A, nmod_mpoly_t B,
+           slong entries, slong * offs, ulong * masks, ulong * powers,
                                                     const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
@@ -29,7 +29,7 @@ void nmod_mpoly_evalsk(nmod_mpoly_t A, nmod_mpoly_t B,
     N = mpoly_words_per_exp(B->bits, ctx->minfo);
     for (i = 0; i < B->length; i++)
     {
-        mp_limb_t prod = UWORD(1);
+        ulong prod = UWORD(1);
 
         for (j = 0; j < entries; j++)
         {
@@ -45,8 +45,8 @@ void nmod_mpoly_evalsk(nmod_mpoly_t A, nmod_mpoly_t B,
     A->length = B->length;
 }
 
-void nmod_mpolyu_evalsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
-              slong entries, slong * offs, ulong * masks, mp_limb_t * powers,
+static void nmod_mpolyu_evalsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
+              slong entries, slong * offs, ulong * masks, ulong * powers,
                                                     const nmod_mpoly_ctx_t ctx)
 {
     slong i;
@@ -62,7 +62,7 @@ void nmod_mpolyu_evalsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
 }
 
 /* multiply the coefficients of A pointwise by those of B */
-void nmod_mpolyu_mulsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
+static void nmod_mpolyu_mulsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
                                                     const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
@@ -87,7 +87,7 @@ void nmod_mpolyu_mulsk(nmod_mpolyu_t A, nmod_mpolyu_t B,
     return 0 if the leading coeff of A vanishes
     else return 1
 */
-int nmod_mpolyu_evalfromsk(nmod_poly_t e, nmod_mpolyu_t A,
+static int nmod_mpolyu_evalfromsk(nmod_poly_t e, nmod_mpolyu_t A,
                                   nmod_mpolyu_t SK, const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
@@ -98,7 +98,7 @@ int nmod_mpolyu_evalfromsk(nmod_poly_t e, nmod_mpolyu_t A,
     nmod_poly_zero(e);
     for (i = 0; i < A->length; i++)
     {
-        mp_limb_t v, pp0, pp1, ac0 = 0, ac1 = 0, ac2 = 0;
+        ulong v, pp0, pp1, ac0 = 0, ac1 = 0, ac2 = 0;
 
         FLINT_ASSERT((A->coeffs + i)->length == (SK->coeffs + i)->length);
 
@@ -129,13 +129,13 @@ int nmod_mpolyu_evalfromsk(nmod_poly_t e, nmod_mpolyu_t A,
 
     for x
 */
-int nmod_vandsolve(mp_limb_t * x, mp_limb_t * a, mp_limb_t * b,
+static int nmod_vandsolve(ulong * x, ulong * a, ulong * b,
                                                            slong n, nmod_t mod)
 {
     int success = 0;
     slong i, j;
-    mp_limb_t t;
-    mp_limb_t Dinv;
+    ulong t;
+    ulong Dinv;
     nmod_poly_t Q, P, R, u;
 
     for (i = 0; i < n; i++)
@@ -197,7 +197,7 @@ nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
     nmod_gcds_ret_t success;
     nmod_mpolyu_t Aevalsk1, Bevalsk1, fevalsk1, Aevalski, Bevalski, fevalski;
     nmod_poly_t Aeval, Beval, Geval;
-    mp_limb_t * alpha, * b;
+    ulong * alpha, * b;
     nmod_mat_struct * M, * ML;
     nmod_mat_t MF, Msol;
     int lc_ok;
@@ -207,11 +207,11 @@ nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
     slong i, j, k, s, S, nullity;
     slong * d;
     slong l;
-    mp_limb_t * W;
+    ulong * W;
     slong entries;
     slong * offs;
     ulong * masks;
-    mp_limb_t * powers;
+    ulong * powers;
     TMP_INIT;
 
     FLINT_ASSERT(A->length > 0);
@@ -298,10 +298,10 @@ nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
     /* one extra test image */
     l += 1;
 
-    alpha = (mp_limb_t *) TMP_ALLOC(var*sizeof(mp_limb_t));
+    alpha = (ulong *) TMP_ALLOC(var*sizeof(ulong));
     ML = (nmod_mat_struct *) TMP_ALLOC(f->length*sizeof(nmod_mat_struct));
-    b = (mp_limb_t *) TMP_ALLOC((f->coeffs + d[f->length - 1])->length
-                                                           *sizeof(mp_limb_t));
+    b = (ulong *) TMP_ALLOC((f->coeffs + d[f->length - 1])->length
+                                                           *sizeof(ulong));
 
     nmod_mat_init(MF, 0, l, ctx->mod.n);
 
@@ -313,7 +313,7 @@ nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
         ML_is_initialized[i] = 0;
     }
 
-    W = (mp_limb_t *) flint_malloc(l*f->length*sizeof(mp_limb_t));
+    W = (ulong *) flint_malloc(l*f->length*sizeof(ulong));
 
     nmod_mat_init(Msol, l, 1, ctx->mod.n);
 
@@ -321,7 +321,7 @@ nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
     entries = f->bits * var;
     offs = (slong *) TMP_ALLOC(entries*sizeof(slong));
     masks = (ulong *) TMP_ALLOC(entries*sizeof(slong));
-    powers = (mp_limb_t *) TMP_ALLOC(entries*sizeof(mp_limb_t));
+    powers = (ulong *) TMP_ALLOC(entries*sizeof(ulong));
 
 
     /***** evaluation loop head *******/
@@ -385,7 +385,7 @@ pick_evaluation_point:
         {
             for (k = 0; k < (f->coeffs + j)->length; k++)
             {
-                (M + j)->rows[i][k] = (fevalski->coeffs + j)->coeffs[k];
+                nmod_mat_entry(M + j, i, k) = (fevalski->coeffs + j)->coeffs[k];
             }
         }
 
@@ -421,7 +421,7 @@ pick_evaluation_point:
         j = WORD(0);
         while ((--k) >= 0)
         {
-            mp_limb_t ck = nmod_poly_get_coeff_ui(Geval, k);
+            ulong ck = nmod_poly_get_coeff_ui(Geval, k);
             if (ck != UWORD(0))
             {
                 while (j < f->length && f->exps[j] > (ulong) k)
@@ -455,19 +455,20 @@ pick_evaluation_point:
             {
                 for (j = 0; j < (f->coeffs + s)->length; j++)
                 {
-                    (ML + s)->rows[i][j] = (M + s)->rows[i][j];
+                    nmod_mat_entry(ML + s, i, j) = nmod_mat_entry(M + s, i, j);
                 }
-                (ML + s)->rows[i][(f->coeffs + s)->length + i] = W[l*s + i];
+                nmod_mat_entry(ML + s, i, (f->coeffs + s)->length + i) = W[l*s + i];
+
             }
         } else {
             for (i = 0; i < l; i++)
             {
                 for (j = 0; j < (f->coeffs + s)->length; j++)
                 {
-                    (ML + s)->rows[i][j] = (M + s)->rows[i][j];
+                    nmod_mat_entry(ML + s, i, j) = nmod_mat_entry(M + s, i, j);
                 }
                 for (j = 0; j < l; j++) {
-                    (ML + s)->rows[i][(f->coeffs + s)->length + j]
+                    nmod_mat_entry(ML + s, i, (f->coeffs + s)->length + j)
                                              = (j==i ? W[l*s + i] : UWORD(0));
                 }
             }
@@ -477,7 +478,7 @@ pick_evaluation_point:
 
         for (i = 0; i < (f->coeffs + s)->length; i++)
         {
-            if ((ML + s)->rows[i][i] != UWORD(1))
+            if (nmod_mat_entry(ML + s, i, i) != UWORD(1))
             {
                 /* evaluation points produced a singular vandermonde matrix */
                 goto pick_evaluation_point;
@@ -556,14 +557,14 @@ pick_evaluation_point:
     /* check solution */
     for (s = 0; s < f->length; s++)
     {
-        mp_limb_t pp0, pp1, ac0, ac1, ac2, u, v;
+        ulong pp0, pp1, ac0, ac1, ac2, u, v;
 
         for (i = 0; i < l; i++)
         {
             ac0 = ac1 = ac2 = 0;
             for (j = 0; j < (f->coeffs + s)->length; j++)
             {
-                umul_ppmm(pp1, pp0, (M + s)->rows[i][j],
+                umul_ppmm(pp1, pp0, nmod_mat_entry(M + s, i, j),
                                     (G->coeffs + s)->coeffs[j]);
                 add_sssaaaaaa(ac2, ac1, ac0, ac2, ac1, ac0, WORD(0), pp1, pp0);
             }
@@ -662,7 +663,7 @@ static int nmod_mpolyu_gcdp_zippel_univar_no_cofactors(
 }
 
 
-int nmod_mpolyu_gcdp_zippel_bivar(
+static int nmod_mpolyu_gcdp_zippel_bivar(
     nmod_mpolyu_t G,
     nmod_mpolyu_t Abar,
     nmod_mpolyu_t Bbar,
@@ -680,7 +681,7 @@ int nmod_mpolyu_gcdp_zippel_bivar(
     n_poly_t a, b, c, g, modulus, tempmod;
     nmod_mpolyu_t Aeval, Beval, Geval;
     nmod_mpolyun_t An, Bn, H, Ht;
-    mp_limb_t geval, temp, alpha;
+    ulong geval, temp, alpha;
 
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
     FLINT_ASSERT(var >= -WORD(1));
@@ -796,7 +797,7 @@ int nmod_mpolyu_gcdp_zippel_bivar(
         /* update interpolant H */
         if (n_poly_degree(modulus) > 0)
         {
-            mp_limb_t t = n_poly_mod_evaluate_nmod(modulus, alpha, ctx->mod);
+            ulong t = n_poly_mod_evaluate_nmod(modulus, alpha, ctx->mod);
             t = nmod_inv(t, ctx->mod);
             _n_poly_mod_scalar_mul_nmod_inplace(modulus, t, ctx->mod);
 
@@ -885,8 +886,8 @@ int nmod_mpolyu_gcdp_zippel(
     n_poly_t modulus, tempmod;
     nmod_mpolyu_t Aeval, Beval, Geval, Abareval, Bbareval, Gform;
     nmod_mpolyun_t H, Ht;
-    mp_limb_t geval, temp;
-    mp_limb_t alpha, start_alpha;
+    ulong geval, temp;
+    ulong alpha, start_alpha;
 
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
     FLINT_ASSERT(var >= -WORD(1));

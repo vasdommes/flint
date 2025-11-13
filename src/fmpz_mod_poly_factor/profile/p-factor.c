@@ -13,7 +13,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "flint.h"
 #include "gmpcompat.h"
 #include "fmpz.h"
 #include "fmpz_mod.h"
@@ -363,7 +362,7 @@ int main(void)
     mpz_clear(curr);
     fmpz_clear(p);
     fmpz_mod_ctx_clear(ctx);
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 }

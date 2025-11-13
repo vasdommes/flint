@@ -41,7 +41,7 @@ static void nmod_mpoly_evals(
     ulong * Amin_exp,
     ulong * FLINT_UNUSED(Amax_exp),
     ulong * Astride,
-    mp_limb_t * alpha,
+    ulong * alpha,
     const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
@@ -52,7 +52,7 @@ static void nmod_mpoly_evals(
     ulong * varexps;
     ulong varexp;
     slong total_degree, lo, hi;
-    mp_limb_t meval, t;
+    ulong meval, t;
     n_poly_struct * caches;
 
     offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
@@ -260,8 +260,8 @@ static void nmod_mpoly_evals_lgprime(
     ulong varexp, lo, hi;
     slong total_degree;
     n_poly_struct * caches;
-    mp_limb_t * t = FLINT_ARRAY_ALLOC(2*d, mp_limb_t);
-    mp_limb_t * meval = t + d;
+    ulong * t = FLINT_ARRAY_ALLOC(2*d, ulong);
+    ulong * meval = t + d;
 
     offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
     shifts = offsets + nvars;
@@ -354,15 +354,15 @@ static void _set_estimates(
     slong i, j;
     n_poly_t Geval;
     n_poly_struct * Aevals, * Bevals;
-    mp_limb_t * alpha;
+    ulong * alpha;
     flint_rand_t state;
     slong ignore_limit;
     int * ignore;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     ignore = FLINT_ARRAY_ALLOC(nvars, int);
-    alpha  = FLINT_ARRAY_ALLOC(nvars, mp_limb_t);
+    alpha  = FLINT_ARRAY_ALLOC(nvars, ulong);
     Aevals = FLINT_ARRAY_ALLOC(nvars, n_poly_struct);
     Bevals = FLINT_ARRAY_ALLOC(nvars, n_poly_struct);
 
@@ -452,11 +452,15 @@ cleanup:
     flint_free(Aevals);
     flint_free(Bevals);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     return;
 }
 
+/* With this value, _set_estimates_medprime almost always succeeds.
+   Hack: allow changing this parameter to a small value from the test code
+   to verify what happens when it fails. */
+FLINT_DLL slong _nmod_mpoly_medprime_ignore_limit = WORD(9999);
 
 /* call to improve on the (valid) results of smprime */
 static void _set_estimates_medprime(
@@ -480,7 +484,7 @@ static void _set_estimates_medprime(
     if (max_degree < 2)
         return;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     fq_zech_ctx_init_ui(medctx, smctx->mod.n, 1, "#");
 
@@ -501,7 +505,7 @@ static void _set_estimates_medprime(
     fq_zech_poly_init(Geval, medctx);
 
     ignore_limit = (A->length + B->length)/4096;
-    ignore_limit = FLINT_MAX(WORD(9999), ignore_limit);
+    ignore_limit = FLINT_MAX(_nmod_mpoly_medprime_ignore_limit, ignore_limit);
     I->Gdeflate_deg_bounds_are_nice = 1;
     for (j = 0; j < nvars; j++)
     {
@@ -530,6 +534,7 @@ try_again:
         goto cleanup;
     }
 
+    fq_zech_ctx_clear(medctx);
     fq_zech_ctx_init_ui(medctx, smctx->mod.n, d, "#");
 
     for (j = 0; j < nvars; j++)
@@ -576,7 +581,7 @@ cleanup:
 
     fq_zech_ctx_clear(medctx);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     return;
 }
@@ -600,7 +605,7 @@ static void _set_estimates_lgprime(
     fq_nmod_mpoly_ctx_t lgctx;
     slong d;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     d = WORD(20)/(FLINT_BIT_COUNT(smctx->mod.n));
     d = FLINT_MAX(WORD(2), d);
@@ -693,7 +698,7 @@ cleanup:
 
     fq_nmod_mpoly_ctx_clear(lgctx);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     return;
 }
@@ -844,7 +849,7 @@ static int _try_monomial_cofactors(
     slong NA, NG;
     slong nvars = ctx->minfo->nvars;
     fmpz * Abarexps, * Bbarexps, * Texps;
-    mp_limb_t a0, b0, a0inv;
+    ulong a0, b0, a0inv;
     nmod_mpoly_t T;
     flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
     flint_bitcnt_t Abarbits = A->bits;
@@ -936,7 +941,7 @@ cleanup:
 
 
 /***  ess(A) and ess(B) depend on only one variable v_in_both ****************/
-int _do_univar(
+static int _do_univar(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar,
     nmod_mpoly_t Bbar,
@@ -1131,7 +1136,7 @@ static int _try_zippel(
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
-    flint_randinit(randstate);
+    flint_rand_init(randstate);
 
     /* uctx is context for Z[y_1,...,y_{m-1}]*/
     nmod_mpoly_ctx_init(uctx, m - 1, ORD_LEX, ctx->mod.n);
@@ -1221,7 +1226,7 @@ cleanup:
 
     nmod_mpoly_ctx_clear(uctx);
 
-    flint_randclear(randstate);
+    flint_rand_clear(randstate);
 
     return success;
 }
@@ -1910,7 +1915,25 @@ skip_monomial_cofactors:
             goto successful;
     }
 
-    if (I->mvars < 3)
+    if (algo == MPOLY_GCD_USE_HENSEL)
+    {
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
+        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_BROWN)
+    {
+        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+        success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_ZIPPEL)
+    {
+        mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
+        success = _try_zippel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (I->mvars < 3)
     {
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
@@ -1943,24 +1966,6 @@ skip_monomial_cofactors:
             }
         }
 
-        goto cleanup;
-    }
-    else if (algo == MPOLY_GCD_USE_HENSEL)
-    {
-        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
-        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
-        goto cleanup;
-    }
-    else if (algo == MPOLY_GCD_USE_BROWN)
-    {
-        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
-        success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
-        goto cleanup;
-    }
-    else if (algo == MPOLY_GCD_USE_ZIPPEL)
-    {
-        mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
-        success = _try_zippel(G, Abar, Bbar, A, B, I, ctx);
         goto cleanup;
     }
     else if (algo == MPOLY_GCD_USE_ZIPPEL2)

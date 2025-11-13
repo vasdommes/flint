@@ -10,6 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <gmp.h>
 #include "thread_pool.h"
 #include "thread_support.h"
 #include "nmod.h"
@@ -27,15 +28,18 @@ typedef struct {
     slong Bstoprow;
     slong Cstartrow;
     slong Cstoprow;
-    fmpz ** Arows;
-    fmpz ** Brows;
-    fmpz ** Crows;
+    fmpz * Aentries;
+    slong Astride;
+    fmpz * Bentries;
+    slong Bstride;
+    fmpz * Centries;
+    slong Cstride;
     nmod_mat_t * mod_A;
     nmod_mat_t * mod_B;
     nmod_mat_t * mod_C;
     const fmpz_comb_struct * comb;
     slong num_primes;
-    mp_ptr primes;
+    nn_ptr primes;
     int sign;
 } _worker_arg;
 
@@ -50,8 +54,10 @@ static void _mod_worker(void * varg)
     slong Astoprow = arg->Astoprow;
     slong Bstartrow = arg->Bstartrow;
     slong Bstoprow = arg->Bstoprow;
-    fmpz ** Arows = arg->Arows;
-    fmpz ** Brows = arg->Brows;
+    fmpz * Aentries = arg->Aentries;
+    slong Astride = arg->Astride;
+    fmpz * Bentries = arg->Bentries;
+    slong Bstride = arg->Bstride;
     nmod_mat_t * mod_A = arg->mod_A;
     nmod_mat_t * mod_B = arg->mod_B;
     slong num_primes = arg->num_primes;
@@ -59,19 +65,19 @@ static void _mod_worker(void * varg)
 
     if (comb != NULL)
     {
-        mp_limb_t * residues;
+        ulong * residues;
         fmpz_comb_temp_t comb_temp;
 
-        residues = FLINT_ARRAY_ALLOC(num_primes, mp_limb_t);
+        residues = FLINT_ARRAY_ALLOC(num_primes, ulong);
         fmpz_comb_temp_init(comb_temp, comb);
 
         for (i = Astartrow; i < Astoprow; i++)
         {
             for (j = 0; j < k; j++)
             {
-                fmpz_multi_mod_ui(residues, &Arows[i][j], comb, comb_temp);
+                fmpz_multi_mod_ui(residues, Aentries + i * Astride + j, comb, comb_temp);
                 for (l = 0; l < num_primes; l++)
-                    mod_A[l]->rows[i][j] = residues[l];
+                    nmod_mat_entry(mod_A[l], i, j) = residues[l];
             }
         }
 
@@ -81,9 +87,9 @@ static void _mod_worker(void * varg)
             {
                 for (j = 0; j < n; j++)
                 {
-                    fmpz_multi_mod_ui(residues, &Brows[i][j], comb, comb_temp);
+                    fmpz_multi_mod_ui(residues, Bentries + i * Bstride + j, comb, comb_temp);
                     for (l = 0; l < num_primes; l++)
-                        mod_B[l]->rows[i][j] = residues[l];
+                        nmod_mat_entry(mod_B[l], i, j) = residues[l];
                 }
             }
         }
@@ -98,7 +104,7 @@ static void _mod_worker(void * varg)
             for (j = 0; j < k; j++)
             {
                 for (l = 0; l < num_primes; l++)
-                    nmod_mat_entry(mod_A[l], i, j) = fmpz_get_nmod(&Arows[i][j],
+                    nmod_mat_entry(mod_A[l], i, j) = fmpz_get_nmod(Aentries + i * Astride + j,
                                                                     mod_A[l]->mod);
             }
         }
@@ -110,7 +116,7 @@ static void _mod_worker(void * varg)
                 for (j = 0; j < n; j++)
                 {
                     for (l = 0; l < num_primes; l++)
-                        nmod_mat_entry(mod_B[l], i, j) = fmpz_get_nmod(&Brows[i][j],
+                        nmod_mat_entry(mod_B[l], i, j) = fmpz_get_nmod(Bentries + i * Bstride + j,
                                                                         mod_A[l]->mod);
                 }
             }
@@ -125,9 +131,10 @@ static void _crt_worker(void * varg)
     slong n = arg->n;
     slong Cstartrow = arg->Cstartrow;
     slong Cstoprow = arg->Cstoprow;
-    fmpz ** Crows = arg->Crows;
+    fmpz * Centries = arg->Centries;
+    slong Cstride = arg->Cstride;
     nmod_mat_t * mod_C = arg->mod_C;
-    mp_limb_t * primes = arg->primes;
+    ulong * primes = arg->primes;
     slong num_primes = arg->num_primes;
     const fmpz_comb_struct * comb = arg->comb;
     int sign = arg->sign;
@@ -136,19 +143,19 @@ static void _crt_worker(void * varg)
 
     if (comb != NULL)
     {
-        mp_limb_t * residues;
+        ulong * residues;
         fmpz_comb_temp_t comb_temp;
 
-        residues = FLINT_ARRAY_ALLOC(num_primes, mp_limb_t);
+        residues = FLINT_ARRAY_ALLOC(num_primes, ulong);
         fmpz_comb_temp_init(comb_temp, comb);
 
         for (i = Cstartrow; i < Cstoprow; i++)
         for (j = 0; j < n; j++)
         {
             for (l = 0; l < num_primes; l++)
-                residues[l] = mod_C[l]->rows[i][j];
+                residues[l] = nmod_mat_entry(mod_C[l], i, j);
 
-            fmpz_multi_CRT_ui(&Crows[i][j], residues, comb, comb_temp, sign);
+            fmpz_multi_CRT_ui(Centries + i * Cstride + j, residues, comb, comb_temp, sign);
         }
 
         flint_free(residues);
@@ -156,7 +163,7 @@ static void _crt_worker(void * varg)
     }
     else if (num_primes == 1)
     {
-        mp_limb_t r, t, p = primes[0];
+        ulong r, t, p = primes[0];
 
         if (sign)
         {
@@ -166,9 +173,9 @@ static void _crt_worker(void * varg)
                 r = nmod_mat_entry(mod_C[0], i, j);
                 t = p - r;
                 if (t < r)
-                    fmpz_neg_ui(&Crows[i][j], t);
+                    fmpz_neg_ui(Centries + i * Cstride + j, t);
                 else
-                    fmpz_set_ui(&Crows[i][j], r);
+                    fmpz_set_ui(Centries + i * Cstride + j, r);
             }
         }
         else
@@ -177,13 +184,13 @@ static void _crt_worker(void * varg)
             for (j = 0; j < n; j++)
             {
                 r = nmod_mat_entry(mod_C[0], i, j);
-                fmpz_set_ui(&Crows[i][j], r);
+                fmpz_set_ui(Centries + i * Cstride + j, r);
             }
         }
     }
     else if (num_primes == 2)
     {
-        mp_limb_t r0, r1, i0, i1, m0, m1, M[2], t[2], u[2];
+        ulong r0, r1, i0, i1, m0, m1, M[2], t[2], u[2];
         m0 = primes[0];
         m1 = primes[1];
         i0 = n_invmod(m1 % m0, m0);
@@ -218,23 +225,23 @@ static void _crt_worker(void * varg)
             {
                 sub_ddmmss(u[1], u[0], M[1], M[0], t[1], t[0]);
                 if (u[1] < t[1] || (u[1] == t[1] && u[0] < t[0]))
-                    fmpz_neg_uiui(&Crows[i][j], u[1], u[0]);
+                    fmpz_neg_uiui(Centries + i * Cstride + j, u[1], u[0]);
                 else
-                    fmpz_set_uiui(&Crows[i][j], t[1], t[0]);
+                    fmpz_set_uiui(Centries + i * Cstride + j, t[1], t[0]);
             }
             else
             {
-                fmpz_set_uiui(&Crows[i][j], t[1], t[0]);
+                fmpz_set_uiui(Centries + i * Cstride + j, t[1], t[0]);
             }
         }
     }
     else
     {
-        mp_ptr M, Ns, T, U;
-        mp_size_t Msize, Nsize;
-        mp_limb_t cy, ri;
+        nn_ptr M, Ns, T, U;
+        slong Msize, Nsize;
+        ulong cy, ri;
 
-        M = FLINT_ARRAY_ALLOC(num_primes + 1, mp_limb_t);
+        M = FLINT_ARRAY_ALLOC(num_primes + 1, ulong);
 
         M[0] = primes[0];
         Msize = 1;
@@ -250,9 +257,9 @@ static void _crt_worker(void * varg)
            do not require an extra limb. */
         Nsize = Msize + 2;
 
-        Ns = FLINT_ARRAY_ALLOC(Nsize*num_primes, mp_limb_t);
-        T = FLINT_ARRAY_ALLOC(Nsize, mp_limb_t);
-        U = FLINT_ARRAY_ALLOC(Nsize, mp_limb_t);
+        Ns = FLINT_ARRAY_ALLOC(Nsize*num_primes, ulong);
+        T = FLINT_ARRAY_ALLOC(Nsize, ulong);
+        U = FLINT_ARRAY_ALLOC(Nsize, ulong);
 
         for (i = 0; i < num_primes; i++)
         {
@@ -282,12 +289,12 @@ static void _crt_worker(void * varg)
 
             if (sign && (mpn_sub_n(U, M, T, Msize), mpn_cmp(U, T, Msize) < 0))
             {
-                fmpz_set_ui_array(&Crows[i][j], U, Msize);
-                fmpz_neg(&Crows[i][j], &Crows[i][j]);
+                fmpz_set_ui_array(Centries + i * Cstride + j, U, Msize);
+                fmpz_neg(Centries + i * Cstride + j, Centries + i * Cstride + j);
             }
             else
             {
-                fmpz_set_ui_array(&Crows[i][j], T, Msize);
+                fmpz_set_ui_array(Centries + i * Cstride + j, T, Msize);
             }
         }
 
@@ -321,9 +328,12 @@ void _fmpz_mat_mul_multi_mod(
     mainarg.m = m = A->r;
     mainarg.k = k = A->c;
     mainarg.n = n = B->c;
-    mainarg.Arows = A->rows;
-    mainarg.Brows = B->rows;
-    mainarg.Crows = C->rows;
+    mainarg.Aentries = A->entries;
+    mainarg.Astride = A->stride;
+    mainarg.Bentries = B->entries;
+    mainarg.Bstride = B->stride;
+    mainarg.Centries = C->entries;
+    mainarg.Cstride = C->stride;
 
     if (m < 1 || n < 1 || k < 1)
     {
@@ -351,7 +361,7 @@ void _fmpz_mat_mul_multi_mod(
 
     /* Initialize */
     mainarg.sign = sign;
-    mainarg.primes = FLINT_ARRAY_ALLOC(mainarg.num_primes, mp_limb_t);
+    mainarg.primes = FLINT_ARRAY_ALLOC(mainarg.num_primes, ulong);
     mainarg.primes[0] = first_prime;
     if (mainarg.num_primes > 1)
     {

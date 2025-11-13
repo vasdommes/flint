@@ -9,18 +9,13 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "thread_support.h"
 #include "ulong_extras.h"
 #include "fmpz_poly.h"
 #include "acb.h"
 #include "arb_poly.h"
 #include "acb_modular.h"
-
-#ifdef __GNUC__
-# define sqrt __builtin_sqrt
-#else
-# include <math.h>
-#endif
 
 static void
 bsplit(arb_poly_t pol, const arb_t sqrtD,
@@ -94,7 +89,19 @@ merge(arb_poly_t res, const arb_poly_t a, const arb_poly_t b, work_t * work)
     arb_poly_mul(res, a, b, work->prec);
 }
 
-int
+static void
+init(arb_poly_t x, void * args)
+{
+    arb_poly_init(x);
+}
+
+static void
+clear(arb_poly_t x, void * args)
+{
+    arb_poly_clear(x);
+}
+
+static int
 _acb_modular_hilbert_class_poly(fmpz_poly_t res, slong D,
         const slong * qbf, slong qbf_len, slong prec)
 {
@@ -117,8 +124,8 @@ _acb_modular_hilbert_class_poly(fmpz_poly_t res, slong D,
         (bsplit_basecase_func_t) basecase,
         (bsplit_merge_func_t) merge,
         sizeof(arb_poly_struct),
-        (bsplit_init_func_t) arb_poly_init,
-        (bsplit_clear_func_t) arb_poly_clear,
+        (bsplit_init_func_t) init,
+        (bsplit_clear_func_t) clear,
         &work, 0, qbf_len, 1, -1, 0);
 
 /*    bsplit(pol, sqrtD, qbf, 0, qbf_len, prec); */

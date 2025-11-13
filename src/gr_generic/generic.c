@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include "fmpq.h"
 #include "arb.h"
 #include "arith.h"
@@ -21,16 +22,9 @@
 #include "gr_poly.h"
 #include "gr_special.h"
 
-#ifdef __GNUC__
-# define memcpy __builtin_memcpy
-#else
-# include <string.h>
-#endif
-
-int
+void
 gr_generic_ctx_clear(gr_ctx_t ctx)
 {
-    return GR_SUCCESS;
 }
 
 truth_t gr_generic_ctx_predicate(gr_ctx_t ctx)
@@ -48,7 +42,7 @@ truth_t gr_generic_ctx_predicate_false(gr_ctx_t ctx)
     return T_FALSE;
 }
 
-truth_t gr_generic_ctx_is_zero_ring(gr_ctx_t ctx)
+static truth_t gr_generic_ctx_is_zero_ring(gr_ctx_t ctx)
 {
     gr_ptr t;
     int status;
@@ -75,6 +69,40 @@ truth_t gr_generic_ctx_is_zero_ring(gr_ctx_t ctx)
     GR_TMP_CLEAR(t, ctx);
 
     return res;
+}
+
+static truth_t gr_generic_ctx_is_rational_vector_space(gr_ctx_t ctx)
+{
+    if (gr_ctx_is_finite_characteristic(ctx) == T_TRUE)
+        return gr_ctx_is_zero_ring(ctx);
+    else
+        return T_UNKNOWN;
+}
+
+static truth_t gr_generic_ctx_is_real_vector_space(gr_ctx_t ctx)
+{
+    /* currently this does the same thing */
+    return gr_generic_ctx_is_rational_vector_space(ctx);
+}
+
+static truth_t gr_generic_ctx_is_complex_vector_space(gr_ctx_t ctx)
+{
+    /* currently this does the same thing */
+    return gr_generic_ctx_is_rational_vector_space(ctx);
+}
+
+slong
+gr_generic_ctx_ngens_0(slong * ngens, gr_ctx_t ctx)
+{
+    * ngens = 0;
+    return GR_SUCCESS;
+}
+
+slong
+gr_generic_ctx_ngens_1(slong * ngens, gr_ctx_t ctx)
+{
+    * ngens = 1;
+    return GR_SUCCESS;
 }
 
 void
@@ -122,6 +150,36 @@ int gr_generic_randtest_not_zero(gr_ptr x, flint_rand_t state, gr_ctx_t ctx)
     return GR_UNABLE;
 }
 
+static int gr_generic_randtest_invertible(gr_ptr x, flint_rand_t state, gr_ctx_t ctx)
+{
+    slong i;
+    truth_t is_invertible;
+    int status = GR_SUCCESS;
+
+    for (i = 0; i < 5; i++)
+    {
+        status |= gr_randtest(x, state, ctx);
+
+        is_invertible = gr_is_invertible(x, ctx);
+        if (is_invertible == T_TRUE)
+            return GR_SUCCESS;
+    }
+
+    for (i = 0; i < 5; i++)
+    {
+        status |= gr_randtest_small(x, state, ctx);
+
+        is_invertible = gr_is_invertible(x, ctx);
+        if (is_invertible == T_TRUE)
+            return GR_SUCCESS;
+    }
+
+    /* unused */
+    (void) status;
+
+    return n_randint(state, 2) ? gr_one(x, ctx) : gr_neg_one(x, ctx);
+}
+
 int gr_generic_randtest_small(gr_ptr x, flint_rand_t state, gr_ctx_t ctx)
 {
     int status = GR_SUCCESS;
@@ -138,10 +196,13 @@ int gr_generic_randtest_small(gr_ptr x, flint_rand_t state, gr_ctx_t ctx)
     if (status != GR_SUCCESS)
         status = gr_set_si(x, -3 + (slong) n_randint(state, 7), ctx);
 
+    if (status != GR_SUCCESS)
+        return gr_zero(x, ctx);
+
     return status;
 }
 
-slong _gr_generic_length(gr_srcptr x, gr_ctx_t ctx)
+static slong _gr_generic_length(gr_srcptr x, gr_ctx_t ctx)
 {
     return 0;
 }
@@ -904,7 +965,7 @@ int gr_generic_set_fmpz_10exp_fmpz(gr_ptr res, const fmpz_t x, const fmpz_t y, g
     }
 }
 
-int gr_generic_get_fexpr_serialize(fexpr_t res, gr_srcptr x, gr_ctx_t ctx)
+static int gr_generic_get_fexpr_serialize(fexpr_t res, gr_srcptr x, gr_ctx_t ctx)
 {
     return gr_get_fexpr(res, x, ctx);
 }
@@ -1047,7 +1108,7 @@ int gr_generic_divexact(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
     return gr_div(res, x, y, ctx);
 }
 
-truth_t gr_generic_div_nonunique(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+static truth_t gr_generic_div_nonunique(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
 {
     truth_t zero;
     int status;
@@ -1074,7 +1135,7 @@ truth_t gr_generic_div_nonunique(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t 
     return GR_UNABLE;
 }
 
-truth_t gr_generic_divides(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+static truth_t gr_generic_divides(gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
 {
     gr_ptr t;
     truth_t zero;
@@ -1268,6 +1329,55 @@ gr_generic_rsqrt(gr_ptr res, gr_srcptr x, gr_ctx_t ctx)
     return GR_UNABLE;
 }
 
+static int
+gr_generic_canonical_associate(gr_ptr ux, gr_ptr u, gr_srcptr x, gr_ctx_t ctx)
+{
+    if (gr_ctx_is_field(ctx) == T_TRUE)
+    {
+        int status = gr_inv(u, x, ctx);
+
+        if (!(status & GR_UNABLE))
+        {
+            if (status == GR_SUCCESS)
+            {
+                status |= gr_one(ux, ctx);
+            }
+            else
+            {
+                /* x = 0 */
+                status = gr_zero(ux, ctx);
+                status |= gr_one(u, ctx);
+            }
+        }
+
+        return status;
+    }
+
+    return GR_UNABLE;
+}
+
+static int
+gr_generic_gcd(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+{
+    if (gr_ctx_is_field(ctx) == T_TRUE)
+    {
+        truth_t x_zero, y_zero;
+
+        x_zero = gr_is_zero(x, ctx);
+        y_zero = gr_is_zero(y, ctx);
+
+        if (x_zero == T_TRUE && y_zero == T_TRUE)
+            return gr_zero(res, ctx);
+
+        if (x_zero == T_FALSE || y_zero == T_FALSE)
+            return gr_one(res, ctx);
+
+        return GR_UNABLE;
+    }
+
+    return GR_UNABLE;
+}
+
 int
 gr_generic_cmp(int * res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
 {
@@ -1315,6 +1425,34 @@ gr_generic_cmpabs_other(int * res, gr_srcptr x, gr_srcptr y, gr_ctx_t y_ctx, gr_
     GR_TMP_CLEAR(t, ctx);
 
     return status;
+}
+
+static int
+gr_generic_min(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+{
+    int cmp;
+
+    if (gr_cmp(&cmp, x, y, ctx) != GR_SUCCESS)
+        return GR_UNABLE;
+
+    if (cmp <= 0)
+        return gr_set(res, x, ctx);
+    else
+        return gr_set(res, y, ctx);
+}
+
+static int
+gr_generic_max(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx)
+{
+    int cmp;
+
+    if (gr_cmp(&cmp, x, y, ctx) != GR_SUCCESS)
+        return GR_UNABLE;
+
+    if (cmp >= 0)
+        return gr_set(res, x, ctx);
+    else
+        return gr_set(res, y, ctx);
 }
 
 int
@@ -1466,8 +1604,6 @@ gr_generic_bernoulli_vec(gr_ptr res, slong len, gr_ctx_t ctx)
         return status;
     }
 }
-
-void arb_fmpz_euler_number_ui(fmpz_t res, ulong n);
 
 int
 gr_generic_eulernum_ui(gr_ptr res, ulong n, gr_ctx_t ctx)
@@ -2527,6 +2663,9 @@ const gr_method_tab_input _gr_generic_methods[] =
     {GR_METHOD_CTX_IS_FINITE_CHARACTERISTIC,        (gr_funcptr) gr_generic_ctx_predicate},
     {GR_METHOD_CTX_IS_ALGEBRAICALLY_CLOSED,         (gr_funcptr) gr_generic_ctx_predicate},
     {GR_METHOD_CTX_IS_ZERO_RING,        (gr_funcptr) gr_generic_ctx_is_zero_ring},
+    {GR_METHOD_CTX_IS_RATIONAL_VECTOR_SPACE,         (gr_funcptr) gr_generic_ctx_is_rational_vector_space},
+    {GR_METHOD_CTX_IS_REAL_VECTOR_SPACE,            (gr_funcptr) gr_generic_ctx_is_real_vector_space},
+    {GR_METHOD_CTX_IS_COMPLEX_VECTOR_SPACE,         (gr_funcptr) gr_generic_ctx_is_complex_vector_space},
 
     {GR_METHOD_CTX_IS_ORDERED_RING,     (gr_funcptr) gr_generic_ctx_predicate},
 
@@ -2535,6 +2674,8 @@ const gr_method_tab_input _gr_generic_methods[] =
 
     {GR_METHOD_CTX_IS_EXACT,            (gr_funcptr) gr_generic_ctx_predicate},
     {GR_METHOD_CTX_IS_CANONICAL,        (gr_funcptr) gr_generic_ctx_predicate},
+
+    {GR_METHOD_CTX_NGENS,               (gr_funcptr) gr_generic_ctx_ngens_0},
 
     {GR_METHOD_INIT,                    (gr_funcptr) gr_generic_init},
     {GR_METHOD_CLEAR,                   (gr_funcptr) gr_generic_clear},
@@ -2548,6 +2689,7 @@ const gr_method_tab_input _gr_generic_methods[] =
 
     {GR_METHOD_RANDTEST,                (gr_funcptr) gr_generic_randtest},
     {GR_METHOD_RANDTEST_NOT_ZERO,       (gr_funcptr) gr_generic_randtest_not_zero},
+    {GR_METHOD_RANDTEST_INVERTIBLE,     (gr_funcptr) gr_generic_randtest_invertible},
     {GR_METHOD_RANDTEST_SMALL,          (gr_funcptr) gr_generic_randtest_small},
 
     {GR_METHOD_GENS,                    (gr_funcptr) gr_generic_gens},
@@ -2657,13 +2799,19 @@ const gr_method_tab_input _gr_generic_methods[] =
     {GR_METHOD_SQRT,                    (gr_funcptr) gr_generic_sqrt},
     {GR_METHOD_RSQRT,                   (gr_funcptr) gr_generic_rsqrt},
 
+    {GR_METHOD_CANONICAL_ASSOCIATE,     (gr_funcptr) gr_generic_canonical_associate},
+
     {GR_METHOD_NUMERATOR,               (gr_funcptr) gr_generic_numerator},
     {GR_METHOD_DENOMINATOR,             (gr_funcptr) gr_generic_denominator},
+
+    {GR_METHOD_GCD,                     (gr_funcptr) gr_generic_gcd},
 
     {GR_METHOD_CMP,                     (gr_funcptr) gr_generic_cmp},
     {GR_METHOD_CMPABS,                  (gr_funcptr) gr_generic_cmpabs},
     {GR_METHOD_CMP_OTHER,               (gr_funcptr) gr_generic_cmp_other},
     {GR_METHOD_CMPABS_OTHER,            (gr_funcptr) gr_generic_cmpabs_other},
+    {GR_METHOD_MIN,                     (gr_funcptr) gr_generic_min},
+    {GR_METHOD_MAX,                     (gr_funcptr) gr_generic_max},
 
     {GR_METHOD_EXP,                     (gr_funcptr) gr_generic_exp},
     {GR_METHOD_EXPM1,                   (gr_funcptr) gr_generic_expm1},
@@ -2879,11 +3027,15 @@ const gr_method_tab_input _gr_generic_methods[] =
     {GR_METHOD_MAT_NONSINGULAR_SOLVE_TRIL,                 (gr_funcptr) gr_mat_nonsingular_solve_tril_generic},
     {GR_METHOD_MAT_NONSINGULAR_SOLVE_TRIU,                 (gr_funcptr) gr_mat_nonsingular_solve_triu_generic},
     {GR_METHOD_MAT_LU,                  (gr_funcptr) gr_mat_lu_generic},
+    {GR_METHOD_MAT_LQ,                  (gr_funcptr) gr_mat_lq_generic},
     {GR_METHOD_MAT_DET,                 (gr_funcptr) gr_mat_det_generic},
     {GR_METHOD_MAT_EXP,                 (gr_funcptr) gr_mat_exp_jordan},
     {GR_METHOD_MAT_LOG,                 (gr_funcptr) gr_mat_log_jordan},
     {GR_METHOD_MAT_FIND_NONZERO_PIVOT,  (gr_funcptr) gr_mat_find_nonzero_pivot_generic},
     {GR_METHOD_MAT_DIAGONALIZATION,     (gr_funcptr) gr_mat_diagonalization_generic},
+    {GR_METHOD_MAT_CHARPOLY,            (gr_funcptr) _gr_mat_charpoly_generic},
+    {GR_METHOD_MAT_REDUCE_ROW,          (gr_funcptr) gr_mat_reduce_row_generic},
+    {GR_METHOD_MAT_PERMANENT,           (gr_funcptr) gr_mat_permanent_generic},
 
     {0,                                 (gr_funcptr) NULL},
 };

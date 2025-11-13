@@ -17,6 +17,7 @@
 #include "mpoly.h"
 #include "fmpz_mpoly.h"
 #include "nmod_mpoly_factor.h"
+#include "fmpz_mpoly_factor.h"
 #include "fmpz_mod_mpoly_factor.h"
 
 typedef struct {
@@ -75,7 +76,7 @@ static void mpoly2_nmod_monomial_evals(
     slong start, stop, i, j, k, n;
     slong e0, e1;
     slong nvars = mctx->nvars;
-    mp_limb_t * p;
+    ulong * p;
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - Abits);
     slong N = mpoly_words_per_exp_sp(Abits, mctx);
     slong * off, * shift;
@@ -145,7 +146,7 @@ static void mpoly_nmod_monomial_evals(
     nmod_t fpctx)
 {
     slong i, k;
-    mp_limb_t * p;
+    ulong * p;
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - Abits);
     slong N = mpoly_words_per_exp_sp(Abits, mctx);
     slong * off, * shift;
@@ -250,7 +251,7 @@ static void fmpz_mpoly_fmpz_mod_coeffs(
     _fmpz_mod_vec_set_fmpz_vec(EH->coeffs, Acoeffs, Alen, fpctx);
 }
 
-mp_limb_t n_poly_mod_zip_eval_cur_inc_coeff(
+static ulong n_poly_mod_zip_eval_cur_inc_coeff(
     n_poly_t Acur,
     n_poly_t Ainc,
     n_poly_t Acoeff,
@@ -260,7 +261,7 @@ mp_limb_t n_poly_mod_zip_eval_cur_inc_coeff(
                                                             Acur->length, ctx);
 }
 
-void fmpz_mod_poly_zip_eval_cur_inc_coeff(
+static void fmpz_mod_poly_zip_eval_cur_inc_coeff(
     fmpz_t e,
     fmpz_mod_poly_t Acur,
     fmpz_mod_poly_t Ainc,
@@ -280,8 +281,8 @@ static void n_polyun_mod_zip_eval_cur_inc_coeff(
     nmod_t ctx)
 {
     slong i, Ei;
-    slong e0, e1;
-    mp_limb_t c;
+    ulong e0, e1;
+    ulong c;
     n_poly_struct * Ec;
 
     FLINT_ASSERT(Acur->length > 0);
@@ -375,8 +376,8 @@ static void fmpz_mpoly2_eval_fmpz_mod(
     secret: subdegs[0] is not used
 */
 
-void nmod_mpoly_bma_interpolate_alpha_powers(
-    mp_limb_t * out,
+static void nmod_mpoly_bma_interpolate_alpha_powers(
+    ulong * out,
     ulong w,
     slong m,
     const mpoly_bma_interpolate_ctx_t Ictx,
@@ -389,7 +390,7 @@ void nmod_mpoly_bma_interpolate_alpha_powers(
         out[j - 1] = nmod_pow_ui(out[j], Ictx->subdegs[j], fpctx);
 }
 
-void fmpz_mod_mpoly_bma_interpolate_alpha_powers(
+static void fmpz_mod_mpoly_bma_interpolate_alpha_powers(
     fmpz * out,
     const fmpz_t w,
     slong m,
@@ -404,7 +405,7 @@ void fmpz_mod_mpoly_bma_interpolate_alpha_powers(
 }
 
 
-void nmod_bma_mpoly_init(nmod_bma_mpoly_t A)
+static void nmod_bma_mpoly_init(nmod_bma_mpoly_t A)
 {
     A->length = 0;
     A->alloc = 0;
@@ -413,7 +414,7 @@ void nmod_bma_mpoly_init(nmod_bma_mpoly_t A)
     A->pointcount = 0;
 }
 
-void nmod_bma_mpoly_reset_prime(
+static void nmod_bma_mpoly_reset_prime(
     nmod_bma_mpoly_t A,
     nmod_t fpctx)
 {
@@ -423,7 +424,7 @@ void nmod_bma_mpoly_reset_prime(
 }
 
 
-void nmod_bma_mpoly_clear(nmod_bma_mpoly_t A)
+static void nmod_bma_mpoly_clear(nmod_bma_mpoly_t A)
 {
     slong i;
     for (i = 0; i < A->alloc; i++)
@@ -438,7 +439,7 @@ void nmod_bma_mpoly_clear(nmod_bma_mpoly_t A)
 }
 
 
-void nmod_bma_mpoly_fit_length(
+static void nmod_bma_mpoly_fit_length(
     nmod_bma_mpoly_t A,
     slong length,
     nmod_t fpctx)
@@ -459,14 +460,14 @@ void nmod_bma_mpoly_fit_length(
     }
 }
 
-void nmod_bma_mpoly_zero(nmod_bma_mpoly_t L)
+static void nmod_bma_mpoly_zero(nmod_bma_mpoly_t L)
 {
     L->length = 0;
     L->pointcount = 0;
 }
 
 
-int nmod_bma_mpoly_reduce(nmod_bma_mpoly_t L)
+static int nmod_bma_mpoly_reduce(nmod_bma_mpoly_t L)
 {
     slong i;
     int changed;
@@ -483,7 +484,7 @@ int nmod_bma_mpoly_reduce(nmod_bma_mpoly_t L)
 }
 
 
-void nmod_bma_mpoly_add_point(
+static void nmod_bma_mpoly_add_point(
     nmod_bma_mpoly_t L,
     const n_polyun_t A,
     nmod_t fpctx)
@@ -670,8 +671,8 @@ static int _nmod_mpoly_bma_get_fmpz_mpoly2(
     slong i, j, t;
     slong N = mpoly_words_per_exp_sp(Abits, mctx);
     ulong new_exp, this_exp;
-    mp_limb_t * values, * roots;
-    mp_limb_t T, S, V, V0, V1, V2, p0, p1, r;
+    ulong * values, * roots;
+    ulong T, S, V, V0, V1, V2, p0, p1, r;
 
     FLINT_ASSERT(mctx->ord == ORD_LEX);
 
@@ -726,7 +727,7 @@ static int _nmod_mpoly_bma_get_fmpz_mpoly2(
         {
             this_exp = new_exp % Ictx->subdegs[j];
             new_exp = new_exp / Ictx->subdegs[j];
-            if (this_exp > Ictx->degbounds[j])
+            if (this_exp > (ulong) Ictx->degbounds[j])
                 return 0;
             (Aexps + N*i)[offsets[j]] |= this_exp << shifts[j];
         }
@@ -828,7 +829,7 @@ static int _fmpz_mod_bma_get_fmpz_mpoly2(
         {
             this_exp = fmpz_fdiv_ui(new_exp, Ictx->subdegs[j]);
             fmpz_fdiv_q_ui(new_exp, new_exp, Ictx->subdegs[j]);
-            if (this_exp > Ictx->degbounds[j])
+            if (this_exp > (ulong) Ictx->degbounds[j])
             {
                 success = 0;
                 goto cleanup;
@@ -858,7 +859,7 @@ cleanup:
 
 
 
-int nmod_bma_mpoly_get_fmpz_mpoly2(
+static int nmod_bma_mpoly_get_fmpz_mpoly2(
     fmpz_mpoly_t A,
     n_poly_t Amarks,
     const fmpz_mpoly_ctx_t ctx,
@@ -924,7 +925,7 @@ cleanup:
 }
 
 
-int fmpz_mod_bma_mpoly_get_fmpz_mpoly2(
+static int fmpz_mod_bma_mpoly_get_fmpz_mpoly2(
     fmpz_mpoly_t A,
     n_poly_t Amarks,
     const fmpz_mpoly_ctx_t ctx,
@@ -992,7 +993,7 @@ cleanup:
 
 
 
-void fmpz_mod_bma_mpoly_init(fmpz_mod_bma_mpoly_t A)
+static void fmpz_mod_bma_mpoly_init(fmpz_mod_bma_mpoly_t A)
 {
     A->length = 0;
     A->alloc = 0;
@@ -1002,7 +1003,7 @@ void fmpz_mod_bma_mpoly_init(fmpz_mod_bma_mpoly_t A)
 }
 
 
-void fmpz_mod_bma_mpoly_clear(
+static void fmpz_mod_bma_mpoly_clear(
     fmpz_mod_bma_mpoly_t A,
     const fmpz_mod_ctx_t fpctx)
 {
@@ -1016,7 +1017,7 @@ void fmpz_mod_bma_mpoly_clear(
 }
 
 
-void fmpz_mod_bma_mpoly_fit_length(
+static void fmpz_mod_bma_mpoly_fit_length(
     fmpz_mod_bma_mpoly_t A,
     slong length,
     const fmpz_mod_ctx_t fpctx)
@@ -1038,13 +1039,13 @@ void fmpz_mod_bma_mpoly_fit_length(
     }
 }
 
-void fmpz_mod_bma_mpoly_zero(fmpz_mod_bma_mpoly_t L)
+static void fmpz_mod_bma_mpoly_zero(fmpz_mod_bma_mpoly_t L)
 {
     L->length = 0;
     L->pointcount = 0;
 }
 
-int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L, const fmpz_mod_ctx_t fpctx)
+static int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L, const fmpz_mod_ctx_t fpctx)
 {
     slong i;
     int changed;
@@ -1176,7 +1177,7 @@ add_same_exp:
         x_(n-1) = x ^ (1)
     a univariate in ZZ[x] remains. Return the content of this poly.
 */
-void _fmpz_mpoly_ksub_content(
+static void _fmpz_mpoly_ksub_content(
     fmpz_t content,
     const fmpz * Acoeffs,
     const ulong * Aexps,
@@ -1239,7 +1240,7 @@ void _fmpz_mpoly_ksub_content(
           -1: better degree bound is in GevaldegXY
 */
 
-int static _random_check_sp(
+static int _random_check_sp(
     ulong * GevaldegXY,
     ulong GdegboundXY,
     int which_check,
@@ -1248,7 +1249,7 @@ int static _random_check_sp(
     n_polyun_t Geval_sp,
     n_polyun_t Abareval_sp,
     n_polyun_t Bbareval_sp,
-    mp_limb_t * alphas_sp,
+    ulong * alphas_sp,
     n_poly_struct * alpha_caches_sp,
     const fmpz_mpoly_t H, n_poly_t Hmarks,
     const fmpz_mpoly_t A, n_poly_t Amarks, ulong Abidegree,
@@ -1259,7 +1260,7 @@ int static _random_check_sp(
     flint_rand_t randstate,
     n_poly_polyun_stack_t St_sp)
 {
-    mp_limb_t Gammaeval_sp;
+    ulong Gammaeval_sp;
     int success;
     int point_try_count;
     slong i;
@@ -1323,7 +1324,7 @@ int static _random_check_sp(
     return 1; /* Hmm */
 }
 
-int static _random_check_mp(
+static int _random_check_mp(
     ulong * GevaldegXY,
     ulong GdegboundXY,
     int which_check,
@@ -1419,7 +1420,7 @@ int static _random_check_mp(
         1:  success
 */
 static int zip_solve(
-    mp_limb_t * Acoeffs,
+    ulong * Acoeffs,
     n_polyun_t Z,
     n_polyun_t H,
     n_polyun_t M,
@@ -1461,11 +1462,11 @@ static int zip_solve(
 }
 
 
-int _fmpz_vec_crt_nmod(
+static int _fmpz_vec_crt_nmod(
     flint_bitcnt_t * maxbits_,
     fmpz * a,
     fmpz_t am,
-    mp_limb_t * b,
+    ulong * b,
     slong len,
     nmod_t mod)
 {
@@ -1530,9 +1531,9 @@ int fmpz_mpolyl_gcd_zippel2(
     n_poly_t Gammacur_sp, Gammainc_sp, Gammacoeff_sp;
     n_polyun_t Acur_sp, Ainc_sp, Acoeff_sp;
     n_polyun_t Bcur_sp, Binc_sp, Bcoeff_sp;
-    mp_limb_t p_sp, sshift_sp, last_unlucky_sshift_plus_1_sp, image_count_sp;
-    mp_limb_t Gammaeval_sp;
-    mp_limb_t * alphas_sp;
+    ulong p_sp, sshift_sp, last_unlucky_sshift_plus_1_sp, image_count_sp;
+    ulong Gammaeval_sp;
+    ulong * alphas_sp;
     n_poly_struct * alpha_caches_sp;
     /* misc */
     n_polyun_t HH, MH, ZH;
@@ -1570,7 +1571,7 @@ int fmpz_mpolyl_gcd_zippel2(
                                          B->exps, B->length, bits, ctx->minfo);
 
 
-    flint_randinit(randstate);
+    flint_rand_init(randstate);
     fmpz_init(p);
     fmpz_init(pm1); /* p - 1 */
     fmpz_init(subprod);
@@ -1645,7 +1646,7 @@ int fmpz_mpolyl_gcd_zippel2(
     n_polyun_init(Binc_sp);
     n_polyun_init(Bcoeff_sp);
 
-    alphas_sp = FLINT_ARRAY_ALLOC(nvars, mp_limb_t);
+    alphas_sp = FLINT_ARRAY_ALLOC(nvars, ulong);
     alpha_caches_sp = FLINT_ARRAY_ALLOC(3*nvars, n_poly_struct);
     for (i = 0; i < 3*nvars; i++)
         n_poly_init(alpha_caches_sp + i);
@@ -1895,13 +1896,13 @@ pick_bma_prime:
         if (GLambda_sp->pointcount/2 >= Gamma->length &&
             !nmod_bma_mpoly_reduce(GLambda_sp) &&
             nmod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_sp, GLambda_sp, Ictx, ctx_sp) &&
-            Hmarks->coeffs[1] == Gamma->length)
+            Hmarks->coeffs[1] == (ulong) Gamma->length)
         {
             which_check = 0;
             goto check_sp;
         }
 
-        if (AbarLambda_sp->pointcount/2 >= Amarks->coeffs[1] &&
+        if ((ulong) (AbarLambda_sp->pointcount / 2) >= Amarks->coeffs[1] &&
             !nmod_bma_mpoly_reduce(AbarLambda_sp) &&
             nmod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_sp, AbarLambda_sp, Ictx, ctx_sp) &&
             Hmarks->coeffs[1] == Amarks->coeffs[1])
@@ -1910,7 +1911,7 @@ pick_bma_prime:
             goto check_sp;
         }
 
-        if (BbarLambda_sp->pointcount/2 >= Bmarks->coeffs[1] &&
+        if ((ulong) (BbarLambda_sp->pointcount / 2) >= Bmarks->coeffs[1] &&
             !nmod_bma_mpoly_reduce(BbarLambda_sp) &&
             nmod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_sp, BbarLambda_sp, Ictx, ctx_sp) &&
             Hmarks->coeffs[1] == Bmarks->coeffs[1])
@@ -1919,7 +1920,7 @@ pick_bma_prime:
             goto check_sp;
         }
 
-        if (GLambda_sp->pointcount/2 > ABtotal_length)
+        if ((ulong) (GLambda_sp->pointcount / 2) > ABtotal_length)
         {
             success = 0;
             goto cleanup;
@@ -2110,13 +2111,13 @@ pick_bma_prime:
         if (GLambda_mp->pointcount/2 >= Gamma->length &&
             !fmpz_mod_bma_mpoly_reduce(GLambda_mp, ctx_mp) &&
             fmpz_mod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_mp, GLambda_mp, Ictx, ctx_mp) &&
-            Hmarks->coeffs[1] == Gamma->length)
+            (slong) Hmarks->coeffs[1] == Gamma->length)
         {
             which_check = 0;
             goto check_mp;
         }
 
-        if (AbarLambda_mp->pointcount/2 >= Bmarks->coeffs[1] &&
+        if ((ulong) (AbarLambda_mp->pointcount / 2) >= Bmarks->coeffs[1] &&
             !fmpz_mod_bma_mpoly_reduce(AbarLambda_mp, ctx_mp) &&
             fmpz_mod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_mp, AbarLambda_mp, Ictx, ctx_mp) &&
             Hmarks->coeffs[1] == Amarks->coeffs[1])
@@ -2125,7 +2126,7 @@ pick_bma_prime:
             goto check_mp;
         }
 
-        if (BbarLambda_mp->pointcount/2 >= Bmarks->coeffs[1] &&
+        if ((ulong) (BbarLambda_mp->pointcount / 2) >= Bmarks->coeffs[1] &&
             !fmpz_mod_bma_mpoly_reduce(BbarLambda_mp, ctx_mp) &&
             fmpz_mod_bma_mpoly_get_fmpz_mpoly2(H, Hmarks, ctx, sshift_mp, BbarLambda_mp, Ictx, ctx_mp) &&
             Hmarks->coeffs[1] == Bmarks->coeffs[1])
@@ -2134,7 +2135,7 @@ pick_bma_prime:
             goto check_mp;
         }
 
-        if (GLambda_mp->pointcount/2 > ABtotal_length)
+        if ((ulong) (GLambda_mp->pointcount / 2) > ABtotal_length)
         {
             success = 0;
             goto cleanup;
@@ -2430,7 +2431,7 @@ cleanup:
     fmpz_clear(subprod);
     fmpz_clear(pm1);
     fmpz_clear(p);
-    flint_randclear(randstate);
+    flint_rand_clear(randstate);
 
     FLINT_ASSERT(G->bits == bits);
     FLINT_ASSERT(Abar->bits == bits);

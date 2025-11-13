@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "fmpz_mat.h"
 #include "fmpz.h"
 #include "ulong_extras.h"
@@ -238,6 +237,6 @@ int main(void)
         fmpz_mat_clear(C);
     }
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
     return 0;
 }

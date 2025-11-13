@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
 static void
@@ -17,7 +18,7 @@ arb_approx_div(arb_t z, const arb_t x, const arb_t y, slong prec)
     arf_div(arb_midref(z), arb_midref(x), arb_midref(y), prec, ARB_RND);
 }
 
-void
+static void
 arb_mat_approx_solve_tril_classical(arb_mat_t X,
         const arb_mat_t L, const arb_mat_t B, int unit, slong prec)
 {
@@ -38,7 +39,7 @@ arb_mat_approx_solve_tril_classical(arb_mat_t X,
 
         for (j = 0; j < n; j++)
         {
-            arb_approx_dot(s, arb_mat_entry(B, j, i), 1, L->rows[j], 1, tmp, 1, j, prec);
+            arb_approx_dot(s, arb_mat_entry(B, j, i), 1, arb_mat_entry(L, j, 0), 1, tmp, 1, j, prec);
 
             if (!unit)
                 arb_approx_div(tmp + j, s, arb_mat_entry(L, j, j), prec);
@@ -54,7 +55,7 @@ arb_mat_approx_solve_tril_classical(arb_mat_t X,
     arb_clear(s);
 }
 
-void
+static void
 arb_mat_approx_solve_tril_recursive(arb_mat_t X,
         const arb_mat_t L, const arb_mat_t B, int unit, slong prec)
 {

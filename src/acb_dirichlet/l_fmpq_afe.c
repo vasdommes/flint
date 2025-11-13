@@ -9,16 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "fmpq.h"
 #include "arb_mat.h"
 #include "arb_hypgeom.h"
+#include "acb.h"
 #include "acb_dirichlet.h"
-
-#ifdef __GNUC__
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
 
 #define VERBOSE 0
 
@@ -31,7 +27,7 @@ log_gamma_upper_approx(double a, double z)
         return a * (log(a) - 1);
 }
 
-void
+static void
 acb_dirichlet_root_number2(acb_t res, const dirichlet_group_t G, const dirichlet_char_t chi, slong prec)
 {
     acb_dirichlet_root_number(res, G, chi, prec);
@@ -134,7 +130,7 @@ acb_dirichlet_afe_tail_bound(mag_t res, const fmpq_t sd2, slong N, ulong q, int 
 }
 
 
-void
+static void
 acb_dirichlet_fmpq_sum_afe(acb_t res, const fmpq_t s, const dirichlet_group_t G, const dirichlet_char_t chi, const mag_t abs_tol, slong prec)
 {
     slong NN, n, start_bits, bits, wp, wp2, gamma_cached_prec;

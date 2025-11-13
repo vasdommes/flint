@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
 static slong
@@ -22,31 +23,11 @@ acb_mat_bits(const acb_mat_t A)
     b = 0;
     for (i = 0; i < ar; i++)
     {
-        t = _arb_vec_bits((arb_srcptr) A->rows[i], 2 * ac);
+        t = _arb_vec_bits((arb_srcptr) acb_mat_entry(A, i, 0), 2 * ac);
         b = FLINT_MAX(b, t);
     }
 
     return b;
-}
-
-int acb_mat_is_lagom(const acb_mat_t A)
-{
-    slong i, j, M, N;
-
-    M = acb_mat_nrows(A);
-    N = acb_mat_ncols(A);
-
-    for (i = 0; i < M; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            if (!ARB_IS_LAGOM(acb_realref(acb_mat_entry(A, i, j))) ||
-                !ARB_IS_LAGOM(acb_imagref(acb_mat_entry(A, i, j))))
-                return 0;
-        }
-    }
-
-    return 1;
 }
 
 void

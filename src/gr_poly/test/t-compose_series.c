@@ -43,7 +43,7 @@ test_compose_series(flint_rand_t state, int which)
     GR_MUST_SUCCEED(gr_poly_randtest(A, state, 1 + n_randint(state, 20), ctx));
     GR_MUST_SUCCEED(gr_poly_randtest(B, state, 1 + n_randint(state, 20), ctx));
     GR_MUST_SUCCEED(gr_poly_randtest(C, state, 1 + n_randint(state, 20), ctx));
-    GR_MUST_SUCCEED(gr_poly_set_coeff_si(B, 0, 0, ctx));
+    status |= gr_poly_set_coeff_si(B, 0, 0, ctx);
 
     switch (which)
     {
@@ -110,7 +110,7 @@ test_compose_series(flint_rand_t state, int which)
                 status |= gr_poly_one(E, ctx);
             else
                 status |= gr_poly_mullow(E, E, B, n, ctx);
-            status |= gr_poly_mul_scalar(F, E, gr_poly_entry_ptr(A, i, ctx), ctx);
+            status |= gr_poly_mul_scalar(F, E, gr_poly_coeff_ptr(A, i, ctx), ctx);
             status |= gr_poly_add(D, D, F, ctx);
         }
 

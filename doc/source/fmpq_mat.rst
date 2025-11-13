@@ -110,7 +110,7 @@ Basic assignment
 .. function:: void fmpq_mat_transpose(fmpq_mat_t rop, const fmpq_mat_t op)
 
     Sets the matrix ``rop`` to the transpose of the matrix ``op``,
-    assuming that their dimensions are compatible.
+    assuming that their dimensions are compatible. Aliasing is allowed for square matrices.
 
 .. function:: void fmpq_mat_swap_rows(fmpq_mat_t mat, slong * perm, slong r, slong s)
 
@@ -441,6 +441,15 @@ Determinant
     the determinant is computed by clearing denominators and computing a
     determinant over the integers. Matrices of size 0, 1 or 2 are handled
     directly.
+
+Permanent
+--------------------------------------------------------------------------------
+
+
+.. function:: int fmpq_mat_permanent(fmpq_t res, const fmpq_mat_t A)
+
+    Sets ``res`` to the permanent of the square matrix *A*, returning 1
+    on success. If the matrix is too large, returns 0.
 
 
 Nonsingular solving

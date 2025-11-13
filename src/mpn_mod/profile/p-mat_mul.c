@@ -26,7 +26,7 @@
                 break; \
             __reps *= 10; \
         } \
-    } while (0);
+    } while (0)
 #endif
 
 slong parameters[] = { 4, 5, 6, 8, 10, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112, 128, 144, 160, 192, 224, 256, 0 };
@@ -53,7 +53,7 @@ randmat(gr_mat_t mat, flint_rand_t state, gr_ctx_t ctx)
     slong i;
 
     for (i = 0; i < mat->r; i++)
-        randvec(mat->rows[i], state, mat->c, ctx);
+        randvec(gr_mat_entry_ptr(mat, i, 0, ctx), state, mat->c, ctx);
 }
 
 slong cutoff_bits[1000];
@@ -83,17 +83,17 @@ cutoffs(flint_rand_t state, gr_ctx_t ctx)
         randmat(A, state, ctx);
         randmat(B, state, ctx);
 
-        TIMEIT_START
+        TIMEIT_START;
         GR_MUST_SUCCEED(gr_mat_mul_classical(C, A, B, ctx));
-        TIMEIT_STOP_VALUES(__, t_classical)
+        TIMEIT_STOP_VALUES(__, t_classical);
 
-        TIMEIT_START
+        TIMEIT_START;
         GR_MUST_SUCCEED(mpn_mod_mat_mul_waksman(C, A, B, ctx));
-        TIMEIT_STOP_VALUES(__, t_waksman)
+        TIMEIT_STOP_VALUES(__, t_waksman);
 
-        TIMEIT_START
+        TIMEIT_START;
         GR_MUST_SUCCEED(mpn_mod_mat_mul_multi_mod(C, A, B, ctx));
-        TIMEIT_STOP_VALUES(__, t_multi_mod)
+        TIMEIT_STOP_VALUES(__, t_multi_mod);
 
         best = FLINT_MIN(t_classical, t_waksman);
         best = FLINT_MIN(best, t_multi_mod);
@@ -132,14 +132,14 @@ cutoffs(flint_rand_t state, gr_ctx_t ctx)
         flint_printf("  {%wd, %wd},   /* bits = %wd */\n", waksman_cutoffs[ni], multi_mod_cutoffs[ni], cutoff_bits[ni]);
 }
 
-int main()
+int main(void)
 {
     fmpz_t p;
     gr_ctx_t ctx;
     flint_rand_t state;
     slong bits;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     /* flint_set_num_threads(8); */
 
@@ -153,5 +153,5 @@ int main()
     }
 
     fmpz_clear(p);
-    flint_randclear(state);
+    flint_rand_clear(state);
 }

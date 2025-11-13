@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "mpn_extras.h"
 #include "fexpr.h"
 
 void
@@ -37,7 +38,7 @@ fexpr_call_vec(fexpr_t res, const fexpr_t f, fexpr_srcptr args, slong len)
     else
     {
         slong i, f_size, args_size, index_size, size, pos, arg_size;
-        mp_ptr out;
+        nn_ptr out;
 
         f_size = fexpr_size(f);
 

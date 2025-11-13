@@ -10,8 +10,8 @@
 */
 
 #include "profiler.h"
-#include "fmpz.h"
 #include "gmpcompat.h"
+#include "fmpz.h"
 
 #define ntests 1000
 
@@ -34,14 +34,14 @@ fmpz_mul_2exp_old(fmpz_t f, const fmpz_t g, ulong exp)
         }
         else                    /* result is large */
         {
-            __mpz_struct * mf = _fmpz_promote(f);   /* g is saved */
+            mpz_ptr mf = _fmpz_promote(f);   /* g is saved */
             flint_mpz_set_si(mf, d);
             mpz_mul_2exp(mf, mf, exp);
         }
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);   /* g is already large */
+        mpz_ptr mf = _fmpz_promote(f);   /* g is already large */
         mpz_mul_2exp(mf, COEFF_TO_PTR(d), exp);
     }
 }
@@ -69,9 +69,9 @@ sample_new(void * arg, ulong count)
         prof_stop();
     }
 
-    flint_randclear(state);
     fmpz_clear(res);
     fmpz_clear(a);
+    FLINT_TEST_CLEAR(state);
 }
 
 void
@@ -97,9 +97,9 @@ sample_old(void * arg, ulong count)
         prof_stop();
     }
 
-    flint_randclear(state);
     fmpz_clear(res);
     fmpz_clear(a);
+    FLINT_TEST_CLEAR(state);
 }
 
 int

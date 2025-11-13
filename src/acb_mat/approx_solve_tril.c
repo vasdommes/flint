@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_mat.h"
 
 static void
@@ -34,7 +35,7 @@ acb_approx_div(acb_t z, const acb_t x, const acb_t y, acb_t t, slong prec)
     acb_approx_mul(z, x, t, prec);
 }
 
-void
+static void
 acb_mat_approx_solve_tril_classical(acb_mat_t X,
         const acb_mat_t L, const acb_mat_t B, int unit, slong prec)
 {
@@ -56,7 +57,7 @@ acb_mat_approx_solve_tril_classical(acb_mat_t X,
 
         for (j = 0; j < n; j++)
         {
-            acb_approx_dot(s, acb_mat_entry(B, j, i), 1, L->rows[j], 1, tmp, 1, j, prec);
+            acb_approx_dot(s, acb_mat_entry(B, j, i), 1, acb_mat_entry(L, j, 0), 1, tmp, 1, j, prec);
 
             if (!unit)
                 acb_approx_div(tmp + j, s, acb_mat_entry(L, j, j), t, prec);
@@ -73,7 +74,7 @@ acb_mat_approx_solve_tril_classical(acb_mat_t X,
     acb_clear(t);
 }
 
-void
+static void
 acb_mat_approx_solve_tril_recursive(acb_mat_t X,
         const acb_mat_t L, const acb_mat_t B, int unit, slong prec)
 {

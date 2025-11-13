@@ -9,16 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
 #include "acb.h"
 #include "arb_hypgeom.h"
 #include "acb_hypgeom.h"
-
-#ifdef __GNUC__
-# define pow __builtin_pow
-#else
-# include <math.h>
-#endif
 
 void
 acb_hypgeom_rising_ui_rs(acb_t res, const acb_t x, ulong n, ulong m, slong prec)
@@ -26,7 +21,7 @@ acb_hypgeom_rising_ui_rs(acb_t res, const acb_t x, ulong n, ulong m, slong prec)
     slong i, k, l, m0, climbs, climbs_max, wp;
     acb_ptr xpow;
     acb_t t, u;
-    mp_ptr c;
+    nn_ptr c;
     TMP_INIT;
 
     if (n <= 1)
@@ -60,7 +55,7 @@ acb_hypgeom_rising_ui_rs(acb_t res, const acb_t x, ulong n, ulong m, slong prec)
     wp = ARF_PREC_ADD(prec, FLINT_BIT_COUNT(n));
 
     climbs_max = FLINT_BIT_COUNT(n - 1) * m;
-    c = TMP_ALLOC(sizeof(mp_limb_t) * climbs_max * m);
+    c = TMP_ALLOC(sizeof(ulong) * climbs_max * m);
 
     xpow = _acb_vec_init(m + 1);
     _acb_vec_set_powers(xpow, x, m + 1, wp);

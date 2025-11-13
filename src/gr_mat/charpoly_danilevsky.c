@@ -10,11 +10,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr_generic.h"
 #include "gr_vec.h"
 #include "gr_mat.h"
 #include "gr_poly.h"
-
-int gr_generic_addmul(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx);
 
 /* todo: use dot products */
 int
@@ -129,11 +128,7 @@ _gr_mat_charpoly_danilevsky_inplace(gr_ptr p, gr_mat_t A, gr_ctx_t ctx)
             }
             else
             {
-                gr_ptr ptr;
-
-                ptr = A->rows[n - i - k - 1];
-                A->rows[n - i - k - 1] = A->rows[n - i - 1];
-                A->rows[n - i - 1] = ptr;
+                status |= gr_mat_swap_rows(A, NULL, n - i - k - 1, n - i - 1, ctx);
 
                 for (j = 1; j <= n - i + 1; j++)
                 {

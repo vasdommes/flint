@@ -30,7 +30,7 @@ void fmpz_tdiv_q_2exp(fmpz_t f, const fmpz_t g, ulong exp)
     }
     else  /*g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);  /* g is already large */
+        mpz_ptr mf = _fmpz_promote(f);  /* g is already large */
         mpz_tdiv_q_2exp(mf, COEFF_TO_PTR(d), exp);
         _fmpz_demote_val(f);  /* division may make value small */
     }
@@ -44,7 +44,7 @@ fmpz_tdiv_q(fmpz_t f, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_tdiv_q). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_tdiv_q). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -56,7 +56,7 @@ fmpz_tdiv_q(fmpz_t f, const fmpz_t g, const fmpz_t h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf;
+        mpz_ptr mf;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
         {
@@ -98,7 +98,7 @@ fmpz_tdiv_qr(fmpz_t f, fmpz_t s, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception: division by zero in fmpz_tdiv_qr\n");
+        flint_throw(FLINT_DIVZERO, "Exception: division by zero in fmpz_tdiv_qr\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -119,7 +119,7 @@ fmpz_tdiv_qr(fmpz_t f, fmpz_t s, const fmpz_t g, const fmpz_t h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf, * ms;
+        mpz_ptr mf, ms;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
         {
@@ -169,7 +169,7 @@ fmpz_tdiv_q_si(fmpz_t f, const fmpz_t g, slong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_tdiv_q_si). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_tdiv_q_si). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -178,7 +178,7 @@ fmpz_tdiv_q_si(fmpz_t f, const fmpz_t g, slong h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         if (c2 > 0)
         {
@@ -201,7 +201,7 @@ fmpz_tdiv_q_ui(fmpz_t f, const fmpz_t g, ulong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_tdiv_q_ui). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_tdiv_q_ui). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -219,7 +219,7 @@ fmpz_tdiv_q_ui(fmpz_t f, const fmpz_t g, ulong h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         flint_mpz_tdiv_q_ui(mf, COEFF_TO_PTR(c1), c2);
         _fmpz_demote_val(f);    /* division by h may result in small value */
@@ -244,7 +244,7 @@ void fmpz_tdiv_r_2exp(fmpz_t f, const fmpz_t g, ulong exp)
     }
     else  /*g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);  /* g is already large */
+        mpz_ptr mf = _fmpz_promote(f);  /* g is already large */
         mpz_tdiv_r_2exp(mf, COEFF_TO_PTR(d), exp);
         _fmpz_demote_val(f);  /* division may make value small */
     }

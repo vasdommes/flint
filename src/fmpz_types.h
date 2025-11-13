@@ -20,6 +20,17 @@ extern "C" {
 
 typedef struct
 {
+    int alloc;
+    int size;
+    nn_ptr ptr;
+} zz_struct;
+
+typedef zz_struct * zz_ptr;
+typedef const zz_struct * zz_srcptr;
+#define FMPZ_TO_ZZ(x) ((zz_ptr) ((ulong) (x) << 2))
+
+typedef struct
+{
     int sign;
     fmpz * p;
     ulong * exp;
@@ -32,7 +43,7 @@ typedef fmpz_factor_struct fmpz_factor_t[1];
 
 typedef struct
 {
-   mp_ptr dinv;
+   nn_ptr dinv;
    slong n;
    flint_bitcnt_t norm;
 } fmpz_preinvn_struct;
@@ -66,7 +77,7 @@ typedef struct
     fmpz * entries;
     slong r;
     slong c;
-    fmpz ** rows;
+    slong stride;
 }
 fmpz_mat_struct;
 
@@ -77,7 +88,7 @@ typedef struct
     fmpz_poly_struct * entries;
     slong r;
     slong c;
-    fmpz_poly_struct ** rows;
+    slong stride;
 }
 fmpz_poly_mat_struct;
 

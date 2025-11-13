@@ -9,9 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-add.c"
@@ -55,6 +52,7 @@
 #include "t-evaluate_mat_paterson_stockmeyer.c"
 #include "t-evaluate_nmod.c"
 #include "t-evaluate_nmod_vec_fast.c"
+#include "t-evaluate_geometric_nmod_vec_fast.c"
 #include "t-exp_series.c"
 #include "t-find_distinct_nonzero_roots.c"
 #include "t-fread_print.c"
@@ -71,6 +69,7 @@
 #include "t-interpolate_nmod_vec_barycentric.c"
 #include "t-interpolate_nmod_vec.c"
 #include "t-interpolate_nmod_vec_fast.c"
+#include "t-interpolate_geometric_nmod_vec_fast.c"
 #include "t-interpolate_nmod_vec_newton.c"
 #include "t-invmod.c"
 #include "t-inv_series_basecase.c"
@@ -78,6 +77,7 @@
 #include "t-invsqrt_series.c"
 #include "t-log_series.c"
 #include "t-make_monic.c"
+#include "t-minimal_irreducible.c"
 #include "t-mul.c"
 #include "t-mul_classical.c"
 #include "t-mulhigh.c"
@@ -87,8 +87,10 @@
 #include "t-mul_KS.c"
 #include "t-mullow.c"
 #include "t-mullow_classical.c"
+#include "t-mullow_fft_small_repack.c"
 #include "t-mullow_KS.c"
 #include "t-mulmod.c"
+#include "t-mulmod_precond.c"
 #include "t-mulmod_preinv.c"
 #include "t-multi_crt.c"
 #include "t-neg.c"
@@ -179,6 +181,7 @@ test_struct tests[] =
     TEST_FUNCTION(nmod_poly_evaluate_mat_paterson_stockmeyer),
     TEST_FUNCTION(nmod_poly_evaluate_nmod),
     TEST_FUNCTION(nmod_poly_evaluate_nmod_vec_fast),
+    TEST_FUNCTION(nmod_poly_evaluate_geometric_nmod_vec_fast),
     TEST_FUNCTION(nmod_poly_exp_series),
     TEST_FUNCTION(nmod_poly_find_distinct_nonzero_roots),
     TEST_FUNCTION(nmod_poly_fread_print),
@@ -195,6 +198,7 @@ test_struct tests[] =
     TEST_FUNCTION(nmod_poly_interpolate_nmod_vec_barycentric),
     TEST_FUNCTION(nmod_poly_interpolate_nmod_vec),
     TEST_FUNCTION(nmod_poly_interpolate_nmod_vec_fast),
+    TEST_FUNCTION(nmod_poly_interpolate_geometric_nmod_vec_fast),
     TEST_FUNCTION(nmod_poly_interpolate_nmod_vec_newton),
     TEST_FUNCTION(nmod_poly_invmod),
     TEST_FUNCTION(nmod_poly_inv_series_basecase),
@@ -202,6 +206,7 @@ test_struct tests[] =
     TEST_FUNCTION(nmod_poly_invsqrt_series),
     TEST_FUNCTION(nmod_poly_log_series),
     TEST_FUNCTION(nmod_poly_make_monic),
+    TEST_FUNCTION(nmod_poly_minimal_irreducible),
     TEST_FUNCTION(nmod_poly_mul),
     TEST_FUNCTION(nmod_poly_mul_classical),
     TEST_FUNCTION(nmod_poly_mulhigh),
@@ -211,8 +216,10 @@ test_struct tests[] =
     TEST_FUNCTION(nmod_poly_mul_KS),
     TEST_FUNCTION(nmod_poly_mullow),
     TEST_FUNCTION(nmod_poly_mullow_classical),
+    TEST_FUNCTION(nmod_poly_mullow_fft_small_repack),
     TEST_FUNCTION(nmod_poly_mullow_KS),
     TEST_FUNCTION(nmod_poly_mulmod),
+    TEST_FUNCTION(nmod_poly_mulmod_precond),
     TEST_FUNCTION(nmod_poly_mulmod_preinv),
     TEST_FUNCTION(nmod_poly_multi_crt),
     TEST_FUNCTION(nmod_poly_neg),

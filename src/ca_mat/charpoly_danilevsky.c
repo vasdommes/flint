@@ -11,9 +11,11 @@
 */
 
 #include "ca_mat.h"
+#include "ca_poly.h"
+#include "gr.h"
 #include "gr_mat.h"
 
-int
+static int
 _ca_mat_charpoly_danilevsky_inplace(ca_ptr p, ca_mat_t A, ca_ctx_t ctx)
 {
     int success;

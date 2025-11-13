@@ -23,6 +23,7 @@
 #endif
 
 #include "limb_types.h"
+#include "longlong.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +32,6 @@ extern "C" {
 /* Randomisation *************************************************************/
 
 ulong n_randlimb(flint_rand_t state);
-ulong n_randint(flint_rand_t state, ulong limit);
 ulong n_urandint(flint_rand_t state, ulong limit);
 ulong n_randbits(flint_rand_t state, unsigned int bits);
 ulong n_randprime(flint_rand_t state, ulong bits, int proved);
@@ -45,7 +45,7 @@ ulong n_randtest_prime(flint_rand_t state, int proved);
 
 ulong n_revbin(ulong in, ulong bits);
 
-int n_divides(mp_limb_t * q, mp_limb_t n, mp_limb_t p);
+int n_divides(ulong * q, ulong n, ulong p);
 ulong n_divrem2_precomp(ulong * q, ulong a, ulong n, double npre);
 ulong n_divrem2_preinv(ulong * q, ulong a, ulong n, ulong ninv);
 ulong n_div2_preinv(ulong a, ulong n, ulong ninv);
@@ -61,7 +61,6 @@ int n_is_squarefree(ulong n);
 double n_cbrt_estimate(double a);
 ulong n_cbrt(ulong a);
 ulong n_cbrt_binary_search(ulong x);
-ulong n_cbrt_newton_iteration(ulong n);
 ulong n_cbrt_chebyshev_approx(ulong n);
 ulong n_cbrtrem(ulong* remainder, ulong n);
 
@@ -79,6 +78,15 @@ ulong n_flog(ulong n, ulong b);
 ulong n_clog(ulong n, ulong b);
 ulong n_clog_2exp(ulong n, ulong b);
 
+#ifdef _MSC_VER
+# define DECLSPEC_IMPORT __declspec(dllimport)
+#else
+# define DECLSPEC_IMPORT
+#endif
+DECLSPEC_IMPORT ulong __gmpn_gcd_11(ulong, ulong);
+DECLSPEC_IMPORT ulong __gmpn_gcd_1(nn_srcptr, long int, ulong);
+#undef DECLSPEC_IMPORT
+
 ULONG_EXTRAS_INLINE
 ulong n_gcd(ulong x, ulong y)
 {
@@ -90,11 +98,11 @@ ulong n_gcd(ulong x, ulong y)
         my = flint_ctz(y);
         x >>= mx;
         y >>= my;
-        res = (x != 1 && y != 1) ? mpn_gcd_11(x, y) : 1;
+        res = (x != 1 && y != 1) ? __gmpn_gcd_11(x, y) : 1;
         res <<= FLINT_MIN(mx, my);
         return res;
 #else
-        return mpn_gcd_1(&x, 1, y);
+        return __gmpn_gcd_1(&x, 1, y);
 #endif
     }
     else
@@ -109,24 +117,36 @@ ulong n_CRT(ulong r1, ulong m1, ulong r2, ulong m2);
 
 ULONG_EXTRAS_INLINE int n_mul_checked(ulong * a, ulong b, ulong c)
 {
+#if defined(__GNUC__)
+    return __builtin_mul_overflow(b, c, a);
+#else
 	ulong ahi, alo;
 	umul_ppmm(ahi, alo, b, c);
 	*a = alo;
 	return 0 != ahi;
+#endif
 }
 
 ULONG_EXTRAS_INLINE int n_add_checked(ulong * a, ulong b, ulong c)
 {
+#if defined(__GNUC__)
+    return __builtin_add_overflow(b, c, a);
+#else
     int of = b + c < b;
     *a = b + c;
     return of;
+#endif
 }
 
 ULONG_EXTRAS_INLINE int n_sub_checked(ulong * a, ulong b, ulong c)
 {
+#if defined(__GNUC__)
+    return __builtin_sub_overflow(b, c, a);
+#else
     int of = b < c;
     *a = b - c;
     return of;
+#endif
 }
 
 /* Modular arithmetic ********************************************************/
@@ -148,26 +168,6 @@ ulong n_lll_mod_preinv(ulong a_hi, ulong a_mi, ulong a_lo, ulong n, ulong ninv);
 
 ulong n_mulmod_precomp(ulong a, ulong b, ulong n, double ninv);
 ulong n_mulmod_preinv(ulong a, ulong b, ulong n, ulong ninv, ulong norm);
-
-mp_limb_t n_mulmod_precomp_shoup(mp_limb_t w, mp_limb_t p);
-
-ULONG_EXTRAS_INLINE
-mp_limb_t n_mulmod_shoup(mp_limb_t w, mp_limb_t t, mp_limb_t w_precomp, mp_limb_t p)
-{
-    mp_limb_t q, r, p_hi, p_lo;
-
-    umul_ppmm(p_hi, p_lo, w_precomp, t);
-    q = p_hi;
-    (void) p_lo; /* unused */
-
-    r = w * t;
-    r -= q * p;
-
-    if (r >= p)
-        r -= p;
-
-    return r;
-}
 
 ULONG_EXTRAS_INLINE
 ulong n_mulmod2_preinv(ulong a, ulong b, ulong n, ulong ninv)
@@ -266,6 +266,63 @@ ulong n_invmod(ulong x, ulong y)
    return r;
 }
 
+/* Modular multiplication with fixed operand **********************************/
+
+ULONG_EXTRAS_INLINE
+ulong n_mulmod_precomp_shoup(ulong a, ulong n)
+{
+    ulong a_precomp, r;
+    udiv_qrnnd(a_precomp, r, a, UWORD(0), n);
+    return a_precomp;
+}
+
+ULONG_EXTRAS_INLINE
+ulong n_mulmod_shoup(ulong a, ulong b, ulong a_precomp, ulong n)
+{
+    ulong res, p_hi, p_lo;
+
+    umul_ppmm(p_hi, p_lo, a_precomp, b);
+    res = a * b - p_hi * n;
+
+    if (res >= n)
+        res -= n;
+
+    return res;
+}
+
+ULONG_EXTRAS_INLINE
+void n_mulmod_precomp_shoup_quo_rem(ulong * a_pr_quo, ulong * a_pr_rem, ulong a, ulong n)
+{
+    udiv_qrnnd(*a_pr_quo, *a_pr_rem, a, UWORD(0), n);
+}
+
+ULONG_EXTRAS_INLINE
+ulong n_mulmod_precomp_shoup_rem_from_quo(ulong a_pr_quo, ulong n)
+{
+    return - a_pr_quo * n;
+}
+
+ULONG_EXTRAS_INLINE
+void n_mulmod_and_precomp_shoup(ulong * ab, ulong * ab_precomp,
+                                ulong a, ulong b,
+                                ulong a_pr_quo, ulong a_pr_rem, ulong b_precomp,
+                                ulong n)
+{
+    ulong p_hi, p_lo;
+
+    umul_ppmm(p_hi, *ab_precomp, a_pr_quo, b);
+    *ab = a * b - p_hi * n;
+    if (*ab >= n)
+        *ab -= n;
+
+    umul_ppmm(p_hi, p_lo, b_precomp, a_pr_rem);
+    p_lo = b * a_pr_rem - p_hi * n;
+    *ab_precomp += p_hi;
+    if (p_lo >= n)
+        *ab_precomp += 1;
+}
+
+
 /* Primitive roots and discrete logarithms ***********************************/
 
 ulong n_primitive_root_prime_prefactor(ulong p, n_factor_t * factors);
@@ -286,7 +343,6 @@ ulong n_euler_phi(ulong n);
 
 /* Primality *****************************************************************/
 
-#define FLINT_ODDPRIME_SMALL_CUTOFF 4096
 #define FLINT_NUM_PRIMES_SMALL 172
 #define FLINT_PRIMES_SMALL_CUTOFF 1030
 #define FLINT_PSEUDOSQUARES_CUTOFF 1000
@@ -334,6 +390,7 @@ int n_is_strong_probabprime_precomp(ulong n, double npre, ulong a, ulong d);
 int n_is_strong_probabprime2_preinv(ulong n, ulong ninv, ulong a, ulong d);
 
 int n_is_prime(ulong n);
+int n_is_prime_odd_no_trial(ulong n);
 int n_is_prime_pseudosquare(ulong n);
 int n_is_prime_pocklington(ulong n, ulong iterations);
 
@@ -347,6 +404,7 @@ ulong n_nextprime(ulong n, int FLINT_UNUSED(proved));
 
 /* Factorisation *************************************************************/
 
+#define FLINT_ODDPRIME_SMALL_CUTOFF 4096
 #define FLINT_FACTOR_TRIAL_PRIMES 3000
 #define FLINT_FACTOR_TRIAL_PRIMES_PRIME UWORD(27449)
 #define FLINT_FACTOR_TRIAL_CUTOFF (UWORD(27449) * UWORD(27449))

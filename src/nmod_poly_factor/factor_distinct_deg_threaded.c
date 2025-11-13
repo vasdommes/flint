@@ -11,21 +11,15 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "thread_pool.h"
 #include "thread_support.h"
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "nmod_vec.h"
 #include "nmod_mat.h"
 #include "nmod_poly.h"
 #include "nmod_poly_factor.h"
-
-#ifdef __GNUC__
-# define ceil __builtin_ceil
-# define log __builtin_log
-# define pow __builtin_pow
-#else
-# include <math.h>
-#endif
 
 void
 _nmod_poly_precompute_matrix_worker(void * arg_ptr)
@@ -44,16 +38,18 @@ _nmod_poly_precompute_matrix_worker(void * arg_ptr)
     n = poly2->length - 1;
     m = n_sqrt(n) + 1;
 
+    nmod_mat_entry(A, 0, 0) = 1;
     for (i = 1; i < n; i++)
-        A->rows[0][i] = 0;
-    A->rows[0][0] = 1;
+        nmod_mat_entry(A, 0, i) = 0;
 
-    _nmod_vec_set(A->rows[1], poly1->coeffs, n);
+    _nmod_vec_set(nmod_mat_entry_ptr(A, 1, 0), poly1->coeffs, n);
 
     for (i = 2; i < m; i++)
-        _nmod_poly_mulmod_preinv(A->rows[i], A->rows[i - 1], n,
-                                 poly1->coeffs, n, poly2->coeffs, n + 1,
+    {
+        _nmod_poly_mulmod_preinv(nmod_mat_entry_ptr(A, i, 0), nmod_mat_entry_ptr(A, i / 2, 0), n,
+                                 nmod_mat_entry_ptr(A, (i + 1) / 2, 0), n, poly2->coeffs, n + 1,
                                  poly2inv->coeffs, n + 1, mod);
+    }
 }
 
 void
@@ -62,7 +58,7 @@ _nmod_poly_compose_mod_brent_kung_precomp_preinv_worker(void * arg_ptr)
     nmod_poly_compose_mod_precomp_preinv_arg_t arg =
                    *((nmod_poly_compose_mod_precomp_preinv_arg_t*) arg_ptr);
     nmod_mat_t B, C;
-    mp_ptr t, h;
+    nn_ptr h;
     slong i, n, m;
     nmod_poly_struct * res = arg.res;
     nmod_poly_struct * poly1 = arg.poly1;
@@ -83,7 +79,7 @@ _nmod_poly_compose_mod_brent_kung_precomp_preinv_worker(void * arg_ptr)
     if (poly3->length == 2)
     {
         res->coeffs[0] = _nmod_poly_evaluate_nmod(poly1->coeffs,
-                                             poly1->length, A->rows[1][0], mod);
+                                             poly1->length, nmod_mat_entry(A, 1, 0), mod);
         return;
     }
 
@@ -94,30 +90,22 @@ _nmod_poly_compose_mod_brent_kung_precomp_preinv_worker(void * arg_ptr)
     nmod_mat_init(C, m, n, mod.n);
 
     h = _nmod_vec_init(n);
-    t = _nmod_vec_init(n);
 
     /* Set rows of B to the segments of poly1 */
     for (i = 0; i < poly1->length/m; i++)
-        _nmod_vec_set(B->rows[i], poly1->coeffs + i * m, m);
+        _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1->coeffs + i * m, m);
 
-    _nmod_vec_set(B->rows[i], poly1->coeffs + i * m, poly1->length % m);
+    _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1->coeffs + i * m, poly1->length % m);
 
     nmod_mat_mul(C, B, A);
 
-    /* Evaluate block composition using the Horner scheme */
-    _nmod_vec_set(res->coeffs, C->rows[m - 1], n);
-    _nmod_poly_mulmod_preinv(h, A->rows[m - 1], n, A->rows[1], n,
+    /* Evaluate block composition */
+    _nmod_poly_mulmod_preinv(h, nmod_mat_entry_ptr(A, m - 1, 0), n, nmod_mat_entry_ptr(A, 1, 0), n,
         poly3->coeffs, poly3->length, poly3inv->coeffs, poly3inv->length, mod);
 
-    for (i = m - 2; i >= 0; i--)
-    {
-        _nmod_poly_mulmod_preinv(t, res->coeffs, n, h, n, poly3->coeffs,
-                          poly3->length, poly3inv->coeffs, poly3->length, mod);
-        _nmod_poly_add(res->coeffs, t, n, C->rows[i], n, mod);
-    }
+    _nmod_poly_mod_matrix_rows_evaluate(res->coeffs, C, h, n, poly3->coeffs, poly3->length, poly3inv->coeffs, poly3inv->length, mod);
 
     _nmod_vec_clear(h);
-    _nmod_vec_clear(t);
 
     nmod_mat_clear(B);
     nmod_mat_clear(C);
@@ -135,7 +123,7 @@ _nmod_poly_interval_poly_worker(void * arg_ptr)
     nmod_poly_struct * vinv = arg.vinv;
     nmod_poly_struct * baby = arg.baby;
     nmod_t mod = v->mod;
-    mp_ptr tmp = arg.tmp;
+    nn_ptr tmp = arg.tmp;
 
     res->coeffs[0] = 1;
 

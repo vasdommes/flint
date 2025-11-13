@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 
 /*
@@ -17,6 +16,8 @@
    Invariant Integers: (Algorithm 4)
    https://gmplib.org/~tege/division-paper.pdf
 */
+
+#define r_shift(in, c) (((c) == FLINT_BITS) ? WORD(0) : ((in) >> (c)))
 
 ulong
 n_lll_mod_preinv(ulong a_hi, ulong a_mi, ulong a_lo, ulong n, ulong ninv)

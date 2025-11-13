@@ -10,17 +10,18 @@
 */
 
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 #include "nmod_mat.h"
 
 void
-_nmod_poly_compose_mod_brent_kung(mp_ptr res, mp_srcptr poly1, slong len1,
-                            mp_srcptr poly2,
-                            mp_srcptr poly3, slong len3, nmod_t mod)
+_nmod_poly_compose_mod_brent_kung(nn_ptr res, nn_srcptr poly1, slong len1,
+                            nn_srcptr poly2,
+                            nn_srcptr poly3, slong len3, nmod_t mod)
 {
     nmod_mat_t A, B, C;
-    mp_ptr t, h;
+    nn_ptr t, h;
     slong i, n, m;
 
     n = len3 - 1;
@@ -51,27 +52,27 @@ _nmod_poly_compose_mod_brent_kung(mp_ptr res, mp_srcptr poly1, slong len1,
 
     /* Set rows of B to the segments of poly1 */
     for (i = 0; i < len1 / m; i++)
-        _nmod_vec_set(B->rows[i], poly1 + i*m, m);
+        _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1 + i*m, m);
 
-    _nmod_vec_set(B->rows[i], poly1 + i*m, len1 % m);
+    _nmod_vec_set(nmod_mat_entry_ptr(B, i, 0), poly1 + i*m, len1 % m);
 
     /* Set rows of A to powers of poly2 */
-    A->rows[0][0] = UWORD(1);
-    _nmod_vec_set(A->rows[1], poly2, n);
+    nmod_mat_entry(A, 0, 0) = UWORD(1);
+    _nmod_vec_set(nmod_mat_entry_ptr(A, 1, 0), poly2, n);
     for (i = 2; i < m; i++)
-        _nmod_poly_mulmod(A->rows[i], A->rows[i-1],
+        _nmod_poly_mulmod(nmod_mat_entry_ptr(A, i, 0), nmod_mat_entry_ptr(A, i - 1, 0),
             n, poly2, n, poly3, len3, mod);
 
     nmod_mat_mul(C, B, A);
 
     /* Evaluate block composition using the Horner scheme */
-    _nmod_vec_set(res, C->rows[m - 1], n);
-    _nmod_poly_mulmod(h, A->rows[m - 1], n, poly2, n, poly3, len3, mod);
+    _nmod_vec_set(res, nmod_mat_entry_ptr(C, m - 1, 0), n);
+    _nmod_poly_mulmod(h, nmod_mat_entry_ptr(A, m - 1, 0), n, poly2, n, poly3, len3, mod);
 
     for (i = m - 2; i >= 0; i--)
     {
         _nmod_poly_mulmod(t, res, n, h, n, poly3, len3, mod);
-        _nmod_poly_add(res, t, n, C->rows[i], n, mod);
+        _nmod_poly_add(res, t, n, nmod_mat_entry_ptr(C, i, 0), n, mod);
     }
 
     _nmod_vec_clear(h);
@@ -92,11 +93,11 @@ nmod_poly_compose_mod_brent_kung(nmod_poly_t res,
     slong len3 = poly3->length;
     slong len = len3 - 1;
 
-    mp_ptr ptr2;
+    nn_ptr ptr2;
 
     if (len3 == 0)
     {
-        flint_throw(FLINT_ERROR, "(nmod_poly_compose_mod_brent_kung): Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "(nmod_poly_compose_mod_brent_kung): Division by zero.\n");
     }
 
     if (len1 >= len3)

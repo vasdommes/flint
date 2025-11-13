@@ -65,8 +65,8 @@ slong fmpz_mpoly_factor_length(const fmpz_mpoly_factor_t f,
     return f->num;
 }
 
-void fmpz_mpoly_factor_get_constant_fmpz(fmpz_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx);
-void fmpz_mpoly_factor_get_constant_fmpq(fmpq_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx);
+void fmpz_mpoly_factor_get_constant_fmpz(fmpz_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
+void fmpz_mpoly_factor_get_constant_fmpq(fmpq_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
 
 FMPZ_MPOLY_FACTOR_INLINE
 void fmpz_mpoly_factor_get_base(fmpz_mpoly_t p, const fmpz_mpoly_factor_t f,
@@ -84,7 +84,7 @@ void fmpz_mpoly_factor_swap_base(fmpz_mpoly_t p, fmpz_mpoly_factor_t f,
     fmpz_mpoly_swap(p, f->poly + i, ctx);
 }
 
-slong fmpz_mpoly_factor_get_exp_si(fmpz_mpoly_factor_t f, slong i, const fmpz_mpoly_ctx_t ctx);
+slong fmpz_mpoly_factor_get_exp_si(fmpz_mpoly_factor_t f, slong i, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
 
 void fmpz_mpoly_factor_set(fmpz_mpoly_factor_t f,
                       const fmpz_mpoly_factor_t g, const fmpz_mpoly_ctx_t ctx);
@@ -113,9 +113,9 @@ void fmpz_mpoly_factor_swap(fmpz_mpoly_factor_t f, fmpz_mpoly_factor_t g,
    *g = t;
 }
 
-void fmpz_mpoly_factor_set_fmpz(fmpz_mpoly_factor_t f, const fmpz_t a, const fmpz_mpoly_ctx_t ctx);
-void fmpz_mpoly_factor_zero(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx);
-void fmpz_mpoly_factor_one(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx);
+void fmpz_mpoly_factor_set_fmpz(fmpz_mpoly_factor_t f, const fmpz_t a, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
+void fmpz_mpoly_factor_zero(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
+void fmpz_mpoly_factor_one(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx));
 
 void fmpz_mpoly_factor_sort(fmpz_mpoly_factor_t f,
                                                    const fmpz_mpoly_ctx_t ctx);
@@ -153,7 +153,7 @@ void fmpz_mpoly_interp_reduce_p(nmod_mpoly_t Ap,
                                                    const fmpz_mpoly_ctx_t ctx);
 
 int fmpz_mpoly_interp_mcrt_p(flint_bitcnt_t * coeffbits,
-                fmpz_mpoly_t H, const fmpz_mpoly_ctx_t ctx, const fmpz_t m,
+                fmpz_mpoly_t H, const fmpz_mpoly_ctx_t FLINT_UNUSED(ctx), const fmpz_t m,
                             const nmod_mpoly_t A, const nmod_mpoly_ctx_t ctxp);
 
 void fmpz_mpoly_interp_reduce_p_mpolyn(nmod_mpolyn_t E,
@@ -242,11 +242,11 @@ void fmpz_mpoly_from_mpolyl_perm_inflate(fmpz_mpoly_t A,
 
 int fmpz_mpolyl_gcd_brown(fmpz_mpoly_t G,
         fmpz_mpoly_t Abar, fmpz_mpoly_t Bbar, fmpz_mpoly_t A, fmpz_mpoly_t B,
-                         const fmpz_mpoly_ctx_t ctx, const mpoly_gcd_info_t I);
+                         const fmpz_mpoly_ctx_t ctx, const mpoly_gcd_info_t Iv);
 
 int fmpz_mpolyl_gcd_brown_threaded_pool(fmpz_mpoly_t G,
         fmpz_mpoly_t Abar, fmpz_mpoly_t Bbar, fmpz_mpoly_t A, fmpz_mpoly_t B,
-                         const fmpz_mpoly_ctx_t ctx, const mpoly_gcd_info_t I,
+                         const fmpz_mpoly_ctx_t ctx, const mpoly_gcd_info_t Iv,
                         const thread_pool_handle * handles, slong num_handles);
 
 int fmpz_mpolyl_gcd_zippel(fmpz_mpoly_t G, fmpz_mpoly_t Abar,
@@ -284,15 +284,15 @@ typedef struct {
 
 typedef fmpz_poly_pfrac_struct fmpz_poly_pfrac_t[1];
 
-void fmpz_poly_pfrac_init(fmpz_poly_pfrac_t I);
+void fmpz_poly_pfrac_init(fmpz_poly_pfrac_t Iv);
 
-void fmpz_poly_pfrac_clear(fmpz_poly_pfrac_t I);
+void fmpz_poly_pfrac_clear(fmpz_poly_pfrac_t Iv);
 
-int fmpz_poly_pfrac_precompute(fmpz_poly_pfrac_t I,
+int fmpz_poly_pfrac_precompute(fmpz_poly_pfrac_t Iv,
                                           const fmpz_poly_struct * b, slong r);
 
 int fmpz_poly_pfrac_precomp(fmpz_poly_struct * c,
-                                     const fmpz_poly_t A, fmpz_poly_pfrac_t I);
+                                     const fmpz_poly_t A, fmpz_poly_pfrac_t Iv);
 
 typedef struct {
     flint_bitcnt_t bits;
@@ -316,15 +316,15 @@ typedef struct {
 
 typedef fmpz_mpoly_pfrac_struct fmpz_mpoly_pfrac_t[1];
 
-int fmpz_mpoly_pfrac_init(fmpz_mpoly_pfrac_t I, flint_bitcnt_t bits,
+int fmpz_mpoly_pfrac_init(fmpz_mpoly_pfrac_t Iv, flint_bitcnt_t bits,
                             slong r, slong w, const fmpz_mpoly_struct * betas,
                                const fmpz * alpha, const fmpz_mpoly_ctx_t ctx);
 
-void fmpz_mpoly_pfrac_clear(fmpz_mpoly_pfrac_t I,
+void fmpz_mpoly_pfrac_clear(fmpz_mpoly_pfrac_t Iv,
                                                    const fmpz_mpoly_ctx_t ctx);
 
 int fmpz_mpoly_pfrac(slong l, fmpz_mpoly_t t, const slong * degs,
-                             fmpz_mpoly_pfrac_t I, const fmpz_mpoly_ctx_t ctx);
+                             fmpz_mpoly_pfrac_t Iv, const fmpz_mpoly_ctx_t ctx);
 
 int fmpz_mpoly_hlift(slong m, fmpz_mpoly_struct * f, slong r,
                 const fmpz * alpha, const fmpz_mpoly_t A, const slong * degs,
@@ -467,7 +467,7 @@ int fmpz_mpoly_factor_lcc_wang(fmpz_mpoly_struct * lc_divs,
                                                    const fmpz_mpoly_ctx_t ctx);
 
 int fmpz_mpoly_factor_irred_zassenhaus(fmpz_mpolyv_t fac,
-       const fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx, zassenhaus_prune_t Z);
+       const fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx, zassenhaus_prune_t FLINT_UNUSED(Z));
 
 int fmpz_mpoly_factor_irred_wang(fmpz_mpolyv_t fac,
                       const fmpz_mpoly_t A, const fmpz_mpoly_factor_t lcAfac,

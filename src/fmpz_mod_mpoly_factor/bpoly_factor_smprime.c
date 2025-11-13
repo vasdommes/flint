@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "fmpz_vec.h"
 #include "fmpz_mod.h"
 #include "fmpz_mod_vec.h"
@@ -519,7 +520,7 @@ static void _fmpz_mod_bpoly_lift_build_steps(
 /* linear lifting has large memory requirements wrt r */
 static int _use_linear_cutoff(slong r, slong degx)
 {
-    return r < 30 + 5*FLINT_BIT_COUNT(degx);
+    return r < 30 + 5 * (slong) FLINT_BIT_COUNT(degx);
 }
 
 static void fmpz_mod_bpoly_lift_start(
@@ -591,7 +592,7 @@ static void fmpz_mod_bpoly_lift_start(
         combine the factors in L according to the rows of N
         and then replace N by an identity matrix
 */
-void fmpz_mod_bpoly_lift_combine(
+static void fmpz_mod_bpoly_lift_combine(
     fmpz_mod_bpoly_lift_t L,
     fmpz_mod_mat_t N,
     const fmpz_mod_bpoly_t monicA,
@@ -1016,7 +1017,7 @@ static void _lattice(
 
             for (i = 0; i < nrows; i++)
                 _fmpz_mod_vec_dot(fmpz_mod_mat_entry(M, j - lower, i),
-                                                trow, N->rows[i], r, ctx);
+                                                trow, fmpz_mod_mat_row(N, i), r, ctx);
         }
 
         fmpz_mod_mat_init_nullspace_tr(T1, M, ctx);

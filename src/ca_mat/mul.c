@@ -13,7 +13,7 @@
 #include "fmpq_mat.h"
 #include "ca_mat.h"
 
-int
+static int
 ca_mat_is_fmpq_mat(const ca_mat_t A, ca_ctx_t ctx)
 {
     slong ar, ac, i, j;
@@ -28,7 +28,7 @@ ca_mat_is_fmpq_mat(const ca_mat_t A, ca_ctx_t ctx)
     return 1;
 }
 
-int
+static int
 ca_fmpq_mat_is_fmpz_mat(const ca_mat_t A, ca_ctx_t ctx)
 {
     slong ar, ac, i, j;
@@ -204,11 +204,8 @@ ca_mat_mul(ca_mat_t C, const ca_mat_t A, const ca_mat_t B, ca_ctx_t ctx)
                     *CA_FMPQ_NUMREF(ca_mat_entry(C, i, j)) = *fmpz_mat_entry(CZ, i, j);
 
             flint_free(AZ->entries);
-            flint_free(AZ->rows);
             flint_free(BZ->entries);
-            flint_free(BZ->rows);
             flint_free(CZ->entries);
-            flint_free(CZ->rows);
         }
         else
         {
@@ -232,27 +229,22 @@ ca_mat_mul(ca_mat_t C, const ca_mat_t A, const ca_mat_t B, ca_ctx_t ctx)
             if (Aintegral)
             {
                 flint_free(AZ->entries);
-                flint_free(AZ->rows);
             }
             else
             {
                 flint_free(AQ->entries);
-                flint_free(AQ->rows);
             }
 
             if (Bintegral)
             {
                 flint_free(BZ->entries);
-                flint_free(BZ->rows);
             }
             else
             {
                 flint_free(BQ->entries);
-                flint_free(BQ->rows);
             }
 
             flint_free(CQ->entries);
-            flint_free(CQ->rows);
         }
 
         return;

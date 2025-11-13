@@ -239,14 +239,6 @@ arb_poly_scalar_div(arb_poly_t res, const arb_poly_t poly, const arb_t c, slong 
     _arb_poly_normalise(res);
 }
 
-void _arb_poly_mullow_ztrunc(arb_ptr res,
-    arb_srcptr poly1, slong len1,
-    arb_srcptr poly2, slong len2, slong n, slong prec);
-
-void arb_poly_mullow_ztrunc(arb_poly_t res, const arb_poly_t poly1,
-                                            const arb_poly_t poly2,
-                                                slong n, slong prec);
-
 void _arb_poly_mullow_classical(arb_ptr res,
     arb_srcptr poly1, slong len1,
     arb_srcptr poly2, slong len2, slong n, slong prec);
@@ -648,7 +640,7 @@ FLINT_FORCE_INLINE int
 n_zerobits(ulong e)
 {
 #if defined(__GNUC__)
-# if defined(_LONG_LONG_LIMB)
+# if FLINT_LONG_LONG
     return FLINT_BIT_COUNT(e) - __builtin_popcountll(e);
 # else
     return FLINT_BIT_COUNT(e) - __builtin_popcountl(e);
@@ -670,10 +662,10 @@ n_zerobits(ulong e)
 FLINT_FORCE_INLINE slong
 poly_pow_length(slong poly_len, ulong exp, slong trunc)
 {
-    mp_limb_t hi, lo;
+    ulong hi, lo;
     umul_ppmm(hi, lo, poly_len - 1, exp);
     add_ssaaaa(hi, lo, hi, lo, 0, 1);
-    if (hi != 0 || lo > (mp_limb_t) WORD_MAX)
+    if (hi != 0 || lo > (ulong) WORD_MAX)
         return trunc;
     return FLINT_MIN((slong) lo, trunc);
 }

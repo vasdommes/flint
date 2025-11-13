@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "nmod.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
@@ -17,14 +18,6 @@
 #include "fmpz_poly.h"
 #include "fmpq_poly.h"
 #include "arith.h"
-
-#ifdef __GNUC__
-# define log __builtin_log
-# define exp __builtin_exp
-# define frexp __builtin_frexp
-#else
-# include <math.h>
-#endif
 
 /* S(n,k) <= (1/2) binomial(n,k) * k^(n-k) */
 static slong
@@ -90,7 +83,7 @@ stirling_2_bound_2exp_vec(slong * bound, ulong n, slong len)
 #endif
 
 static void
-triangular_1(mp_ptr c, slong n, slong klen)
+triangular_1(nn_ptr c, slong n, slong klen)
 {
     slong m, k;
 
@@ -107,9 +100,9 @@ triangular_1(mp_ptr c, slong n, slong klen)
 }
 
 static void
-triangular_2(mp_ptr c, slong n, slong klen)
+triangular_2(nn_ptr c, slong n, slong klen)
 {
-    mp_limb_t hi, lo;
+    ulong hi, lo;
     slong m, k;
 
     triangular_1(c, MAX_N_1LIMB, klen);
@@ -138,10 +131,10 @@ triangular_2(mp_ptr c, slong n, slong klen)
     }
 }
 
-void
+static void
 arith_stirling_number_2_vec_triangular(fmpz * row, slong n, slong klen)
 {
-    mp_limb_t c[2 * MAX_N_2LIMB + 2];
+    ulong c[2 * MAX_N_2LIMB + 2];
     slong m, k;
 
     if (klen <= 0)
@@ -181,7 +174,7 @@ arith_stirling_number_2_vec_triangular(fmpz * row, slong n, slong klen)
         fmpz_set_ui(row + k, k == n);
 }
 
-void
+static void
 arith_stirling_number_2_vec_convolution(fmpz * res, ulong n, slong klen)
 {
     slong k, kodd, len;
@@ -257,16 +250,16 @@ divisor_table(unsigned int * tab, slong len)
 }
 
 static void
-arith_stirling_number_2_nmod_vec(mp_ptr res, const unsigned int * divtab, ulong n, slong len, nmod_t mod)
+arith_stirling_number_2_nmod_vec(nn_ptr res, const unsigned int * divtab, ulong n, slong len, nmod_t mod)
 {
-    mp_ptr t, u;
+    nn_ptr t, u;
     slong i;
-    mp_limb_t c;
+    ulong c;
     TMP_INIT;
     TMP_START;
 
-    t = TMP_ALLOC(len * sizeof(mp_limb_t));
-    u = TMP_ALLOC(len * sizeof(mp_limb_t));
+    t = TMP_ALLOC(len * sizeof(ulong));
+    u = TMP_ALLOC(len * sizeof(ulong));
 
     /* compute inverse factorials */
     t[len - 1] = 1;
@@ -303,13 +296,13 @@ arith_stirling_number_2_nmod_vec(mp_ptr res, const unsigned int * divtab, ulong 
 
 #define CRT_MAX_RESOLUTION 16
 
-void
+static void
 arith_stirling_number_2_vec_multi_mod(fmpz * res, ulong n, slong klen)
 {
     fmpz_comb_t comb[CRT_MAX_RESOLUTION];
     fmpz_comb_temp_t temp[CRT_MAX_RESOLUTION];
-    mp_ptr primes, residues;
-    mp_ptr * polys;
+    nn_ptr primes, residues;
+    nn_ptr * polys;
     nmod_t mod;
     slong i, j, k, len, num_primes, num_primes_k, resolution;
     slong need_bits, size, prime_bits;
@@ -351,9 +344,9 @@ arith_stirling_number_2_vec_multi_mod(fmpz * res, ulong n, slong klen)
     prime_bits = FLINT_BITS - 1;
     num_primes = (size + prime_bits - 1) / prime_bits;
 
-    primes = flint_malloc(num_primes * sizeof(mp_limb_t));
-    residues = flint_malloc(num_primes * sizeof(mp_limb_t));
-    polys = flint_malloc(num_primes * sizeof(mp_ptr));
+    primes = flint_malloc(num_primes * sizeof(ulong));
+    residues = flint_malloc(num_primes * sizeof(ulong));
+    polys = flint_malloc(num_primes * sizeof(nn_ptr));
     divtab = flint_malloc(2 * len * sizeof(unsigned int));
 
     divisor_table(divtab, len);
@@ -531,21 +524,21 @@ stirling_2_powsum(fmpz_t s, ulong n, ulong k)
 }
 
 /* req: k >= 2 */
-static mp_limb_t
+static ulong
 stirling_2_nmod(const unsigned int * divtab, ulong n, ulong k, nmod_t mod)
 {
-    mp_ptr t, u;
+    nn_ptr t, u;
     slong i, bin_len, pow_len;
-    mp_limb_t s1, s2, bden, bd;
-    int bound_limbs;
+    ulong s1, s2, bden, bd;
+    dot_params_t params;
     TMP_INIT;
     TMP_START;
 
     pow_len = k + 1;
     bin_len = FLINT_MIN(pow_len, k / 2 + 1);
 
-    t = TMP_ALLOC(bin_len * sizeof(mp_limb_t));
-    u = TMP_ALLOC(pow_len * sizeof(mp_limb_t));
+    t = TMP_ALLOC(bin_len * sizeof(ulong));
+    u = TMP_ALLOC(pow_len * sizeof(ulong));
 
     /* compute binomial coefficients + denominator */
     t[0] = 1;
@@ -575,13 +568,13 @@ stirling_2_nmod(const unsigned int * divtab, ulong n, ulong k, nmod_t mod)
     for (i = 1; i < bin_len; i += 2)
         t[i] = nmod_neg(t[i], mod);
 
-    bound_limbs = _nmod_vec_dot_bound_limbs(bin_len, mod);
-    s1 = _nmod_vec_dot(t, u, bin_len, mod, bound_limbs);
+    params = _nmod_vec_dot_params(bin_len, mod);
+    s1 = _nmod_vec_dot(t, u, bin_len, mod, params);
 
     if (pow_len > bin_len)
     {
-        bound_limbs = _nmod_vec_dot_bound_limbs(pow_len - bin_len, mod);
-        s2 = _nmod_vec_dot_rev(u + bin_len, t + k - pow_len + 1, pow_len - bin_len, mod, bound_limbs);
+        params = _nmod_vec_dot_params(pow_len - bin_len, mod);
+        s2 = _nmod_vec_dot_rev(u + bin_len, t + k - pow_len + 1, pow_len - bin_len, mod, params);
         if (k % 2)
             s1 = nmod_sub(s1, s2, mod);
         else
@@ -612,7 +605,7 @@ _fmpz_crt_combine(fmpz_t r1r2, fmpz_t m1m2, const fmpz_t r1, const fmpz_t m1, co
 }
 
 static void
-tree_crt(fmpz_t r, fmpz_t m, mp_srcptr residues, mp_srcptr primes, slong len)
+tree_crt(fmpz_t r, fmpz_t m, nn_srcptr residues, nn_srcptr primes, slong len)
 {
     if (len == 0)
     {
@@ -649,7 +642,7 @@ stirling_2_multi_mod(fmpz_t res, ulong n, ulong k)
 {
     fmpz_t tmp;
     nmod_t mod;
-    mp_ptr primes, residues;
+    nn_ptr primes, residues;
     slong i, num_primes;
     flint_bitcnt_t size, prime_bits;
     unsigned int * divtab;
@@ -659,8 +652,8 @@ stirling_2_multi_mod(fmpz_t res, ulong n, ulong k)
     num_primes = (size + prime_bits - 1) / prime_bits;
 
     fmpz_init(tmp);
-    primes = flint_malloc(num_primes * sizeof(mp_limb_t));
-    residues = flint_malloc(num_primes * sizeof(mp_limb_t));
+    primes = flint_malloc(num_primes * sizeof(ulong));
+    residues = flint_malloc(num_primes * sizeof(ulong));
 
     divtab = flint_malloc(2 * sizeof(unsigned int) * (n + 1));
     divisor_table(divtab, n + 1);
@@ -708,13 +701,13 @@ arith_stirling_number_2(fmpz_t res, ulong n, ulong k)
     }
     else if (n <= MAX_N_1LIMB)
     {
-        mp_limb_t c[MAX_N_2LIMB + 1];
+        ulong c[MAX_N_2LIMB + 1];
         triangular_1(c, n, k + 1);
         fmpz_set_ui(res, c[k]);
     }
     else if (n <= MAX_N_2LIMB)
     {
-        mp_limb_t c[2 * MAX_N_2LIMB + 2];
+        ulong c[2 * MAX_N_2LIMB + 2];
         triangular_2(c, n, k + 1);
         fmpz_set_uiui(res, c[2 * k + 1], c[2 * k]);
     }

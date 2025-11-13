@@ -22,7 +22,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "flint.h"
 #include "fmpz.h"
 #include "qadic.h"
 
@@ -109,7 +108,7 @@ for (l = 0; l < len; l++)
 
     fmpz_clear(p);
     qadic_ctx_clear(ctx);
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
 }
 
     flint_printf("Output as a list:\n");

@@ -14,7 +14,7 @@
 #include "gr_poly.h"
 
 void
-_nmod_poly_invsqrt_series(mp_ptr g, mp_srcptr h, slong hlen, slong n, nmod_t mod)
+_nmod_poly_invsqrt_series(nn_ptr g, nn_srcptr h, slong hlen, slong n, nmod_t mod)
 {
     gr_ctx_t ctx;
     _gr_ctx_init_nmod(ctx, &mod);
@@ -29,7 +29,7 @@ nmod_poly_invsqrt_series(nmod_poly_t res, const nmod_poly_t h, slong len)
 
     if (h->length == 0 || h->coeffs[0] == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (nmod_poly_invsqrt_series). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_invsqrt_series). Division by zero.\n");
     }
 
     if (len == 0)

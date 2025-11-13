@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "gr_vec.h"
 #include "gr_poly.h"
 
@@ -53,7 +54,7 @@ void _gr_poly_tree_free(gr_ptr * tree, slong len, gr_ctx_t ctx)
     }
 }
 
-int
+static int
 _gr_poly_mul_monic(gr_ptr res, gr_srcptr poly1, slong len1, gr_srcptr poly2, slong len2, gr_ctx_t ctx)
 {
     int status = GR_SUCCESS;
@@ -161,7 +162,7 @@ _gr_poly_rem_2(gr_ptr q, gr_ptr r, gr_srcptr a, slong al,
 
 int
 _gr_poly_evaluate_vec_fast_precomp(gr_ptr vs, gr_srcptr poly,
-    slong plen, gr_ptr * tree, slong len, gr_ctx_t ctx)
+    slong plen, const gr_ptr * tree, slong len, gr_ctx_t ctx)
 {
     slong height, i, j, pow, left;
     slong tree_height;

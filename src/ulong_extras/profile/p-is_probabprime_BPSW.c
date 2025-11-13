@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 
 typedef struct
@@ -23,7 +22,7 @@ void sample(void * arg, ulong count)
    BPSW_t * params = (BPSW_t *) arg;
    ulong bits = params->bits;
    ulong i;
-   mp_limb_t d;
+   ulong d;
 
    FLINT_TEST_INIT(state);
 
@@ -42,7 +41,7 @@ void sample(void * arg, ulong count)
       if (!res) flint_printf("Error\n");
    }
 
-   flint_randclear(state);
+   FLINT_TEST_CLEAR(state);
 }
 
 int main(void)

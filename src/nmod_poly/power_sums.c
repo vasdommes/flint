@@ -13,7 +13,7 @@
 #include "nmod_poly.h"
 
 void
-_nmod_poly_power_sums(mp_ptr res, mp_srcptr poly, slong len, slong n,
+_nmod_poly_power_sums(nn_ptr res, nn_srcptr poly, slong len, slong n,
                       nmod_t mod)
 {
     if (10 * n >= len + 75)
@@ -41,7 +41,7 @@ nmod_poly_power_sums(nmod_poly_t res, const nmod_poly_t poly, slong n)
     {
         nmod_poly_fit_length(res, 1);
         _nmod_poly_set_length(res, 1);
-        NMOD_RED(res->coeffs[0], len - 1, poly->mod);
+        NMOD_RED(res->coeffs[0], (ulong) (len - 1), poly->mod);
     }
     else
     {
@@ -72,7 +72,7 @@ nmod_poly_power_sums(nmod_poly_t res, const nmod_poly_t poly, slong n)
                                   len - i, n, poly->mod);
         }
         if (i)
-            NMOD_RED(res->coeffs[0], len - 1, poly->mod);
+            NMOD_RED(res->coeffs[0], (ulong) (len - 1), poly->mod);
         _nmod_poly_set_length(res, n);
         _nmod_poly_normalise(res);
     }
@@ -80,12 +80,12 @@ nmod_poly_power_sums(nmod_poly_t res, const nmod_poly_t poly, slong n)
 
 /* todo: should use dot products */
 void
-_nmod_poly_power_sums_naive(mp_ptr res, mp_srcptr poly, slong len, slong n,
+_nmod_poly_power_sums_naive(nn_ptr res, nn_srcptr poly, slong len, slong n,
                             nmod_t mod)
 {
     slong i, k;
 
-    NMOD_RED(res[0], len - 1, mod);
+    NMOD_RED(res[0], (ulong) (len - 1), mod);
     for (k = 1; k < FLINT_MIN(n, len); k++)
     {
         res[k] = nmod_mul(poly[len - 1 - k], k, mod);
@@ -151,12 +151,12 @@ nmod_poly_power_sums_naive(nmod_poly_t res, const nmod_poly_t poly, slong n)
 }
 
 void
-_nmod_poly_power_sums_schoenhage(mp_ptr res, mp_srcptr poly, slong len,
+_nmod_poly_power_sums_schoenhage(nn_ptr res, nn_srcptr poly, slong len,
                                  slong n, nmod_t mod)
 {
-    mp_ptr a, b;
+    nn_ptr a, b;
 
-    a = (mp_ptr) flint_malloc((2 * len - 1) * sizeof(mp_limb_t));
+    a = (nn_ptr) flint_malloc((2 * len - 1) * sizeof(ulong));
     b = a + len;
 
     _nmod_poly_reverse(a, poly, len, len);

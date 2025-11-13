@@ -9,13 +9,15 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_hypgeom.h"
 #include "acb_modular.h"
 #include "acb_dirichlet.h"
+#include "calcium.h"
 #include "fexpr.h"
 #include "fexpr_builtin.h"
 
-void
+static void
 _acb_root(acb_t res, const acb_t x, const acb_t y, slong prec)
 {
     if (acb_is_int(y) && arf_sgn(arb_midref(acb_realref(y))) > 0 && arf_cmpabs_ui(arb_midref(acb_realref(y)), 1000) <= 0)
@@ -62,7 +64,7 @@ _acb_root(acb_t res, const acb_t x, const acb_t y, slong prec)
     break;
 
 
-int
+static int
 fexpr_get_acb_raw(acb_t res, const fexpr_t expr, slong prec)
 {
     if (fexpr_is_integer(expr))
@@ -490,7 +492,7 @@ fexpr_get_acb_raw(acb_t res, const fexpr_t expr, slong prec)
     }
 }
 
-int
+static int
 fexpr_get_acb_with_accuracy(acb_t res, const fexpr_t expr, slong prec, ulong flags)
 {
     slong wp, initial, maxprec;

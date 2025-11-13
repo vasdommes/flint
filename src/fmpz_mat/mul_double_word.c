@@ -11,6 +11,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "thread_pool.h"
 #include "thread_support.h"
 #include "fmpz.h"
@@ -26,15 +27,15 @@
 /* 2x2 -> 4 signed addmul */
 static void _do_row_22_4_signed_branchy(
     fmpz * CR,
-    const mp_limb_t * AR,
-    const mp_limb_t * B,
+    const ulong * AR,
+    const ulong * B,
     slong br,
     slong bc)
 {
     slong j, k, l;
-    mp_limb_t s[4], t3, t2, t1, t0, w3, w2, w1, w0;
-    mp_limb_t A0, A1, B0, B1;
-    mp_limb_t u2, u1, u0;
+    ulong s[4], t3, t2, t1, t0, w3, w2, w1, w0;
+    ulong A0, A1, B0, B1;
+    ulong u2, u1, u0;
 
     for (j = 0, l = 0; j < bc; j++)
     {
@@ -83,15 +84,15 @@ static void _do_row_22_4_signed_branchy(
 /* 2x2 -> 4 signed addmul */
 static void _do_row_22_4_signed(
     fmpz * CR,
-    const mp_limb_t * AR,
-    const mp_limb_t * B,
+    const ulong * AR,
+    const ulong * B,
     slong br,
     slong bc)
 {
     slong j, k, l;
-    mp_limb_t s[4], t3, t2, t1, t0, w3, w2, w1, w0;
-    mp_limb_t A0, A1, B0, B1;
-    mp_limb_t v3, v2, u2, u1, u0;
+    ulong s[4], t3, t2, t1, t0, w3, w2, w1, w0;
+    ulong A0, A1, B0, B1;
+    ulong v3, v2, u2, u1, u0;
 
     for (j = 0, l = 0; j < bc; j++)
     {
@@ -140,18 +141,18 @@ static void _do_row_22_4_signed(
 /* 2x2 -> 5 signed addmul */
 static void _do_row_22_5_signed(
     fmpz * CR,
-    const mp_limb_t * AR,
-    const mp_limb_t * B,
+    const ulong * AR,
+    const ulong * B,
     slong br,
     slong bc)
 {
     slong j, k, l;
-    mp_limb_t s[5];
-    mp_limb_t A0, A1, B0, B1;
-    mp_limb_t s4, s3, s2, s1, s0;
-    mp_limb_t p3, p2, p1, p0;
-    mp_limb_t u3, u2;
-    mp_limb_t v2;
+    ulong s[5];
+    ulong A0, A1, B0, B1;
+    ulong s4, s3, s2, s1, s0;
+    ulong p3, p2, p1, p0;
+    ulong u3, u2;
+    ulong v2;
 
     for (j = 0, l = 0; j < bc; j++)
     {
@@ -199,18 +200,18 @@ static void _do_row_22_5_signed(
 /* 2x2 -> 4 unsigned addmul */
 static void _do_row_22_4_unsigned(
     fmpz * CR,
-    const mp_limb_t * AR,
-    const mp_limb_t * B,
+    const ulong * AR,
+    const ulong * B,
     slong br,
     slong bc)
 {
     slong j, k, l;
-    mp_limb_t s[4];
-    mp_limb_t A0, A1, B0, B1;
-    mp_limb_t p3, p2, p1, p0;
-    mp_limb_t s3, s2, s1, s0;
-    mp_limb_t u3, u2, u1;
-    mp_limb_t v3, v2;
+    ulong s[4];
+    ulong A0, A1, B0, B1;
+    ulong p3, p2, p1, p0;
+    ulong s3, s2, s1, s0;
+    ulong u3, u2, u1;
+    ulong v3, v2;
 
     for (j = 0, l = 0; j < bc; j++)
     {
@@ -251,18 +252,18 @@ static void _do_row_22_4_unsigned(
 /* 2x2 -> 5 unsigned addmul */
 static void _do_row_22_5_unsigned(
     fmpz * CR,
-    const mp_limb_t * AR,
-    const mp_limb_t * B,
+    const ulong * AR,
+    const ulong * B,
     slong br,
     slong bc)
 {
     slong j, k, l;
-    mp_limb_t s[5];
-    mp_limb_t A0, A1, B0, B1;
-    mp_limb_t p3, p2, p1, p0;
-    mp_limb_t s4, s3, s2, s1, s0;
-    mp_limb_t u2, u1;
-    mp_limb_t v3, v2;
+    ulong s[5];
+    ulong A0, A1, B0, B1;
+    ulong p3, p2, p1, p0;
+    ulong s4, s3, s2, s1, s0;
+    ulong u2, u1;
+    ulong v3, v2;
 
     for (j = 0, l = 0; j < bc; j++)
     {
@@ -313,10 +314,13 @@ typedef struct {
     slong Bstopcol;
     slong br;
     slong bc;
-    fmpz ** Crows;
-    fmpz ** Arows;
-    fmpz ** Brows;
-    mp_limb_t * BL;
+    fmpz * Centries;
+    slong Cstride;
+    fmpz * Aentries;
+    slong Astride;
+    fmpz * Bentries;
+    slong Bstride;
+    ulong * BL;
     int sign;
     int words;
 } _worker_arg;
@@ -327,8 +331,9 @@ static void _red_worker(void * varg)
     slong Bstartcol = arg->Bstartcol;
     slong Bstopcol = arg->Bstopcol;
     slong br = arg->br;
-    fmpz ** Brows = arg->Brows;
-    mp_limb_t * BL = arg->BL;
+    fmpz * Bentries = arg->Bentries;
+    slong Bstride = arg->Bstride;
+    ulong * BL = arg->BL;
     int sign = arg->sign;
     slong i, j;
 
@@ -337,14 +342,14 @@ static void _red_worker(void * varg)
         for (j = Bstartcol; j < Bstopcol; j++)
             for (i = 0; i < br; i++)
                 fmpz_get_signed_uiui(BL + 2*(j*br + i) + 1,
-                                     BL + 2*(j*br + i) + 0, &Brows[i][j]);
+                                     BL + 2*(j*br + i) + 0, Bentries + i * Bstride + j);
     }
     else
     {
         for (j = Bstartcol; j < Bstopcol; j++)
             for (i = 0; i < br; i++)
                 fmpz_get_uiui(BL + 2*(j*br + i) + 1,
-                              BL + 2*(j*br + i) + 0, &Brows[i][j]);
+                              BL + 2*(j*br + i) + 0, Bentries + i * Bstride + j);
     }
 }
 
@@ -356,12 +361,14 @@ static void _mul_worker(void * varg)
     slong ac = arg->br;
     slong br = arg->br;
     slong bc = arg->bc;
-    fmpz ** Crows = arg->Crows;
-    fmpz ** Arows = arg->Arows;
-    mp_limb_t * BL = arg->BL;
+    fmpz * Centries = arg->Centries;
+    slong Cstride = arg->Cstride;
+    fmpz * Aentries = arg->Aentries;
+    slong Astride = arg->Astride;
+    ulong * BL = arg->BL;
     int sign = arg->sign;
     int words = arg->words;
-    mp_limb_t * AL;
+    ulong * AL;
     slong i, j;
     TMP_INIT;
 
@@ -370,21 +377,21 @@ static void _mul_worker(void * varg)
 
     TMP_START;
 
-    AL = TMP_ARRAY_ALLOC(2*ac, mp_limb_t);
+    AL = TMP_ARRAY_ALLOC(2*ac, ulong);
 
     if (sign)
     {
         for (i = Astartrow; i < Astoprow; i++)
         {
             for (j = 0; j < ac; j++)
-                fmpz_get_signed_uiui(AL + 2*j + 1, AL + 2*j, &Arows[i][j]);
+                fmpz_get_signed_uiui(AL + 2*j + 1, AL + 2*j, Aentries + i * Astride + j);
 
             if (words == 4 && br < FMPZ_MAT_MUL_4_BRANCHLESS_CUTOFF)
-                _do_row_22_4_signed_branchy(Crows[i], AL, BL, br, bc);
+                _do_row_22_4_signed_branchy(Centries + i * Cstride, AL, BL, br, bc);
             else if (words == 4)
-                _do_row_22_4_signed(Crows[i], AL, BL, br, bc);
+                _do_row_22_4_signed(Centries + i * Cstride, AL, BL, br, bc);
             else
-                _do_row_22_5_signed(Crows[i], AL, BL, br, bc);
+                _do_row_22_5_signed(Centries + i * Cstride, AL, BL, br, bc);
         }
     }
     else
@@ -392,12 +399,12 @@ static void _mul_worker(void * varg)
         for (i = Astartrow; i < Astoprow; i++)
         {
             for (j = 0; j < ac; j++)
-                fmpz_get_uiui(AL + 2*j + 1, AL + 2*j, &Arows[i][j]);
+                fmpz_get_uiui(AL + 2*j + 1, AL + 2*j, Aentries + i * Astride + j);
 
             if (words == 4)
-                _do_row_22_4_unsigned(Crows[i], AL, BL, br, bc);
+                _do_row_22_4_unsigned(Centries + i * Cstride, AL, BL, br, bc);
             else
-                _do_row_22_5_unsigned(Crows[i], AL, BL, br, bc);
+                _do_row_22_5_unsigned(Centries + i * Cstride, AL, BL, br, bc);
         }
     }
 
@@ -450,10 +457,13 @@ void _fmpz_mat_mul_double_word_internal(
     mainarg.Bstopcol = bc;
     mainarg.br = br;
     mainarg.bc = bc;
-    mainarg.Crows = C->rows;
-    mainarg.Arows = A->rows;
-    mainarg.Brows = B->rows;
-    mainarg.BL = TMP_ARRAY_ALLOC(br*bc*2, mp_limb_t);
+    mainarg.Centries = C->entries;
+    mainarg.Cstride = C->stride;
+    mainarg.Aentries = A->entries;
+    mainarg.Astride = A->stride;
+    mainarg.Bentries = B->entries;
+    mainarg.Bstride = B->stride;
+    mainarg.BL = TMP_ARRAY_ALLOC(br*bc*2, ulong);
     mainarg.sign = sign;
 
     if (bits + sign <= 4*FLINT_BITS)
@@ -487,9 +497,12 @@ use_one_thread:
         args[i].Bstopcol = (i + 1)*bc/(num_workers + 1);
         args[i].br = mainarg.br;
         args[i].bc = mainarg.bc;
-        args[i].Crows = mainarg.Crows;
-        args[i].Arows = mainarg.Arows;
-        args[i].Brows = mainarg.Brows;
+        args[i].Centries = mainarg.Centries;
+        args[i].Cstride = mainarg.Cstride;
+        args[i].Aentries = mainarg.Aentries;
+        args[i].Astride = mainarg.Astride;
+        args[i].Bentries = mainarg.Bentries;
+        args[i].Bstride = mainarg.Bstride;
         args[i].BL = mainarg.BL;
         args[i].sign = mainarg.sign;
         args[i].words = mainarg.words;

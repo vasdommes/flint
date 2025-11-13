@@ -9,9 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
+#include "arb/impl.h"
 #include "arb_hypgeom.h"
-
-void arb_gamma_stirling_coeff(arb_t b, ulong k, int digamma, slong prec);
 
 void
 arb_hypgeom_gamma_stirling_sum_horner(arb_t s, const arb_t z, slong N, slong prec)

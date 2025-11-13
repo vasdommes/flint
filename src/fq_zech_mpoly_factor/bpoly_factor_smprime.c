@@ -19,7 +19,7 @@
 #include "nmod_mpoly_factor.h"
 #include "fq_zech_mpoly_factor.h"
 
-int fq_zech_next(fq_zech_t x, const fq_zech_ctx_t ctx)
+int fq_zech_next(fq_zech_t x, const fq_zech_ctx_t FLINT_UNUSED(ctx))
 {
     if (x->value < 1)
         return 0;
@@ -27,8 +27,7 @@ int fq_zech_next(fq_zech_t x, const fq_zech_ctx_t ctx)
     return 1;
 }
 
-
-void fq_zech_bpoly_eval_var1(
+static void fq_zech_bpoly_eval_var1(
     fq_zech_poly_t E,
     const fq_zech_bpoly_t A,
     const fq_zech_t alpha,
@@ -42,7 +41,7 @@ void fq_zech_bpoly_eval_var1(
     _fq_zech_poly_normalise(E, ctx);
 }
 
-void fq_zech_bpoly_make_monic_series(
+static void fq_zech_bpoly_make_monic_series(
     fq_zech_bpoly_t A,
     const fq_zech_bpoly_t B,
     slong order,
@@ -497,11 +496,10 @@ static void _lattice(
     fq_zech_bpoly_t Q, R, dg;
     fq_zech_bpoly_struct * ld;
     nmod_mat_t M, T1, T2;
-    int nlimbs;
-    mp_limb_t * trow;
+    ulong * trow;
 
-    nlimbs = _nmod_vec_dot_bound_limbs(r, fq_zech_ctx_mod(ctx));
-    trow = (mp_limb_t *) flint_malloc(r*sizeof(mp_limb_t));
+    const dot_params_t params = _nmod_vec_dot_params(r, fq_zech_ctx_mod(ctx));
+    trow = (ulong *) flint_malloc(r*sizeof(ulong));
     fq_zech_bpoly_init(Q, ctx);
     fq_zech_bpoly_init(R, ctx);
     fq_zech_bpoly_init(dg, ctx);
@@ -550,7 +548,7 @@ static void _lattice(
 
             for (i = 0; i < d; i++)
                 nmod_mat_entry(M, (j - starts[k])*deg + l, i) =
-              _nmod_vec_dot(trow, N->rows[i], r, fq_zech_ctx_mod(ctx), nlimbs);
+              _nmod_vec_dot(trow, nmod_mat_entry_ptr(N, i, 0), r, fq_zech_ctx_mod(ctx), params);
         }
 
         nmod_mat_init_nullspace_tr(T1, M);
@@ -582,7 +580,7 @@ static void _lattice(
     Then, run zassenhaus on the gprod[i] as factors of A.
 */
 static int _zassenhaus(
-    const zassenhaus_prune_t zas,
+    const zassenhaus_prune_t FLINT_UNUSED(zas),
     slong limit,
     fq_zech_tpoly_t F,
     const fq_zech_t malpha,

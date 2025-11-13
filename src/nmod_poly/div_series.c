@@ -13,15 +13,15 @@
 #include "nmod.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
+#include "nmod_poly/impl.h"
 #include "gr_poly.h"
 
 void
-_nmod_poly_div_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr P, slong Plen,
-                                mp_srcptr Q, slong Qlen, slong n, mp_limb_t q, nmod_t mod)
+_nmod_poly_div_series_basecase_preinv1(nn_ptr Qinv, nn_srcptr P, slong Plen,
+                                nn_srcptr Q, slong Qlen, slong n, ulong q, nmod_t mod)
 {
     slong i, j, l;
-    int nlimbs;
-    mp_limb_t s;
+    ulong s;
 
     Plen = FLINT_MIN(Plen, n);
     Qlen = FLINT_MIN(Qlen, n);
@@ -35,13 +35,13 @@ _nmod_poly_div_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr P, slong Plen,
     {
         Qinv[0] = nmod_mul(q, P[0], mod);
 
-        nlimbs = _nmod_vec_dot_bound_limbs(FLINT_MIN(n, Qlen), mod);
+        const dot_params_t params = _nmod_vec_dot_params(FLINT_MIN(n, Qlen), mod);
 
         for (i = 1; i < n; i++)
         {
             l = FLINT_MIN(i, Qlen - 1);
 
-            NMOD_VEC_DOT(s, j, l, Q[j + 1], Qinv[i - 1 - j], mod, nlimbs);
+            NMOD_VEC_DOT(s, j, l, Q[j + 1], Qinv[i - 1 - j], mod, params);
 
             if (i < Plen)
                 s = nmod_sub(P[i], s, mod);
@@ -57,10 +57,10 @@ _nmod_poly_div_series_basecase_preinv1(mp_ptr Qinv, mp_srcptr P, slong Plen,
 }
 
 void
-_nmod_poly_div_series_basecase(mp_ptr Qinv, mp_srcptr P, slong Plen,
-                                mp_srcptr Q, slong Qlen, slong n, nmod_t mod)
+_nmod_poly_div_series_basecase(nn_ptr Qinv, nn_srcptr P, slong Plen,
+                                nn_srcptr Q, slong Qlen, slong n, nmod_t mod)
 {
-    mp_limb_t q;
+    ulong q;
 
     q = Q[0];
     if (q != 1)
@@ -79,7 +79,7 @@ nmod_poly_div_series_basecase(nmod_poly_t Q, const nmod_poly_t A,
 
     if (n == 0 || Blen == 0 || B->coeffs[0] == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (nmod_poly_div_series_basecase). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_div_series_basecase). Division by zero.\n");
     }
 
     Alen = A->length;
@@ -109,8 +109,8 @@ nmod_poly_div_series_basecase(nmod_poly_t Q, const nmod_poly_t A,
 }
 
 void
-_nmod_poly_div_series(mp_ptr Q, mp_srcptr A, slong Alen,
-                                mp_srcptr B, slong Blen, slong n, nmod_t mod)
+_nmod_poly_div_series(nn_ptr Q, nn_srcptr A, slong Alen,
+                                nn_srcptr B, slong Blen, slong n, nmod_t mod)
 {
     Blen = FLINT_MIN(Blen, n);
 
@@ -136,7 +136,7 @@ nmod_poly_div_series(nmod_poly_t Q, const nmod_poly_t A,
 
     if (n == 0 || Blen == 0 || B->coeffs[0] == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (nmod_poly_div_series). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_div_series). Division by zero.\n");
     }
 
     Alen = A->length;

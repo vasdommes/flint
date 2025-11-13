@@ -9,8 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
-#include "ulong_extras.h"
+#include <gmp.h>
 #include "fmpz.h"
 
 void
@@ -27,7 +26,7 @@ fmpz_abs(fmpz_t f1, const fmpz_t f2)
     else  /* coeff is large */
     {
         /* No need to retain value in promotion, as if aliased, both already large */
-        __mpz_struct * mf1 = _fmpz_promote(f1);
+        mpz_ptr mf1 = _fmpz_promote(f1);
         mpz_abs(mf1, COEFF_TO_PTR(*f2));
     }
 }

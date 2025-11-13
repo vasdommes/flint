@@ -4,7 +4,7 @@
 ===============================================================================
 
 An :type:`fmpz_mpoly_q_t` represents an element of 
-`\mathbb{Q}(x_1,\ldots,x_n)` for fixed *n* as a pair of Flint 
+`\mathbb{Q}(x_1,\ldots,x_n)` for fixed *n* as a pair of FLINT 
 multivariate polynomials (:type:`fmpz_mpoly_t`).
 Instances are always kept in canonical form by ensuring that the GCD
 of numerator and denominator is 1 and that the coefficient
@@ -143,7 +143,7 @@ The variable strings in *x* start with the variable of most significance at inde
 Random generation
 -------------------------------------------------------------------------------
 
-.. function:: void fmpz_mpoly_q_randtest(fmpz_mpoly_q_t res, flint_rand_t state, slong length, mp_limb_t coeff_bits, slong exp_bound, const fmpz_mpoly_ctx_t ctx)
+.. function:: void fmpz_mpoly_q_randtest(fmpz_mpoly_q_t res, flint_rand_t state, slong length, ulong coeff_bits, slong exp_bound, const fmpz_mpoly_ctx_t ctx)
 
     Sets *res* to a random rational function where both numerator and denominator
     have up to *length* terms, coefficients up to size *coeff_bits*, and

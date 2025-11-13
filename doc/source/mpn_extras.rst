@@ -19,20 +19,57 @@ Macros
 Utility functions
 --------------------------------------------------------------------------------
 
-
 .. function:: void flint_mpn_debug(mp_srcptr x, mp_size_t xsize)
 
     Prints debug information about ``(x, xsize)`` to ``stdout``. 
     In particular, this will print binary representations of all the limbs.
 
+.. function:: char * _flint_mpn_get_str(mp_srcptr x, mp_size_t n)
+
+    Returns a string containing the decimal representation of 
+    ``(x, n)``.
+
 .. function:: int flint_mpn_zero_p(mp_srcptr x, mp_size_t xsize)
 
     Returns `1` if all limbs of ``(x, xsize)`` are zero, otherwise `0`.
+
+.. function:: int flint_mpn_equal_p(mp_srcptr x, mp_srcptr y, mp_size_t xsize)
+
+    Returns `1` if all limbs of ``(x, xsize)`` and ``(y, xsize)`` are equal, otherwise `0`.
+
+Addition and subtraction
+--------------------------------------------------------------------------------
 
 .. function:: mp_limb_t flint_mpn_sumdiff_n(mp_ptr s, mp_ptr d, mp_srcptr x, mp_srcptr y, mp_size_t n)
 
     Simultaneously computes the sum ``s`` and difference ``d`` of ``(x, n)`` and ``(y, n)``,
     returning carry multiplied by two plus borrow.
+
+.. function:: void flint_mpn_negmod_n(mp_ptr res, mp_srcptr x, mp_srcptr m, mp_size_t n)
+              void flint_mpn_addmod_n(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_srcptr m, mp_size_t n)
+              void flint_mpn_submod_n(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_srcptr m, mp_size_t n)
+              void flint_mpn_addmod_n_m(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_size_t yn, mp_srcptr m, mp_size_t n)
+              void flint_mpn_submod_n_m(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_size_t yn, mp_srcptr m, mp_size_t n)
+
+    Arithmetic modulo ``(m, n)``. These functions assume that
+    ``(x, n)`` and ``(y, n)`` are already reduced modulo ``(m, n)``.
+    The ``n_m`` variants accept ``(y, yn)`` with ``yn <= n``,
+    where ``(y, yn)`` is already reduced modulo ``(m, n)``.
+
+.. function:: void flint_mpn_negmod_2(mp_ptr res, mp_srcptr x, mp_srcptr m)
+              void flint_mpn_addmod_2(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_srcptr m)
+              void _flint_mpn_addmod_2(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_srcptr m)
+              void flint_mpn_submod_2(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_srcptr m)
+
+    Modular arithmetic specialized for two limbs.
+    The ``_flint_mpn_addmod_2`` version assumes that the most significant
+    bit of ``m[1]`` is not set.
+
+.. function:: int flint_mpn_signed_sub_n(mp_ptr res, mp_srcptr x, mp_srcptr y, mp_size_t n)
+
+    Sets ``res`` to `|x - y|`, returning 0 if the result equals `x - y`
+    and returning 1 if the result equals `y - x`.
+
 
 Multiplication
 --------------------------------------------------------------------------------
@@ -148,6 +185,34 @@ More generally, we can define `n`-limb high products of `m`-limb and
     On x86-64 machines with ADX, the basecase version currently assumes
     that `n \ge 8`.
 
+.. function:: void _flint_mpn_mullow_n_mulders_recursive(mp_ptr rp, mp_srcptr u, mp_srcptr v, mp_size_t n)
+              mp_limb_t flint_mpn_mullow_basecase(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+              mp_limb_t _flint_mpn_mullow_n_mulders(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+              mp_limb_t _flint_mpn_mullow_n_mul(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+              mp_limb_t _flint_mpn_mullow_n(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+              mp_limb_t flint_mpn_mullow_n(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+
+    Compute the low `n` limbs of the product.
+
+    The `(n + 1)`-th limb is also computed and returned.
+    Warning: this extra limb of output may be removed in the future.
+
+.. function:: void flint_mpn_mul_or_mullow_n(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+
+    Write the low `n + 1` limbs of the product `uv` to ``res``.
+    The output is assumed to have space for `2n` limbs so that the high
+    limbs can be used as scratch space or to write the whole product
+    when this is the fastest method.
+
+    Warning: the one extra limb of output may be removed in the future.
+
+.. function:: void flint_mpn_mul_or_mulhigh_n(mp_ptr res, mp_srcptr u, mp_srcptr v, mp_size_t n)
+
+    Write the high `n + 1` limbs of the product `uv` to ``res + (n - 1)``
+    (with possible error of a few ulps as for :func:`flint_mpn_mulhigh_n`).
+    The low `n - 1` limbs of the output may be used as scratch space or
+    to write the whole product when this is the fastest method.
+
 Divisibility
 --------------------------------------------------------------------------------
 
@@ -201,6 +266,10 @@ Divisibility
 Division
 --------------------------------------------------------------------------------
 
+.. function:: void flint_mpn_signed_div2(mp_ptr res, mp_srcptr x, mp_size_t n)
+
+    Sets ``res`` to ``(x, n)`` divided by two, where ``x`` is viewed
+    as a signed integer in two's complement form.
 
 .. function:: int flint_mpn_divides(mp_ptr q, mp_srcptr array1, mp_size_t limbs1, mp_srcptr arrayg, mp_size_t limbsg, mp_ptr temp)
 
@@ -210,6 +279,9 @@ Division
     must have space for ``limbsg`` limbs.
 
     Assumes ``limbs1 >= limbsg > 0``.
+
+Division and modular arithmetic with precomputed inverses
+--------------------------------------------------------------------------------
 
 .. function:: mp_limb_t flint_mpn_preinv1(mp_limb_t d, mp_limb_t d2)
 
@@ -286,10 +358,84 @@ Division
     normalised, then `r` will be shifted right by ``norm`` bits
     so that it has the same shift as all the inputs.
 
-    We require `a` and `b` to be reduced modulo `n` before calling the
+    We require `a` and `b` to be reduced modulo `d` before calling the
     function. 
 
-    Note that this function is not always as fast as ordinary division.
+.. function:: void flint_mpn_mulmod_preinvn_2(mp_ptr r, mp_srcptr a, mp_srcptr b, mp_srcptr d, mp_srcptr dinv, ulong norm)
+
+    Version of :func:`flint_mpn_mulmod_preinv1` specialized for two limbs.
+    The behavior is not exactly the same: `a` and `b` are assumed to
+    be unshifted, and the output is unshifted.
+
+.. function:: void flint_mpn_fmmamod_preinvn(mp_ptr r, mp_srcptr a1, mp_srcptr b1, mp_srcptr a2, mp_srcptr b2, mp_size_t n, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+              void flint_mpn_fmmamod_preinvn_2(mp_ptr r, mp_srcptr a1, mp_srcptr b1, mp_srcptr a2, mp_srcptr b2, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+
+    Given ``dnormed`` containing a normalised integer `d 2^{norm}` with precomputed inverse ``dinv``
+    provided by ``flint_mpn_preinvn``, computes `a_1 b_1 + a_2 b_2 \pmod{d}`. We require
+    all operands to be reduced modulo `d`.
+
+Preconditioned modular multiplication
+--------------------------------------------------------------------------------
+
+Currently two algorithms are implemented for preconditioned multiplication:
+Shoup multiplication and the matrix algorithm. An FFT variant may be added in the future.
+
+.. function:: int flint_mpn_mulmod_want_precond(mp_size_t n, slong num, ulong norm)
+
+    Assuming a precision of `n` limbs and that one wants to perform `num`
+    multiplications with a fixed (preconditioned) operand with norm ``norm``,
+    return one of the following constants indicating
+    which algorithm is better (accounting for the cost of pretransforming
+    the operand).
+
+    * ``MPN_MULMOD_PRECOND_NONE`` - should use :func:`flint_mpn_mulmod_preinvn` (no precomputation)
+
+    * ``MPN_MULMOD_PRECOND_SHOUP`` - should use :func:`flint_mpn_mulmod_precond_shoup`
+
+    * ``MPN_MULMOD_PRECOND_MATRIX`` - should use :func:`flint_mpn_mulmod_precond_matrix`
+
+.. function:: void flint_mpn_mulmod_precond_shoup(mp_ptr res, mp_srcptr a, mp_srcptr apre, mp_srcptr b, mp_size_t n, mp_srcptr d, ulong norm)
+
+    Compute `ab \pmod{d}` given precomputed data for ``apre``
+    generated with :func:`flint_mpn_mulmod_precond_shoup_precompute`.
+    We require that `b` is reduced modulo `d`.
+
+.. function:: void flint_mpn_mulmod_precond_shoup_precompute(mp_ptr apre, mp_srcptr a, mp_size_t n, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+
+    Given `0 \le a < d`, precompute data for
+    multiplication by `a` modulo `d` using Shoup's method.
+    The modulus is given as ``dnormed`` containing `d 2^{norm}` together
+    with precomputed inverse ``dinv``.
+    The destination ``apre`` must have space for `n` limbs.
+
+.. function:: void flint_mpn_mulmod_precond_matrix(mp_ptr rp, mp_srcptr apre, mp_srcptr b, mp_size_t n, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+
+    Given ``dnormed`` containing a normalised integer `d 2^{norm}` with precomputed inverse ``dinv``
+    provided by :func:`flint_mpn_preinvn`, computes `ab \pmod{d}`. We require
+    `b` to be reduced modulo `d`.
+    The user provides the operand `a` via the ``apre`` argument in the
+    pretransformed representation returned by :func:`flint_mpn_mulmod_precond_matrix_precompute`.
+    The complexity of this function is `O(n^2)`. Requires `n \ge 2`.
+
+.. function:: void flint_mpn_mulmod_precond_matrix_precompute(mp_ptr apre, mp_srcptr a, mp_size_t n, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+
+    Given ``dnormed`` containing a normalised integer `d 2^{norm}` with precomputed inverse ``dinv``
+    and an integer `a` which is reduced modulo `d`,
+    write to ``apre`` a pretransformed representation of `a`
+    for use with :func:`flint_mpn_mulmod_precond_matrix`.
+    Currently, the output consists of `n \times n` limbs storing
+    `a 2^{norm} \beta^i \mod {d 2^{norm}}` for `0 \le i < n` where `\beta` is the limb
+    radix, plus one junk limb.
+
+.. function:: mp_size_t flint_mpn_mulmod_precond_matrix_alloc(mp_size_t n)
+
+    The *alloc* function returns the number of limbs of space required for
+    :func:`flint_mpn_mulmod_precond_matrix_precompute`
+    given a modulus with `n` limbs.
+
+.. function:: void flint_mpn_fmmamod_precond_matrix(mp_ptr rp, mp_srcptr a1pre, mp_srcptr b1, mp_srcptr a2pre, mp_srcptr b2, mp_size_t n, mp_srcptr dnormed, mp_srcptr dinv, ulong norm)
+
+    Analogous to :func:`flint_mpn_mulmod_precond_matrix`, but computes `a_1 b_1 + a_2 b_2` modulo `d`.
 
 
 GCD

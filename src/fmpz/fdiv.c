@@ -26,7 +26,7 @@ void fmpz_fdiv_q_2exp(fmpz_t f, const fmpz_t g, ulong exp)
     }
     else  /*g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);  /* g is already large */
+        mpz_ptr mf = _fmpz_promote(f);  /* g is already large */
         mpz_fdiv_q_2exp(mf, COEFF_TO_PTR(d), exp);
         _fmpz_demote_val(f);  /* division may make value small */
     }
@@ -40,7 +40,7 @@ fmpz_fdiv_q(fmpz_t f, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_fdiv_q). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_fdiv_q). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -65,7 +65,7 @@ fmpz_fdiv_q(fmpz_t f, const fmpz_t g, const fmpz_t h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf;
+        mpz_ptr mf;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
         {
@@ -107,7 +107,7 @@ fmpz_fdiv_qr(fmpz_t f, fmpz_t s, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_fdiv_q). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_fdiv_q). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -147,7 +147,7 @@ fmpz_fdiv_qr(fmpz_t f, fmpz_t s, const fmpz_t g, const fmpz_t h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf, * ms;
+        mpz_ptr mf, ms;
 
 		if (!COEFF_IS_MPZ(c2))  /* h is small */
         {
@@ -190,7 +190,7 @@ fmpz_fdiv_qr(fmpz_t f, fmpz_t s, const fmpz_t g, const fmpz_t h)
 }
 
 /* these functions were adapted from similar functions in an old version of GMP */
-void _mpz_tdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
+static void _mpz_tdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
                           mpz_srcptr a, mpz_srcptr d, const fmpz_preinvn_t inv)
 {
     slong size1 = a->_mp_size, size2 = d->_mp_size;
@@ -200,10 +200,9 @@ void _mpz_tdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
     int nm = (inv->norm != 0);
     TMP_INIT;
 
-    mp_ptr qp, rp, ap, dp, tp, sp;
+    nn_ptr qp, rp, ap, dp, tp, sp;
 
-    if ((ulong) r->_mp_alloc < usize1 + nm)
-        mpz_realloc2(r, (usize1 + nm)*FLINT_BITS);
+    rp = FLINT_MPZ_REALLOC(r, usize1 + nm);
 
     if (usize1 < usize2) /* special case preinv code can't deal with */
     {
@@ -213,39 +212,37 @@ void _mpz_tdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
         return;
     }
 
-    if ((ulong) q->_mp_alloc < qsize + nm)
-        mpz_realloc2(q, (qsize + nm)*FLINT_BITS);
-
     dp = d->_mp_d;
     ap = a->_mp_d;
-    qp = q->_mp_d;
-    rp = r->_mp_d;
+    qp = FLINT_MPZ_REALLOC(q, qsize + nm);
 
     TMP_START;
     if ((r == d || q == d) && !nm) /* we have alias with d */
     {
-        tp = TMP_ALLOC(usize2*sizeof(mp_limb_t));
+        tp = TMP_ALLOC(usize2*sizeof(ulong));
         mpn_copyi(tp, dp, usize2);
         dp = tp;
     }
 
     if (r == a || q == a) /* we have alias with a */
     {
-        tp = TMP_ALLOC(usize1*sizeof(mp_limb_t));
+        tp = TMP_ALLOC(usize1*sizeof(ulong));
         mpn_copyi(tp, ap, usize1);
         ap = tp;
     }
 
     /*
-       TODO: speedup mpir's mullow and mulhigh and use in
-       flint_mpn_divrem_preinvn so we can remove this first
+       TODO: speedup flint_mpn_divrem_preinvn so we can remove this first
        case here
     */
-    if (usize2 == 2 || (usize2 > 15 && usize2 < 120))
+    slong rn = size2;
+    slong qn = size1 - size2 + 1;
+
+    if (rn <= 3 || (rn >= 15 && qn == 1) || (rn >= 60 && qn <= 40))
         mpn_tdiv_qr(qp, rp, 0, ap, usize1, dp, usize2);
     else {
         if (nm) {
-            tp = TMP_ALLOC(usize2*sizeof(mp_limb_t));
+            tp = TMP_ALLOC(usize2*sizeof(ulong));
             mpn_lshift(tp, dp, usize2, inv->norm);
             dp = tp;
 
@@ -270,7 +267,7 @@ void _mpz_tdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
     TMP_END;
 }
 
-void _mpz_fdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
+static void _mpz_fdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
                           mpz_srcptr a, mpz_srcptr d, const fmpz_preinvn_t inv)
 {
     slong size1 = a->_mp_size;
@@ -282,7 +279,7 @@ void _mpz_fdiv_qr_preinvn(mpz_ptr q, mpz_ptr r,
     TMP_START;
     if (q == d || r == d) /* we need d later, so make sure it doesn't alias */
     {
-        t->_mp_d = TMP_ALLOC(usize2*sizeof(mp_limb_t));
+        t->_mp_d = TMP_ALLOC(usize2*sizeof(ulong));
         t->_mp_size = d->_mp_size;
         t->_mp_alloc = d->_mp_alloc;
         mpn_copyi(t->_mp_d, d->_mp_d, usize2);
@@ -309,7 +306,7 @@ fmpz_fdiv_qr_preinvn(fmpz_t f, fmpz_t s, const fmpz_t g,
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_fdiv_q). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_fdiv_q). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -337,7 +334,7 @@ fmpz_fdiv_qr_preinvn(fmpz_t f, fmpz_t s, const fmpz_t g,
     }
     else /* g is large */
     {
-        __mpz_struct * mf, * ms;
+        mpz_ptr mf, ms;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
             fmpz_fdiv_qr(f, s, g, h);
@@ -374,7 +371,7 @@ fmpz_fdiv_q_si(fmpz_t f, const fmpz_t g, slong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpq_fdiv_q_si). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpq_fdiv_q_si). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -389,7 +386,7 @@ fmpz_fdiv_q_si(fmpz_t f, const fmpz_t g, slong h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         if (c2 > 0)
         {
@@ -412,7 +409,7 @@ fmpz_fdiv_q_ui(fmpz_t f, const fmpz_t g, ulong h)
 
     if (h == 0)
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_fdiv_q_ui). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_fdiv_q_ui). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -434,7 +431,7 @@ fmpz_fdiv_q_ui(fmpz_t f, const fmpz_t g, ulong h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
 
         flint_mpz_fdiv_q_ui(mf, COEFF_TO_PTR(c1), c2);
         _fmpz_demote_val(f);    /* division by h may result in small value */
@@ -459,7 +456,7 @@ void fmpz_fdiv_r_2exp(fmpz_t f, const fmpz_t g, ulong exp)
             }
             else
             {
-                __mpz_struct * mf = _fmpz_promote(f);
+                mpz_ptr mf = _fmpz_promote(f);
 
                 flint_mpz_set_ui(mf, 1);
                 mpz_mul_2exp(mf, mf, exp);
@@ -469,7 +466,7 @@ void fmpz_fdiv_r_2exp(fmpz_t f, const fmpz_t g, ulong exp)
     }
     else  /*g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);  /* g is already large */
+        mpz_ptr mf = _fmpz_promote(f);  /* g is already large */
         mpz_fdiv_r_2exp(mf, COEFF_TO_PTR(d), exp);
         _fmpz_demote_val(f);  /* division may make value small */
     }
@@ -483,7 +480,7 @@ fmpz_fdiv_r(fmpz_t f, const fmpz_t g, const fmpz_t h)
 
     if (fmpz_is_zero(h))
     {
-        flint_throw(FLINT_ERROR, "Exception (fmpz_fdiv_r). Division by zero.\n");
+        flint_throw(FLINT_DIVZERO, "Exception (fmpz_fdiv_r). Division by zero.\n");
     }
 
     if (!COEFF_IS_MPZ(c1))      /* g is small */
@@ -516,7 +513,7 @@ fmpz_fdiv_r(fmpz_t f, const fmpz_t g, const fmpz_t h)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf;
+        mpz_ptr mf;
 
         if (!COEFF_IS_MPZ(c2))  /* h is small */
         {

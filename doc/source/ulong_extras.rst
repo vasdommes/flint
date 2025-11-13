@@ -11,9 +11,9 @@ The module includes functions for square roots, factorisation and
 primality testing. Almost all the functions in this module are highly
 developed and extremely well optimised.
 
-The basic type is the ``mp_limb_t`` as defined by GMP. Functions
+The basic type is the ``ulong`` as defined by GMP. Functions
 which take a precomputed inverse either have the suffix ``preinv`` and
-take an ``mp_limb_t`` precomputed inverse as computed by
+take an ``ulong`` precomputed inverse as computed by
 ``n_preinvert_limb`` or have the suffix ``_precomp`` and accept a
 ``double`` precomputed inverse as computed by
 ``n_precompute_inverse``.
@@ -42,7 +42,7 @@ inverse, where `a = 12345678, b = 87654321` and `n = 111111111`.
    #include "ulong_extras.h"
    int main()
    {
-       mp_limb_t r, a, b, n, ninv;
+       ulong r, a, b, n, ninv;
 
        a = UWORD(12345678);
        b = UWORD(87654321);
@@ -452,7 +452,7 @@ Jacobi and Kronecker symbols
 --------------------------------------------------------------------------------
 
 
-.. function:: int n_jacobi(mp_limb_signed_t x, ulong y)
+.. function:: int n_jacobi(slong x, ulong y)
 
     Computes the Jacobi symbol `\left(\frac{x}{y}\right)` for any `x` and odd `y`.
 
@@ -481,7 +481,7 @@ Modular Arithmetic
     This is merely an adaption of the extended Euclidean algorithm
     with appropriate normalisation.
 
-.. function:: ulong n_powmod_precomp(ulong a, mp_limb_signed_t exp, ulong n, double npre)
+.. function:: ulong n_powmod_precomp(ulong a, slong exp, ulong n, double npre)
 
     Returns ``a^exp`` modulo `n` given a precomputed inverse of `n`
     computed by :func:`n_precompute_inverse`. We require `n < 2^{53}`
@@ -501,7 +501,7 @@ Modular Arithmetic
     This is implemented as a standard binary powering algorithm using
     repeated squaring and reducing modulo `n` at each step.
 
-.. function:: ulong n_powmod(ulong a, mp_limb_signed_t exp, ulong n)
+.. function:: ulong n_powmod(ulong a, slong exp, ulong n)
 
     Returns ``a^exp`` modulo `n`. We require ``n < 2^FLINT_D_BITS``
     and `0 \leq a < n`. There are no restrictions on ``exp``, i.e.
@@ -510,7 +510,7 @@ Modular Arithmetic
     This is implemented by precomputing an inverse and calling the
     ``precomp`` version of this function.
 
-.. function:: ulong n_powmod2_preinv(ulong a, mp_limb_signed_t exp, ulong n, ulong ninv)
+.. function:: ulong n_powmod2_preinv(ulong a, slong exp, ulong n, ulong ninv)
 
     Returns ``(a^exp) % n`` given a precomputed inverse of `n` computed
     by :func:`n_preinvert_limb`. We require `0 \leq a < n`, but there are no
@@ -522,7 +522,7 @@ Modular Arithmetic
     If ``exp`` is negative but `a` is not invertible modulo `n`, an
     exception is raised.
 
-.. function:: ulong n_powmod2(ulong a, mp_limb_signed_t exp, ulong n)
+.. function:: ulong n_powmod2(ulong a, slong exp, ulong n)
 
     Returns ``(a^exp) % n``. We require `0 \leq a < n`, but there are
     no restrictions on `n` or on ``exp``, i.e. it can be negative.
@@ -596,24 +596,168 @@ Modular Arithmetic
     ``m`` then 0 is returned by the function and the location ``sqrt``
     points to is set to NULL.
 
-.. function:: mp_limb_t n_mulmod_shoup(mp_limb_t w, mp_limb_t t, mp_limb_t w_precomp, mp_limb_t p)
 
-    Returns `w t \bmod{p}` given a precomputed scaled approximation of `w / p`
-    computed by :func:`n_mulmod_precomp_shoup`. The value of `p` should be
-    less than `2^{\mathtt{FLINT\_BITS} - 1}`. `w` and `t` should be less than `p`.
-    Works faster than :func:`n_mulmod2_preinv` if `w` fixed and `t` from array
-    (for example, scalar multiplication of vector).
+Modular Arithmetic with Fixed Operand
+--------------------------------------------------------------------------------
 
-.. function:: mp_limb_t n_mulmod_precomp_shoup(mp_limb_t w, mp_limb_t p)
+This is about computing several modular multiplications where one operand and
+the modulus are fixed, that is, computing `a b_i \bmod n` for several `b_i`'s
+and fixed `a` and `n`. Most functions below require `a < n <
+2^{\mathtt{FLINT\_BITS} - 1}` but have no constraint on `b_i` (it can be `\ge
+n`).
 
-    Returns `w'`, scaled approximation of `w / p`. `w'`  is equal to the integer
-    part of `w \cdot 2^{\mathtt{FLINT\_BITS}} / p`.
+Some explanations about the method can be found after the functions
+descriptions. This has been introduced in NTL and is attributed to Victor
+Shoup. For references, see
 
+- NTL code (in particular file FFT.cpp, consulted in NTL v11.5.1);
+
+- David Harvey, Faster arithmetic for number-theoretic transforms, 2014 J.Symbolic Computation (http://dx.doi.org/10.1016/j.jsc.2013.09.002);
+
+- Victor Shoup, "Arithmetic Software Libraries", 2021 (https://doi.org/10.1017/9781108854207.012) (chapter 9 of the book https://doi.org/10.1017/9781108854207).
+
+.. function:: ulong n_mulmod_precomp_shoup(ulong a, ulong n)
+
+    Returns ``a_precomp``, a scaled approximation of `a / n`. This requires `a
+    < n`. Precisely, ``a_precomp``  is the integer `\lfloor a \cdot
+    2^{\mathtt{FLINT\_BITS}} / n \rfloor`, and is intended to be used as the
+    precomputed data for :func:`n_mulmod_shoup`, which requires `n <
+    2^{\mathtt{FLINT\_BITS} - 1}`.
+
+.. function:: void n_mulmod_precomp_shoup_quo_rem(ulong * a_pr_quo, ulong * a_pr_rem, ulong a, ulong n)
+
+     Sets ``a_pr_quo`` to the above scaled approximation of `\lfloor a \cdot
+     2^{\mathtt{FLINT\_BITS}} / n \rfloor`, which is the quotient in the integer
+     division of `a \cdot 2^{\mathtt{FLINT\_BITS}}` by `n`, and also sets
+     ``a_pr_rem`` to the remainder in this division. This requires `a < n` and
+     is intended to be used as the precomputed data for
+     :func:`n_mulmod_and_precomp_shoup`, which requires `n <
+     2^{\mathtt{FLINT\_BITS} - 1}`.
+
+.. function:: ulong n_mulmod_precomp_shoup_rem_from_quo(ulong a_pr_quo, ulong n)
+
+    Returns the remainder in the integer division of `a \cdot
+    2^{\mathtt{FLINT\_BITS}}` by `n`. This requires `a < n` and is intended to
+    be used as the precomputed data for :func:`n_mulmod_and_precomp_shoup`,
+    which requires `n < 2^{\mathtt{FLINT\_BITS} - 1}`. This is faster than
+    :func:`n_mulmod_precomp_shoup_quo_rem` when ``a_pr_quo`` is already known.
+
+.. function:: ulong n_mulmod_shoup(ulong a, ulong b, ulong a_precomp, ulong n)
+
+    Returns `a b \bmod n` given ``a_precomp``, a precomputed scaled
+    approximation of `a / n` equal to `\lfloor a \cdot 2^{\mathtt{FLINT\_BITS}}
+    / n \rfloor`. This requires `n < 2^{\mathtt{FLINT\_BITS} - 1}` and `a < n`,
+    there is no restriction on `b`. Works faster than other ``mulmod``
+    routines (e.g. :func:`n_mulmod2_preinv`) in situations where one repeats
+    modular multiplications with fixed `a` and `n` and several values of `b`'s,
+    which amortizes the time for precomputing ``a_precomp``. Examples are
+    scalar multiplication of vectors such as :func:`_nmod_vec_scalar_mul_nmod`
+    or of matrices such as :func:`nmod_mat_scalar_mul`.
+
+.. function:: void n_mulmod_and_precomp_shoup(ulong * ab, ulong * ab_precomp, \
+                             ulong a, ulong b,                                \
+                             ulong a_pr_quo, ulong a_pr_rem, ulong b_precomp, \
+                             ulong n)
+
+    Sets ``ab`` to `a b \bmod n` and sets ``ab_precomp`` to the precomputed
+    scaled approximation for ``ab / n``, that is, `\lfloor (ab \bmod n) \cdot
+    2^{\mathtt{FLINT\_BITS}} / n \rfloor`. This requires `n <
+    2^{\mathtt{FLINT\_BITS} - 1}`, `a < n`, and `b < n`. The input ``a_pr_quo``
+    and ``a_pr_rem`` is as in the description of
+    :func:`n_mulmod_precomp_shoup_quo_rem`, and ``b_precomp`` is as in the
+    description of :func:`n_mulmod_precomp_shoup`. This can be used for example
+    when seeking a list of powers `[a \bmod n, a^2 \bmod n, a^3 \bmod n,
+    \ldots]` along with associated precomputed data to speed up repeated
+    modular multiplications by these fixed powers.
+
+Here are some explanations. Let `B = \mathtt{FLINT\_BITS}`, and `W = 2^B`. We have as input
+`a, b, n`, and the goal is mainly to output `ab \bmod n`. Constraints are: `a <
+n`, and `n` has `< B` bits, i.e. `0 \le a < n < 2^{B-1}`. There is no
+restriction on b.
+
+This is intended for repeated multiplications with fixed `a` and `n`, and
+varying `b`; hence the initial step is seen as a precomputation (it
+depends on `a` and `n` only).
+
+**Precomputation step:**  The main function is ``n_mulmod_precomp_shoup``,
+which computes `\mathtt{a\_precomp} = \lfloor a W / n \rfloor`. The requirement
+`a < n` ensures ``a_precomp`` fits in a word (i.e. `\mathtt{a\_precomp} < W`).
+The variant ending in ``_quo_rem`` computes the same quotient
+`\mathtt{a\_pr\_quo} = \mathtt{a\_precomp}` but also stores the remainder
+`\mathtt{a\_pr\_rem}` in the division of `a W` by `n`; the variant ending in
+``_rem_from_quo`` deduces the remainder from the quotient if the latter is
+already known.
+
+**Modular multiplication:** The main function is ``n_mulmod_shoup``, which
+takes `a, b, \hat{a}, n` as input and returns `ab \bmod n`, where `\hat{a} =
+\mathtt{a\_precomp}`. The steps are:
+
+1. find `\mathtt{p_hi}, \mathtt{p_lo}` such that `\hat{a} b = \mathtt{p_hi} W + \mathtt{p_lo}`     (high part of a double-word multiplication, `\mathtt{p_lo}` will not be used)
+2. compute `c = ab - \mathtt{p_hi} n`                  (two single-word multiplications)
+3. if `c \ge n`, return `c-n`, else return `c`
+
+*Step 1.* One has `\mathtt{p_hi} = \lfloor ab/n \rfloor` or `\mathtt{p_hi} = \lfloor ab/n \rfloor - 1`.
+
+Proof: Write `aW = \hat{a} n + r`, with `0 \le r < n`.  Thus `\frac{\hat{a}
+b}{W} = \frac{ab}{n} - \frac{rb}{nW}`.  So `\mathtt{p_hi} = \lfloor
+\frac{\hat{a} b}{W} \rfloor = \lfloor \frac{ab}{n} - \frac{rb}{nW} \rfloor`.
+Clearly `\mathtt{p_hi} \le \lfloor \frac{ab}{n} \rfloor`. And `rb < nW` (since
+`r < n` and `b < W`) so `-\frac{rb}{nW} > -1`, hence `\mathtt{p_hi} \ge
+\lfloor \frac{ab}{n} \rfloor - 1`.
+
+*Step 2.* It follows that either `c = ab \bmod n` or `c = (ab \bmod n) + n`.
+
+This is where the restriction on `n` comes into play: allowing `n` to have `B`
+bits prevents us from detecting which case we are in (a comparison such as `c
+\ge n` would not tell). Since `n` has `< B` bits, `c \ge n` if and only if `c =
+(ab \bmod n) + n`.
+
+*Step 3.* we use this to detect which case we are in and correct the possible
+excess.
+
+**Combining precomputation and multiplication:** The main function is
+``n_mulmod_and_precomp_shoup``. The goal is to compute not only `ab \bmod n`,
+but also the corresponding quotient `\mathtt{ab\_precomp} = \lfloor (ab \bmod
+n) \cdot W / n \rfloor`. For this we require as input both the precomputed
+quotient and remainder for `a` (that is, ``a_pr_quo`` and ``a_pr_rem``), as
+well as the precomputed quotient for ``b`` (``b_precomp``). This adds the
+constraint that `b < n`.
+
+To simplify notation, write the integer division `aW = \hat{a} n + \check{a}`
+so that `\hat{a} = \mathtt{a\_pr\_quo}` and `\check{a} = \mathtt{a\_pr\_rem}`,
+and similarly for `bW = \hat{b} n + \check{b}` with `\hat{b} =
+\mathtt{b\_precomp}` (we will not use `\check{b}`).
+
+The first three steps follow the above-described approach to compute `ab \bmod
+n` using `\hat{a}` (but this time, the lower part of the double-word
+multiplication is kept):
+
+1. find `d, \hat{c}` such that `\hat{a} b = d W + \hat{c}` (double-word multiplication)
+2. compute `c = a b - d n` (two single-word multiplications)
+3. if `c \ge n` then `c \gets c - n`
+
+At this stage, `c = ab \bmod n`, and `\hat{c} = \hat{a} b \bmod W`. Now suppose
+we have the quotient `q = \lfloor \frac{\check{a} b}{n} \rfloor` in the
+division of `\check{a}b` by `n`. The claim is that `\hat{c} + q` is the sought
+precomputation quotient for `ab \bmod n` up to a multiple of `W`, that is,
+`\hat{c} + q = \lfloor \frac{c W}{n} \rfloor \bmod W`. Indeed, one has `\lfloor
+\frac{c W}{n} \rfloor = \lfloor \frac{ab W}{n} \rfloor \bmod W`, and it remains
+to observe that `\lfloor \frac{ab W}{n} \rfloor = \lfloor
+\frac{(\hat{a}n+\check{a}) b}{n} \rfloor = \hat{a} b + \lfloor \frac{\check{a}
+b}{n} \rfloor = \hat{c} + q \bmod W`.
+
+Therefore the remaining steps consist in computing the quotient `q`, which can
+be done via the modular multiplication of `\check{a}` by `b` using the
+precomputed quotient for `b`:
+
+4. find `q,e` such that `\hat{b} \check{a} = q W + e` (high-part of double word multiplication, `e` will not be used)
+5. compute `h = b \check{a} - q n` (two single-word multiplications)
+6. if `h \ge n` then `q \gets q+1`
 
 Divisibility testing
 --------------------------------------------------------------------------------
 
-.. function:: int n_divides(mp_limb_t * q, mp_limb_t n, mp_limb_t p)
+.. function:: int n_divides(ulong * q, ulong n, ulong p)
 
    Returns ``1`` if ``p`` divides ``n`` and sets ``q`` to the quotient,
    otherwise returns ``0`` and sets ``q`` to ``0``.
@@ -750,6 +894,43 @@ Prime number generation and counting
 Primality testing
 --------------------------------------------------------------------------------
 
+.. function:: int n_is_prime(ulong n)
+
+    Returns 1 if `n` is prime and 0 otherwise. This function is intended
+    for general input.
+
+    For integers up to 15 bits, we look up the result in a bit array.
+    For integers between 16 and 64 bits, we do some trial division and then
+    perform a single base-2 strong probable prime test to detect most
+    composites. For numbers that pass this test, primality is certified
+    by checking that `n` is not one of the 31894014 base-2 strong pseudoprimes
+    `n < 2^{64}` which have been tabulated exhaustively by Feitsma [FeiGal2013]_.
+
+    For the 2314 pseudoprimes up to 32 bits, we simply store all
+    pseudoprimes in a table and do a lookup using binary search.
+    For the pseudoprimes up to 64 bits, we use a hash table following the
+    idea of Forisek and Jancina [ForJan2015]_. We precompute a function `T` such
+    that for pseudoprime `n < 2^{64}`, a probable prime test with base `T(n)`
+    certifies compositeness of `n`. Our `T` is represented as a hash table
+    with 131072 entries most of which are 21-bit or 22-bit integers bit-packed
+    into an array of 43691 64-bit words, three entries per word. A small
+    number of oversize bases (up to 32-bit integers) are stored in a separate
+    binary search table. The probability of falling back on the binary
+    search table is only 0.17%, and this fallback is itself cheap. In total
+    the tables for 64-bit pseudoprimes require 343 KB, which is just 2/3 the
+    size of the 512 KB Forisek-Jancina table of 262144 16-bit bases, while
+    the test is as efficient.
+
+    To check this implementation against Feitsma's table, one can run the
+    ``examples/check_n_is_prime`` program.
+
+.. function:: int n_is_prime_odd_no_trial(ulong n)
+
+    As :func:`n_is_prime`, but does not perform trial division. Requires
+    that `n` is odd. This function is much slower than :func:`n_is_prime`
+    for random input but slightly faster for certifying primality or
+    compositeness if `n` has already
+    passed preliminary trial division or sieving done by the user.
 
 .. function:: int n_is_oddprime_small(ulong n)
 
@@ -828,19 +1009,6 @@ Primality testing
     The possibility exists that the probable prime test declares a
     composite prime. However in that case an error is printed, as
     that would be of independent interest.
-
-.. function:: int n_is_prime(ulong n)
-
-    Tests if `n` is a prime. This first sieves for small prime factors,
-    then simply calls :func:`n_is_probabprime`. This has been checked
-    against the tables of Feitsma and Galway
-    http://www.cecm.sfu.ca/Pseudoprimes/index-2-to-64.html and thus
-    constitutes a check for primality (rather than just pseudoprimality)
-    up to `2^{64}`.
-
-    In future, this test may produce and check a certificate of
-    primality. This is likely to be significantly slower for prime
-    inputs.
 
 .. function:: int n_is_strong_probabprime_precomp(ulong n, double npre, ulong a, ulong d)
 
@@ -1040,12 +1208,6 @@ Square root and perfect power testing
     `x \leftarrow x - (x\cdot x\cdot x - a)\cdot x/(2\cdot x\cdot x\cdot x + a)` for getting a good estimate,
     as mentioned in the paper by W. Kahan [Kahan1991]_ .
 
-.. function:: ulong n_cbrt_newton_iteration(ulong n)
-
-    This function returns the integer truncation of the cube root of `n`.
-    Makes use of Newton iterations to get a close value, and then adjusts the
-    estimate so as to get the correct value.
-
 .. function:: ulong n_cbrt_binary_search(ulong n)
 
     This function returns the integer truncation of the cube root of `n`.
@@ -1060,6 +1222,7 @@ Square root and perfect power testing
     values of the coefficient are calculated from the Python module mpmath,
     https://mpmath.org, using the function chebyfit. x is multiplied
     by ``2^exp`` and the cube root of 1, 2 or 4 (according to ``exp%3``).
+    Requires that `n` is nonzero.
 
 .. function:: ulong n_cbrtrem(ulong * remainder, ulong n)
 
@@ -1069,6 +1232,23 @@ Square root and perfect power testing
 
 Factorisation
 --------------------------------------------------------------------------------
+
+.. type:: n_factor_t
+
+    Represents a set of distinct prime factors and their corresponding
+    exponents.
+
+    .. member:: int num
+
+        The number of distinct prime factors.
+
+    .. member:: ulong p[]
+
+        An array containing the distinct prime factors.
+
+    .. member:: int exp[]
+
+        An array containing the corresponding exponents.
 
 .. function:: void n_factor_init(n_factor_t * factors)
 
@@ -1107,9 +1287,7 @@ Factorisation
 
 .. function:: void n_factor_insert(n_factor_t * factors, ulong p, ulong exp)
 
-    Inserts the given prime power factor ``p^exp`` into
-    the ``n_factor_t`` ``factors``. See the documentation for
-    :func:`n_factor_trial` for a description of the ``n_factor_t`` type.
+    Inserts the given prime power factor ``p^exp`` into ``factors``.
 
     The algorithm performs a simple search to see if `p` already
     exists as a prime factor in the structure. If so the exponent
@@ -1128,11 +1306,6 @@ Factorisation
     will be added by default to an already used ``n_factor_t``. Use
     the function :func:`n_factor_init` defined in ``ulong_extras`` if
     initialisation has not already been completed on factors.
-
-    Once completed, ``num`` will contain the number of distinct
-    prime factors found. The field `p` is an array of ``ulong``\s
-    containing the distinct prime factors, ``exp`` an array
-    containing the corresponding exponents.
 
     The return value is the unfactored cofactor after trial
     factoring is done.
@@ -1216,9 +1389,6 @@ Factorisation
     However, in future, this flag may produce and separately check
     a primality certificate. This may be quite slow (and probably no
     less reliable in practice).
-
-    For details on the ``n_factor_t`` structure, see
-    :func:`n_factor_trial`.
 
     This function first tries trial factoring with a number of primes
     specified by the constant ``FLINT_FACTOR_TRIAL_PRIMES``. If the
@@ -1308,7 +1478,7 @@ Factorisation
     the time for ``n_factor`` on numbers that reach the ``n_factor_pp1``
     stage, i.e. after trial factoring and one line factoring.
 
-.. function:: int n_factor_pollard_brent_single(mp_limb_t * factor, mp_limb_t n, mp_limb_t ninv, mp_limb_t ai, mp_limb_t xi, mp_limb_t normbits, mp_limb_t max_iters)
+.. function:: int n_factor_pollard_brent_single(ulong * factor, ulong n, ulong ninv, ulong ai, ulong xi, ulong normbits, ulong max_iters)
 
     Pollard Rho algorithm (with Brent modification) for integer factorization.
     Assumes that the `n` is not prime. `factor` is set as the factor if found.
@@ -1327,7 +1497,7 @@ Factorisation
     suggested by Richard Brent in the paper, available at
     https://maths-people.anu.edu.au/~brent/pd/rpb051i.pdf
 
-.. function:: int n_factor_pollard_brent(mp_limb_t * factor, flint_rand_t state, mp_limb_t n_in, mp_limb_t max_tries, mp_limb_t max_iters)
+.. function:: int n_factor_pollard_brent(ulong * factor, flint_rand_t state, ulong n_in, ulong max_tries, ulong max_iters)
 
     Pollard Rho algorithm, modified as suggested by Richard Brent. Makes a call to
     :func:`n_factor_pollard_brent_single`. The input parameters ai and xi for
@@ -1429,11 +1599,11 @@ Primitive Roots and Discrete Logarithms
 
 
 
-Elliptic curve method for factorization of ``mp_limb_t``
+Elliptic curve method for factorization of ``ulong``
 --------------------------------------------------------------------------------
 
 
-.. function:: void n_factor_ecm_double(mp_limb_t * x, mp_limb_t * z, mp_limb_t x0, mp_limb_t z0, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: void n_factor_ecm_double(ulong * x, ulong * z, ulong x0, ulong z0, ulong n, n_ecm_t n_ecm_inf)
 
     Sets the point `(x : z)` to two times `(x_0 : z_0)` modulo `n` according
     to the formula
@@ -1445,7 +1615,7 @@ Elliptic curve method for factorization of ``mp_limb_t``
     This group doubling is valid only for points expressed in
     Montgomery projective coordinates.
 
-.. function:: void n_factor_ecm_add(mp_limb_t * x, mp_limb_t * z, mp_limb_t x1, mp_limb_t z1, mp_limb_t x2, mp_limb_t z2, mp_limb_t x0, mp_limb_t z0, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: void n_factor_ecm_add(ulong * x, ulong * z, ulong x1, ulong z1, ulong x2, ulong z2, ulong x0, ulong z0, ulong n, n_ecm_t n_ecm_inf)
 
     Sets the point `(x : z)` to the sum of `(x_1 : z_1)` and `(x_2 : z_2)`
     modulo `n`, given the difference `(x_0 : z_0)` according to the formula
@@ -1453,7 +1623,7 @@ Elliptic curve method for factorization of ``mp_limb_t``
     This group doubling is valid only for points expressed in
     Montgomery projective coordinates.
 
-.. function:: void n_factor_ecm_mul_montgomery_ladder(mp_limb_t * x, mp_limb_t * z, mp_limb_t x0, mp_limb_t z0, mp_limb_t k, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: void n_factor_ecm_mul_montgomery_ladder(ulong * x, ulong * z, ulong x0, ulong z0, ulong k, ulong n, n_ecm_t n_ecm_inf)
 
     Montgomery ladder algorithm for scalar multiplication of elliptic points.
 
@@ -1461,7 +1631,7 @@ Elliptic curve method for factorization of ``mp_limb_t``
 
     Valid only for points expressed in Montgomery projective coordinates.
 
-.. function:: int n_factor_ecm_select_curve(mp_limb_t * f, mp_limb_t sigma, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: int n_factor_ecm_select_curve(ulong * f, ulong sigma, ulong n, n_ecm_t n_ecm_inf)
 
     Selects a random elliptic curve given a random integer ``sigma``,
     according to Suyama's parameterization. If the factor is found while
@@ -1476,7 +1646,7 @@ Elliptic curve method for factorization of ``mp_limb_t``
     The curve selected is of Montgomery form, the points selected satisfy the
     curve and are projective coordinates.
 
-.. function:: int n_factor_ecm_stage_I(mp_limb_t * f, const mp_limb_t * prime_array, mp_limb_t num, mp_limb_t B1, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: int n_factor_ecm_stage_I(ulong * f, const ulong * prime_array, ulong num, ulong B1, ulong n, n_ecm_t n_ecm_inf)
 
     Stage I implementation of the ECM algorithm.
 
@@ -1486,7 +1656,7 @@ Elliptic curve method for factorization of ``mp_limb_t``
 
     If the factor is found, `1` is returned, otherwise `0`.
 
-.. function:: int n_factor_ecm_stage_II(mp_limb_t * f, mp_limb_t B1, mp_limb_t B2, mp_limb_t P, mp_limb_t n, n_ecm_t n_ecm_inf)
+.. function:: int n_factor_ecm_stage_II(ulong * f, ulong B1, ulong B2, ulong P, ulong n, n_ecm_t n_ecm_inf)
 
     Stage II implementation of the ECM algorithm.
 
@@ -1496,10 +1666,10 @@ Elliptic curve method for factorization of ``mp_limb_t``
 
     If the factor is found, `1` is returned, otherwise `0`.
 
-.. function:: int n_factor_ecm(mp_limb_t * f, mp_limb_t curves, mp_limb_t B1, mp_limb_t B2, flint_rand_t state, mp_limb_t n)
+.. function:: int n_factor_ecm(ulong * f, ulong curves, ulong B1, ulong B2, flint_rand_t state, ulong n)
 
     Outer wrapper function for the ECM algorithm. It factors `n` which
-    must fit into a ``mp_limb_t``.
+    must fit into a ``ulong``.
 
     The function calls stage I and II, and
     the precomputations (builds ``prime_array`` for stage I,

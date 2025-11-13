@@ -10,15 +10,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
+#include "acb.h"
 #include "acb_dirichlet.h"
 
-#ifdef __GNUC__
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
-
-void
+static void
 acb_dirichlet_l_general(acb_t res, const acb_t s,
     const dirichlet_group_t G, const dirichlet_char_t chi, slong prec)
 {
@@ -29,7 +25,7 @@ acb_dirichlet_l_general(acb_t res, const acb_t s,
     }
     else
     {
-        slong wp = prec + n_clog(G->phi_q, 2);
+        slong wp = prec + FLINT_CLOG2(G->phi_q);
         acb_dirichlet_hurwitz_precomp_t pre;
         acb_dirichlet_hurwitz_precomp_init_num(pre, s, acb_is_one(s), G->phi_q, wp);
         acb_dirichlet_l_hurwitz(res, s, pre, G, chi, prec);

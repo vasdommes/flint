@@ -9,16 +9,15 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stdlib.h>
-
 /* Include functions *********************************************************/
 
 #include "t-add_sub.c"
 #include "t-gen.c"
 #include "t-get_set_coeff.c"
+#include "t-integral.c"
 #include "t-mul_johnson.c"
 #include "t-mul_monomial.c"
+#include "t-ring.c"
 
 /* Array of test functions ***************************************************/
 
@@ -27,8 +26,10 @@ test_struct tests[] =
     TEST_FUNCTION(gr_mpoly_add_sub),
     TEST_FUNCTION(gr_mpoly_gen),
     TEST_FUNCTION(gr_mpoly_get_set_coeff),
+    TEST_FUNCTION(gr_mpoly_integral),
     TEST_FUNCTION(gr_mpoly_mul_johnson),
-    TEST_FUNCTION(gr_mpoly_mul_monomial)
+    TEST_FUNCTION(gr_mpoly_mul_monomial),
+    TEST_FUNCTION(gr_mpoly_ring)
 };
 
 /* main function *************************************************************/

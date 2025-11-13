@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz_mat.h"
 #include "profiler.h"
 
@@ -101,6 +100,6 @@ int main(void)
         fmpz_mat_clear(D);
     }
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
     return 0;
 }

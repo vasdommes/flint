@@ -9,7 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "fmpz.h"
+#include "longlong.h"
+#include "padic.h"
 
 slong * _padic_lifts_exps(slong *n, slong N)
 {

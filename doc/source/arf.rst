@@ -299,10 +299,12 @@ Assignment, rounding and conversions
     The warnings for :func:`arf_get_fmpz` apply.
 
 .. function:: void arf_floor(arf_t res, const arf_t x)
+              void arf_ceil(arf_t res, const arf_t x)
+              void arf_nint(arf_t res, const arf_t x)
 
-.. function:: void arf_ceil(arf_t res, const arf_t x)
-
-    Sets *res* to `\lfloor x \rfloor` and `\lceil x \rceil` respectively.
+    Sets *res* respectively to the floor `\lfloor x \rfloor`,
+    ceiling `\lceil x \rceil`
+    or nearest integer `\lfloor x \rceil` (with ties-to-even).
     The result is always represented exactly, requiring no more bits to
     store than the input. To round the result to a floating-point number
     with a lower precision, call :func:`arf_set_round` afterwards.
@@ -648,6 +650,13 @@ Summation
 Dot products
 -------------------------------------------------------------------------------
 
+.. function:: int arf_dot(arf_t res, const arf_t initial, int subtract, arf_srcptr x, slong xstep, arf_srcptr y, slong ystep, slong len, slong prec, arf_rnd_t rnd)
+
+    Computes a dot product, with the same meaning of
+    the parameters as :func:`arb_dot`. The result is correctly rounded
+    in the direction specified by ``rnd``. This function is currently not optimized
+    for speed.
+
 .. function:: void arf_approx_dot(arf_t res, const arf_t initial, int subtract, arf_srcptr x, slong xstep, arf_srcptr y, slong ystep, slong len, slong prec, arf_rnd_t rnd)
 
     Computes an approximate dot product, with the same meaning of
@@ -731,7 +740,7 @@ Complex arithmetic
 Low-level methods
 -------------------------------------------------------------------------------
 
-.. function:: int _arf_get_integer_mpn(mp_ptr y, mp_srcptr xp, mp_size_t xn, slong exp)
+.. function:: int _arf_get_integer_mpn(nn_ptr y, nn_srcptr xp, slong xn, slong exp)
 
     Given a floating-point number *x* represented by *xn* limbs at *xp*
     and an exponent *exp*, writes the integer part of *x* to
@@ -741,7 +750,7 @@ Low-level methods
     Assumes that ``xp[0]`` is nonzero and that the
     top bit of ``xp[xn-1]`` is set.
 
-.. function:: int _arf_set_mpn_fixed(arf_t z, mp_srcptr xp, mp_size_t xn, mp_size_t fixn, int negative, slong prec, arf_rnd_t rnd)
+.. function:: int _arf_set_mpn_fixed(arf_t z, nn_srcptr xp, slong xn, slong fixn, int negative, slong prec, arf_rnd_t rnd)
 
     Sets *z* to the fixed-point number having *xn* total limbs and *fixn*
     fractional limbs, negated if *negative* is set, rounding *z* to *prec*
@@ -755,7 +764,7 @@ Low-level methods
     Sets *z* to the integer *x*, negated if *sgnbit* is 1, rounded to *prec*
     bits in the direction specified by *rnd*. There are no assumptions on *x*.
 
-.. function:: int _arf_set_round_uiui(arf_t z, slong * fix, mp_limb_t hi, mp_limb_t lo, int sgnbit, slong prec, arf_rnd_t rnd)
+.. function:: int _arf_set_round_uiui(arf_t z, slong * fix, ulong hi, ulong lo, int sgnbit, slong prec, arf_rnd_t rnd)
 
     Sets the mantissa of *z* to the two-limb mantissa given by *hi* and *lo*,
     negated if *sgnbit* is 1, rounded to *prec* bits in the direction specified
@@ -763,7 +772,7 @@ Low-level methods
     Writes the exponent shift to *fix* without writing the exponent of *z*
     directly.
 
-.. function:: int _arf_set_round_mpn(arf_t z, slong * exp_shift, mp_srcptr x, mp_size_t xn, int sgnbit, slong prec, arf_rnd_t rnd)
+.. function:: int _arf_set_round_mpn(arf_t z, slong * exp_shift, nn_srcptr x, slong xn, int sgnbit, slong prec, arf_rnd_t rnd)
 
     Sets the mantissa of *z* to the mantissa given by the *xn* limbs in *x*,
     negated if *sgnbit* is 1, rounded to *prec* bits in the direction

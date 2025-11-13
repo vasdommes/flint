@@ -9,13 +9,14 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "mpoly.h"
 #include "nmod_mpoly_factor.h"
 
 void nmod_mpoly_compression_do(
     nmod_mpoly_t L,
     const nmod_mpoly_ctx_t Lctx,
-    mp_limb_t * Acoeffs,
+    ulong * Acoeffs,
     slong Alen,
     mpoly_compression_t M)
 {

@@ -14,8 +14,6 @@
 
 #include "templates.h"
 
-#include "flint.h"
-#include "ulong_extras.h"
 #include "perm.h"
 
 int

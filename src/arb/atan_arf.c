@@ -12,10 +12,10 @@
 #include "arb.h"
 #include "mpn_extras.h"
 
-#define TMP_ALLOC_LIMBS(size) TMP_ALLOC((size) * sizeof(mp_limb_t))
+#define TMP_ALLOC_LIMBS(size) TMP_ALLOC((size) * sizeof(ulong))
 
 /* atan(x) = x + eps, |eps| < x^3*/
-void
+static void
 arb_atan_eps(arb_t z, const arf_t x, slong prec)
 {
     fmpz_t mag;
@@ -28,7 +28,7 @@ arb_atan_eps(arb_t z, const arf_t x, slong prec)
 }
 
 /* atan(x) = pi/2 - eps, eps < 1/x <= 2^(1-mag) */
-void
+static void
 arb_atan_inf_eps(arb_t z, const arf_t x, slong prec)
 {
     fmpz_t mag;
@@ -88,10 +88,10 @@ arb_atan_arf(arb_t z, const arf_t x, slong prec)
     else
     {
         slong exp, wp, wn, N, r;
-        mp_srcptr xp;
-        mp_size_t xn, tn;
-        mp_ptr tmp, w, t, u;
-        mp_limb_t p1, q1bits, p2, q2bits, error, error2;
+        nn_srcptr xp;
+        slong xn, tn;
+        nn_ptr tmp, w, t, u;
+        ulong p1, q1bits, p2, q2bits, error, error2;
         int negative, inexact, reciprocal;
         TMP_INIT;
 
@@ -162,7 +162,7 @@ arb_atan_arf(arb_t z, const arf_t x, slong prec)
         else    /* |x| > 1 */
         {
             slong one_exp, one_limbs, one_bits;
-            mp_ptr one;
+            nn_ptr one;
 
             reciprocal = 1;
 

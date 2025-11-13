@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz.h"
 
 /* b aliases neither q nor r */
@@ -63,7 +62,7 @@ fmpz_ndiv_qr(fmpz_t q, fmpz_t r, const fmpz_t a, const fmpz_t b)
 
     if (fmpz_is_zero(b))
     {
-        flint_throw(FLINT_ERROR, "Exception: division by zero in fmpz_ndiv_qr\n");
+        flint_throw(FLINT_DIVZERO, "Exception: division by zero in fmpz_ndiv_qr\n");
     }
 
     if (!COEFF_IS_MPZ(A) && !COEFF_IS_MPZ(B))

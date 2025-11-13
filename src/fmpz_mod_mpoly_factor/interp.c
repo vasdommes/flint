@@ -13,6 +13,7 @@
 #include "mpoly.h"
 #include "fmpz_mod_mpoly_factor.h"
 
+#if 0
 /*
     E = A(v = alpha)
     A is in R[v][x]
@@ -68,7 +69,6 @@ void fmpz_mod_polyu1n_intp_lift_sm_poly(
     A->length = Ai;
 }
 
-
 /*
     F = F + modulus*(A - F(v = alpha))
     no assumptions about matching monomials
@@ -122,7 +122,7 @@ int fmpz_mod_polyu1n_intp_crt_sm_poly(
             FLINT_ASSERT(!fmpz_is_zero(Acoeffs + Ai));
         }
 
-        if (Fi < Flen && Ai >= 0 && Fexps[Fi] == Ai)
+        if (Fi < Flen && Ai >= 0 && Fexps[Fi] == (ulong) Ai)
         {
             /* F term ok, A term ok */
             fmpz_mod_poly_evaluate_fmpz(v, Fcoeffs + Fi, alpha, ctx);
@@ -136,7 +136,7 @@ int fmpz_mod_polyu1n_intp_crt_sm_poly(
                 Ai--;
             } while (Ai >= 0 && fmpz_is_zero(Acoeffs + Ai));
         }
-        else if (Fi < Flen && (Ai < 0 || Fexps[Fi] > Ai))
+        else if (Fi < Flen && (Ai < 0 || Fexps[Fi] > (ulong) Ai))
         {
             /* F term ok, A term missing */
             fmpz_mod_poly_evaluate_fmpz(v, Fcoeffs + Fi, alpha, ctx);
@@ -176,7 +176,7 @@ int fmpz_mod_polyu1n_intp_crt_sm_poly(
     *lastdeg = lastlen - 1;
     return changed;
 }
-
+#endif
 
 void fmpz_mod_polyu1n_interp_reduce_2sm_poly(
     fmpz_mod_poly_t E,
@@ -590,7 +590,7 @@ int fmpz_mod_mpolyn_interp_crt_sm_poly(
 
         mpoly_monomial_zero(Texp + N*Ti, N);
 
-        if (Fi < Flen && Ai >= 0 && ((Fexp + N*Fi)[off]>>shift) == Ai)
+        if (Fi < Flen && Ai >= 0 && ((Fexp + N*Fi)[off]>>shift) == (ulong) Ai)
         {
             /* F term ok, A term ok */
             fmpz_mod_poly_evaluate_fmpz(u, Fcoeff + Fi, alpha, ctx->ffinfo);
@@ -612,7 +612,7 @@ int fmpz_mod_mpolyn_interp_crt_sm_poly(
                 Ai--;
             } while (Ai >= 0 && fmpz_is_zero(Acoeff + Ai));
         }
-        else if (Fi < Flen && (Ai < 0 || ((Fexp + N*Fi)[off]>>shift) > Ai))
+        else if (Fi < Flen && (Ai < 0 || ((Fexp + N*Fi)[off]>>shift) > (ulong) Ai))
         {
             /* F term ok, A term missing */
             fmpz_mod_poly_evaluate_fmpz(v, Fcoeff + Fi, alpha, ctx->ffinfo);
@@ -630,7 +630,7 @@ int fmpz_mod_mpolyn_interp_crt_sm_poly(
             (Texp + N*Ti)[off] = (Fexp + N*Fi)[off];
             Fi++;
         }
-        else if (Ai >= 0 && (Fi >= Flen || ((Fexp + N*Fi)[off]>>shift) < Ai))
+        else if (Ai >= 0 && (Fi >= Flen || ((Fexp + N*Fi)[off]>>shift) < (ulong) Ai))
         {
             /* F term missing, A term ok */
             changed = 1;

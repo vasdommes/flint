@@ -11,6 +11,7 @@
 */
 
 #include "fq_default.h"
+#include "gr/impl.h"
 
 void fq_default_ctx_init_type(fq_default_ctx_t ctx,
                             const fmpz_t p, slong d, const char *var, int type)
@@ -23,7 +24,7 @@ void fq_default_ctx_init_type(fq_default_ctx_t ctx,
     }
     else if (type == FQ_DEFAULT_FQ_NMOD || (type == 0 && d > 1 && fmpz_abs_fits_ui(p)))
     {
-        gr_ctx_init_fq_nmod(FQ_DEFAULT_GR_CTX(ctx), *p, d, var);
+        gr_ctx_init_fq_nmod(FQ_DEFAULT_GR_CTX(ctx), fmpz_get_ui(p), d, var);
     }
     else if (type == FQ_DEFAULT_NMOD || (type == 0 && d == 1 && fmpz_abs_fits_ui(p)))
     {
@@ -42,16 +43,6 @@ void fq_default_ctx_init_type(fq_default_ctx_t ctx,
     }
 }
 
-int gr_ctx_init_fq_zech_modulus_nmod_poly(gr_ctx_t ctx, const nmod_poly_t modulus, const char * var);
-int gr_ctx_init_fq_zech_modulus_fmpz_mod_poly(gr_ctx_t ctx, const fmpz_mod_poly_t modulus, fmpz_mod_ctx_t mod_ctx, const char * var);
-
-int gr_ctx_init_fq_nmod_modulus_nmod_poly(gr_ctx_t ctx, const nmod_poly_t modulus, const char * var);
-int gr_ctx_init_fq_nmod_modulus_fmpz_mod_poly(gr_ctx_t ctx, const fmpz_mod_poly_t modulus, fmpz_mod_ctx_t mod_ctx, const char * var);
-
-int gr_ctx_init_fq_modulus_nmod_poly(gr_ctx_t ctx, const nmod_poly_t modulus, const char * var);
-int gr_ctx_init_fq_modulus_fmpz_mod_poly(gr_ctx_t ctx, const fmpz_mod_poly_t modulus, fmpz_mod_ctx_t mod_ctx, const char * var);
-
-
 void fq_default_ctx_init_modulus_type(fq_default_ctx_t ctx,
                 const fmpz_mod_poly_t modulus, fmpz_mod_ctx_t mod_ctx,
                                                     const char * var, int type)
@@ -63,7 +54,7 @@ void fq_default_ctx_init_modulus_type(fq_default_ctx_t ctx,
     if (type == FQ_DEFAULT_FQ_ZECH || (type == 0 && d > 1 && bits*d <= 16))
     {
         if (gr_ctx_init_fq_zech_modulus_fmpz_mod_poly(FQ_DEFAULT_GR_CTX(ctx), modulus, mod_ctx, var) != GR_SUCCESS)
-            fq_default_ctx_init_modulus_type(ctx, modulus, mod_ctx, var, _FQ_DEFAULT_FQ_NMOD);
+            fq_default_ctx_init_modulus_type(ctx, modulus, mod_ctx, var, FQ_DEFAULT_FQ_NMOD);
     }
     else if (type == FQ_DEFAULT_FQ_NMOD || (type == 0 && d > 1 && fmpz_abs_fits_ui(p)))
     {
@@ -71,7 +62,7 @@ void fq_default_ctx_init_modulus_type(fq_default_ctx_t ctx,
     }
     else if (type == FQ_DEFAULT_NMOD || (type == 0 && d == 1 && fmpz_abs_fits_ui(p)))
     {
-        mp_limb_t c0, c1, a;
+        ulong c0, c1, a;
         nmod_t mod;
 
         nmod_init(&mod, fmpz_get_ui(p));
@@ -118,7 +109,7 @@ void fq_default_ctx_init_modulus_nmod_type(fq_default_ctx_t ctx,
     if (type == FQ_DEFAULT_FQ_ZECH || (type == 0 && d > 1 && bits*d <= 16))
     {
         if (gr_ctx_init_fq_zech_modulus_nmod_poly(FQ_DEFAULT_GR_CTX(ctx), modulus, var) != GR_SUCCESS)
-            fq_default_ctx_init_modulus_nmod_type(ctx, modulus, var, _FQ_DEFAULT_FQ_NMOD);
+            fq_default_ctx_init_modulus_nmod_type(ctx, modulus, var, FQ_DEFAULT_FQ_NMOD);
     }
     else if (type == FQ_DEFAULT_FQ_NMOD || (type == 0 && d > 1))
     {
@@ -126,7 +117,7 @@ void fq_default_ctx_init_modulus_nmod_type(fq_default_ctx_t ctx,
     }
     else if (type == FQ_DEFAULT_NMOD || (type == 0 && d == 1))
     {
-        mp_limb_t c0, c1, a;
+        ulong c0, c1, a;
         nmod_t mod;
 
         nmod_init(&mod, p);
@@ -142,7 +133,7 @@ void fq_default_ctx_init_modulus_nmod_type(fq_default_ctx_t ctx,
     else if (type == FQ_DEFAULT_FMPZ_MOD || (type == 0 && d == 1))
     {
         fmpz_t pp;
-        mp_limb_t c0, c1, a;
+        ulong c0, c1, a;
 
         c0 = modulus->coeffs[0];
         c1 = modulus->coeffs[1];
@@ -198,4 +189,48 @@ void fq_default_ctx_modulus(fmpz_mod_poly_t p, const fq_default_ctx_t ctx)
         fmpz_mod_ctx_struct const * mod = FQ_DEFAULT_CTX_FQ(ctx)->ctxp;
         fmpz_mod_poly_set(p, FQ_DEFAULT_CTX_FQ(ctx)->modulus, mod);
     }
+}
+
+/* Create a random fq_default_ctx picked from the five internal representations */
+void fq_default_ctx_init_randtest(fq_default_ctx_t ctx, flint_rand_t state)
+{
+    fmpz_t prime;
+    slong deg;
+    int type;
+
+    fmpz_init(prime);
+    type = 1 + n_randint(state, 5);
+
+    switch (type)
+    {
+        /* Create GF(p^d) for FQ_ZECH context */
+        case FQ_DEFAULT_FQ_ZECH:
+            fmpz_randprime(prime, state, 2 + n_randint(state, 3), 1);
+            deg = 1 + n_randint(state, 3);
+            break;
+        /* Create GF(p^d) for FQ_NMOD context */
+        case FQ_DEFAULT_FQ_NMOD:
+            fmpz_randprime(prime, state, 2 + n_randint(state, 29), 1);
+            deg = 1 + n_randint(state, 15);
+            break;
+        /* Create GF(p^d) for FQ context */
+        case FQ_DEFAULT_FQ:
+            fmpz_randprime(prime, state, 2 + n_randint(state, 62), 1);
+            deg = 1 + n_randint(state, 7);
+            break;
+        /* Create GF(p) for NMOD context */
+        case FQ_DEFAULT_NMOD:
+            fmpz_randprime(prime, state, 2 + n_randint(state, 29), 1);
+            deg = 1;
+            break;
+        /* Create GF(p) for FMPZ_MOD context */
+        case FQ_DEFAULT_FMPZ_MOD:
+            fmpz_randprime(prime, state, 2 + n_randint(state, 62), 1);
+            deg = 1;
+            break;
+        default: FLINT_UNREACHABLE;
+    }
+
+    fq_default_ctx_init_type(ctx, prime, deg, "a", type);
+    fmpz_clear(prime);
 }

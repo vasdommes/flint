@@ -16,7 +16,7 @@
 #include "fmpz.h"
 #include "aprcl.h"
 
-int _fmpz_is_prime(const fmpz_t n, int proved)
+static int _fmpz_is_prime(const fmpz_t n, int proved)
 {
    double logd;
    ulong p, ppi, limit;
@@ -41,8 +41,8 @@ int _fmpz_is_prime(const fmpz_t n, int proved)
    }
    else
    {
-      __mpz_struct * z;
-      mp_ptr d;
+      mpz_ptr z;
+      nn_ptr d;
       slong size, bits, trial_primes;
 
       z = COEFF_TO_PTR(*n);

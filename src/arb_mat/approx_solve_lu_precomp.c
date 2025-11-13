@@ -10,6 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
 void
@@ -28,9 +29,9 @@ arb_mat_approx_solve_lu_precomp(arb_mat_t X, const slong * perm,
         for (c = 0; c < m; c++)
         {
             for (i = 0; i < n; i++)
-                tmp[i] = B->rows[perm[i]][c];
+                tmp[i] = *arb_mat_entry(B, perm[i], c);
             for (i = 0; i < n; i++)
-                X->rows[i][c] = tmp[i];
+                *arb_mat_entry(X, i, c) = tmp[i];
         }
 
         flint_free(tmp);

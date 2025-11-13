@@ -151,7 +151,7 @@ Memory management
     This function sets the uninitialised polynomial ``trunc`` to the low
     `n` coefficients of ``poly``, or to ``poly`` if the latter doesn't
     have `n` coefficients. The polynomial ``trunc`` not be cleared or used
-    as the output of any Flint functions.
+    as the output of any FLINT functions.
 
 .. function:: void fmpz_poly_attach_shift(fmpz_poly_t trunc, const fmpz_poly_t poly, slong n)
 
@@ -159,7 +159,7 @@ Memory management
     high coefficients of ``poly``, i.e. the coefficients not among the low
     `n` coefficients of ``poly``. If the latter doesn't have `n`
     coefficients ``trunc`` is set to the zero polynomial. The polynomial
-    ``trunc`` not be cleared or used as the output of any Flint functions.
+    ``trunc`` not be cleared or used as the output of any FLINT functions.
 
 
 Polynomial parameters
@@ -308,9 +308,9 @@ Randomisation
     length is up to ``len`` and where each coefficient has up to the
     given number of bits.
 
-.. function:: void fmpz_poly_randtest_irreducible1(fmpz_poly_t pol, flint_rand_t state, slong len, mp_bitcnt_t bits)
-              void fmpz_poly_randtest_irreducible2(fmpz_poly_t pol, flint_rand_t state, slong len, mp_bitcnt_t bits)
-              void fmpz_poly_randtest_irreducible(fmpz_poly_t pol, flint_rand_t state, slong len, mp_bitcnt_t bits)
+.. function:: void fmpz_poly_randtest_irreducible1(fmpz_poly_t pol, flint_rand_t state, slong len, flint_bitcnt_t bits)
+              void fmpz_poly_randtest_irreducible2(fmpz_poly_t pol, flint_rand_t state, slong len, flint_bitcnt_t bits)
+              void fmpz_poly_randtest_irreducible(fmpz_poly_t pol, flint_rand_t state, slong len, flint_bitcnt_t bits)
 
     Sets ``p`` to a random irreducible polynomial, whose
     length is up to ``len`` and where each coefficient has up to the
@@ -586,13 +586,13 @@ Bit packing
 --------------------------------------------------------------------------------
 
 
-.. function:: void _fmpz_poly_bit_pack(mp_ptr arr, const fmpz * poly, slong len, flint_bitcnt_t bit_size, int negate)
+.. function:: void _fmpz_poly_bit_pack(nn_ptr arr, const fmpz * poly, slong len, flint_bitcnt_t bit_size, int negate)
 
     Packs the coefficients of ``poly`` into bitfields of the given
     ``bit_size``, negating the coefficients before packing
     if ``negate`` is set to `-1`.
 
-.. function:: int _fmpz_poly_bit_unpack(fmpz * poly, slong len, mp_srcptr arr, flint_bitcnt_t bit_size, int negate)
+.. function:: int _fmpz_poly_bit_unpack(fmpz * poly, slong len, nn_srcptr arr, flint_bitcnt_t bit_size, int negate)
 
     Unpacks the polynomial of given length from the array as packed into
     fields of the given ``bit_size``, finally negating the coefficients
@@ -600,7 +600,7 @@ Bit packing
     leading term with coefficient `\pm1` should be added at
     position ``len`` of ``poly``.
 
-.. function:: void _fmpz_poly_bit_unpack_unsigned(fmpz * poly, slong len, mp_srcptr arr, flint_bitcnt_t bit_size)
+.. function:: void _fmpz_poly_bit_unpack_unsigned(fmpz * poly, slong len, nn_srcptr arr, flint_bitcnt_t bit_size)
 
     Unpacks the polynomial of given length from the array as packed into
     fields of the given ``bit_size``.  The coefficients are assumed to
@@ -1181,7 +1181,7 @@ Bit sizes and norms
     integer square root of the sum of the squares of the coefficients of
     ``poly``.
 
-.. function:: mp_limb_t _fmpz_poly_2norm_normalised_bits(const fmpz * poly, slong len)
+.. function:: ulong _fmpz_poly_2norm_normalised_bits(const fmpz * poly, slong len)
 
     Returns an upper bound on the number of bits of the normalised
     Euclidean norm of ``(poly, len)``, i.e. the number of bits of
@@ -1811,7 +1811,7 @@ Euclidean division
     the division is exact, this is the same as division over `\mathbb{Q}`.  An
     exception is raised if `B` is zero.
 
-.. function:: void _fmpz_poly_div_root(fmpz * Q, const fmpz * A, slong len, const fmpz_t c)
+.. function:: void _fmpz_poly_div_root_fmpz(fmpz * Q, const fmpz * A, slong len, const fmpz_t c)
 
     Computes the quotient ``(Q, len-1)`` of ``(A, len)`` upon
     division by `x - c`.
@@ -1819,7 +1819,7 @@ Euclidean division
     Supports aliasing of ``Q`` and ``A``, but the result is
     undefined in case of partial overlap.
 
-.. function:: void fmpz_poly_div_root(fmpz_poly_t Q, const fmpz_poly_t A, const fmpz_t c)
+.. function:: void fmpz_poly_div_root_fmpz(fmpz_poly_t Q, const fmpz_poly_t A, const fmpz_t c)
 
     Computes the quotient ``(Q, len-1)`` of ``(A, len)`` upon
     division by `x - c`.
@@ -1828,6 +1828,19 @@ Euclidean division
               void fmpz_poly_divexact(fmpz_poly_t Q, const fmpz_poly_t A, const fmpz_poly_t B)
 
     Like :func:`fmpz_poly_div`, but assumes that the division is exact.
+
+.. function:: void _fmpz_poly_divexact_root_fmpq(fmpz * Q, const fmpz * A, slong len, const fmpq_t c)
+
+    Computes the quotient ``(Q, len-1)`` of ``(A, len)`` upon
+    division by `q x - p` where `c = p/q`. Assumes the division is exact.
+
+    Supports aliasing of ``Q`` and ``A``, but the result is
+    undefined in case of partial overlap.
+
+.. function:: void fmpz_poly_divexact_root_fmpq(fmpz_poly_t Q, const fmpz_poly_t A, const fmpq_t c)
+
+    Computes the quotient ``(Q, len-1)`` of ``(A, len)`` upon
+    division by `q x - p` where `c = p/q`. Assumes the division is exact.
 
 Division with precomputed inverse
 --------------------------------------------------------------------------------
@@ -2283,14 +2296,14 @@ Evaluation
     Evaluates the polynomial `f` at the rational `a`, and
     sets ``res`` to the result.
 
-.. function:: mp_limb_t _fmpz_poly_evaluate_mod(const fmpz * poly, slong len, mp_limb_t a, mp_limb_t n, mp_limb_t ninv)
+.. function:: ulong _fmpz_poly_evaluate_mod(const fmpz * poly, slong len, ulong a, ulong n, ulong ninv)
 
     Evaluates ``(poly, len)`` at the value `a` modulo `n` and
     returns the result.  The last argument ``ninv`` must be set
     to the precomputed inverse of `n`, which can be obtained using
     the function :func:`n_preinvert_limb`.
 
-.. function:: mp_limb_t fmpz_poly_evaluate_mod(const fmpz_poly_t poly, mp_limb_t a, mp_limb_t n)
+.. function:: ulong fmpz_poly_evaluate_mod(const fmpz_poly_t poly, ulong a, ulong n)
 
     Evaluates ``poly`` at the value `a` modulo `n` and returns the result.
 
@@ -2303,14 +2316,14 @@ Evaluation
 
     Evaluate ``(poly, n)`` at the double `d`. No attempt is made to do this
     efficiently or in a numerically stable way. It is currently only used in
-    Flint for quick and dirty evaluations of polynomials with all coefficients
+    FLINT for quick and dirty evaluations of polynomials with all coefficients
     positive.
 
 .. function:: double fmpz_poly_evaluate_horner_d(const fmpz_poly_t poly, double d)
 
     Evaluate ``poly`` at the double `d`. No attempt is made to do this
     efficiently or in a numerically stable way. It is currently only used in
-    Flint for quick and dirty evaluations of polynomials with all coefficients
+    FLINT for quick and dirty evaluations of polynomials with all coefficients
     positive.
 
 .. function:: double _fmpz_poly_evaluate_horner_d_2exp(slong * exp, const fmpz * poly, slong n, double d)
@@ -2318,7 +2331,7 @@ Evaluation
     Evaluate ``(poly, n)`` at the double `d`. Return the result as a double
     and an exponent ``exp`` combination. No attempt is made to do this
     efficiently or in a numerically stable way. It is currently only used in
-    Flint for quick and dirty evaluations of polynomials with all coefficients
+    FLINT for quick and dirty evaluations of polynomials with all coefficients
     positive.
 
 .. function:: double fmpz_poly_evaluate_horner_d_2exp(slong * exp, const fmpz_poly_t poly, double d)
@@ -2326,7 +2339,7 @@ Evaluation
     Evaluate ``poly`` at the double `d`. Return the result as a double
     and an exponent ``exp`` combination. No attempt is made to do this
     efficiently or in a numerically stable way. It is currently only used in
-    Flint for quick and dirty evaluations of polynomials with all coefficients
+    FLINT for quick and dirty evaluations of polynomials with all coefficients
     positive.
 
 .. function:: double _fmpz_poly_evaluate_horner_d_2exp2(slong * exp, const fmpz * poly, slong n, double d, slong dexp)
@@ -2334,7 +2347,7 @@ Evaluation
     Evaluate ``poly`` at ``d*2^dexp``. Return the result as a double
     and an exponent ``exp`` combination. No attempt is made to do this
     efficiently or in a numerically stable way. It is currently only used in
-    Flint for quick and dirty evaluations of polynomials with all coefficients
+    FLINT for quick and dirty evaluations of polynomials with all coefficients
     positive.
 
 
@@ -2365,18 +2378,45 @@ Newton basis
 Interpolation
 --------------------------------------------------------------------------------
 
+.. function:: int _fmpz_poly_interpolate_newton(fmpz * poly, const fmpz * xs, const fmpz * ys, slong n)
+              int fmpz_poly_interpolate_newton(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
+              int _fmpz_poly_interpolate_multi_mod(fmpz * poly, const fmpz * xs, const fmpz * ys, slong n)
+              int fmpz_poly_interpolate_multi_mod(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
+              int _fmpz_poly_interpolate(fmpz * poly, const fmpz * xs, const fmpz * ys, slong n)
+              int fmpz_poly_interpolate(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
+
+    Sets ``poly`` to the unique interpolating polynomial of
+    degree at most `n - 1` satisfying `f(x_i) = y_i` for every pair `x_i, y_i` in
+    ``xs`` and ``ys``, assuming that this polynomial has integer
+    coefficients and that the evaluation points `x_i` are distinct.
+
+    If the `x_i` are not distinct or if the interpolating polynomial does
+    not have integer coefficients, returns 0 indicating failure.
+    Otherwise returns 1 indicating success.
+
+    The *newton* algorithm first interpolates in the Newton basis
+    and then converts to the monomial basis.
+    The *multi_mod* algorithm interpolates modulo one or more prime numbers
+    and combines the results using CRT, using adaptive termination.
+    The default implementation chooses automatically between the *newton* and
+    *multi_mod* algorithms.
+
+.. function:: void _fmpz_poly_interpolate_exact_newton(fmpz * poly, const fmpz * xs, const fmpz * ys, slong n)
+              void fmpz_poly_interpolate_exact_newton(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
+              void _fmpz_poly_interpolate_exact(fmpz * poly, const fmpz * xs, const fmpz * ys, slong n)
+              void fmpz_poly_interpolate_exact(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
+
+    Like :func:`fmpz_poly_interpolate` etc., but optimized by omitting
+    error handling. If the `x_i` are not distinct or if the interpolating
+    polynomial does not have integer coefficients, the behavior is undefined.
+    The default implementation chooses automatically between the *exact_newton* and
+    *multi_mod* algorithms.
 
 .. function:: void fmpz_poly_interpolate_fmpz_vec(fmpz_poly_t poly, const fmpz * xs, const fmpz * ys, slong n)
 
-    Sets ``poly`` to the unique interpolating polynomial of degree at
-    most `n - 1` satisfying `f(x_i) = y_i` for every pair `x_i, y_u` in
-    ``xs`` and ``ys``, assuming that this polynomial has integer
-    coefficients.
-
-    If an interpolating polynomial with integer coefficients does not
-    exist, a ``FLINT_INEXACT`` exception is thrown.
-
-    It is assumed that the `x` values are distinct.
+    Like :func:`fmpz_poly_interpolate`, but if the `x_i` values are not distinct
+    or if the interpolating polynomial does not have integer coefficients,
+    a ``FLINT_INEXACT`` exception is thrown.
 
 
 Composition
@@ -3087,7 +3127,7 @@ Modular reduction and reconstruction
     Sets the coefficients of ``A`` to the residues in ``Amod``,
     normalised to the interval `0 \le r < m` where `m` is the modulus.
 
-.. function:: void _fmpz_poly_CRT_ui_precomp(fmpz * res, const fmpz * poly1, slong len1, const fmpz_t m1, mp_srcptr poly2, slong len2, mp_limb_t m2, mp_limb_t m2inv, fmpz_t m1m2, mp_limb_t c, int sign)
+.. function:: void _fmpz_poly_CRT_ui_precomp(fmpz * res, const fmpz * poly1, slong len1, const fmpz_t m1, nn_srcptr poly2, slong len2, ulong m2, ulong m2inv, fmpz_t m1m2, ulong c, int sign)
 
     Sets the coefficients in ``res`` to the CRT reconstruction modulo
     `m_1m_2` of the residues ``(poly1, len1)`` and ``(poly2, len2)``
@@ -3103,7 +3143,7 @@ Modular reduction and reconstruction
     Coefficients of ``res`` are written up to the maximum of
     ``len1`` and ``len2``.
 
-.. function:: void _fmpz_poly_CRT_ui(fmpz * res, const fmpz * poly1, slong len1, const fmpz_t m1, mp_srcptr poly2, slong len2, mp_limb_t m2, mp_limb_t m2inv, int sign)
+.. function:: void _fmpz_poly_CRT_ui(fmpz * res, const fmpz * poly1, slong len1, const fmpz_t m1, nn_srcptr poly2, slong len2, ulong m2, ulong m2inv, int sign)
 
     This function is identical to ``_fmpz_poly_CRT_ui_precomp``,
     apart from automatically computing `m_1m_2` and `c`. It also
@@ -3147,6 +3187,40 @@ Products
     Sets ``poly`` to the polynomial which is the product
     of `(q_0 x - p_0)(q_1 x - p_1) \cdots (q_{n-1} x - p_{n-1})`, the roots
     `p_i/q_i` being given by ``xs``.
+
+
+Subproduct trees
+--------------------------------------------------------------------------------
+
+
+.. function:: fmpz ** _fmpz_poly_tree_alloc(slong len)
+
+    Allocates space for a subproduct tree of the given length, having
+    linear factors at the lowest level.
+
+    Entry `i` in the tree is a pointer to a single array of limbs,
+    capable of storing `\lfloor n / 2^i \rfloor` subproducts of
+    degree `2^i` adjacently, plus a trailing entry if `n / 2^i` is
+    not an integer.
+
+    For example, a tree of length 7 built from monic linear factors has
+    the following structure, where spaces have been inserted
+    for illustrative purposes::
+
+        X1 X1 X1 X1 X1 X1 X1
+        XX1   XX1   XX1   X1
+        XXXX1       XX1   X1
+        XXXXXXX1
+
+.. function:: void _fmpz_poly_tree_free(fmpz ** tree, slong len)
+
+    Free the allocated space for the subproduct.
+
+.. function:: void _fmpz_poly_tree_build_fmpq_vec(fmpz ** tree, const fmpq * roots, slong len)
+
+    Builds a subproduct tree in the preallocated space from
+    the ``len`` monic linear factors `(q_i x-p_i)` the roots `p_i/q_i`
+    being given by ``xs``. The top level product is not computed.
 
 
 Roots
@@ -3206,7 +3280,7 @@ Minimal polynomials
 --------------------------------------------------------------------------------
 
 
-.. function:: void _fmpz_poly_cyclotomic(fmpz * a, ulong n, mp_ptr factors, slong num_factors, ulong phi)
+.. function:: void _fmpz_poly_cyclotomic(fmpz * a, ulong n, nn_ptr factors, slong num_factors, ulong phi)
 
     Sets ``a`` to the lower half of the cyclotomic polynomial `\Phi_n(x)`,
     given `n \ge 3` which must be squarefree.
@@ -3397,7 +3471,7 @@ The Eulerian numbers can be expressed explicitly via the formula
 
 Note: Not to be confused with Euler numbers and polynomials.
 
-.. function:: void arith_eulerian_polynomial(fmpz_poly_t res, ulong n)
+.. function:: void fmpz_poly_eulerian_polynomial(fmpz_poly_t res, ulong n)
 
     Sets ``res`` to the Eulerian polynomial `A_n(x)`, where we define
     `A_0(x) = 1`. The polynomial is calculated via a recursive relation.

@@ -15,6 +15,11 @@
 #include "mpoly.h"
 #include "nmod_mpoly.h"
 
+/* Hack: internal parameter of nmod_mpoly_gcd that we randomly change
+   to trigger unlikely code paths which are currently unreachable
+   from the test code. */
+FLINT_DLL extern slong _nmod_mpoly_medprime_ignore_limit;
+
 /* Defined in t-gcd.c, t-gcd_brown.c, t-gcd_cofactors.c, t-gcd_hensel.c,
  * t-gcd_zippel2.c and t-gcd_zippel.c */
 #define gcd_check gcd_check_gcd
@@ -32,6 +37,11 @@ void gcd_check(
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
+
+    if ((i + j) % 2)
+        _nmod_mpoly_medprime_ignore_limit = 8;
+    else
+        _nmod_mpoly_medprime_ignore_limit = 9999;
 
     if (!nmod_mpoly_gcd(g, a, b, ctx))
     {
@@ -276,7 +286,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         nmod_mpoly_t a, b, g, t;
         slong len, len1, len2;
         flint_bitcnt_t exp_bits, exp_bits1, exp_bits2;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -331,7 +341,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         nmod_mpoly_t a, b, g, t1, t2;
         slong len, len1;
         flint_bitcnt_t exp_bits, exp_bits1, exp_bits2;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -383,12 +393,12 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
     /* one input divides the other */
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
-        mp_limb_t c;
+        ulong c;
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, t1, t2;
         slong len, len1, len2;
-        mp_limb_t exp_bound, exp_bound1, exp_bound2;
-        mp_limb_t modulus;
+        ulong exp_bound, exp_bound1, exp_bound2;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -445,7 +455,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         nmod_mpoly_t a, b, g, t;
         slong len, len1, len2;
         slong degbound;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -492,11 +502,11 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, t;
-        mp_limb_t rlimb;
+        ulong rlimb;
         flint_bitcnt_t newbits;
         slong len, len1, len2;
         slong degbound;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -562,7 +572,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         flint_bitcnt_t stride_bits, shift_bits;
         slong len, len1, len2;
         slong degbound;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -645,7 +655,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         ulong degbounds2[4];
         ulong degbounds3[4];
         flint_bitcnt_t bits4;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -699,14 +709,14 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, t;
-        mp_limb_t rlimb;
+        ulong rlimb;
         flint_bitcnt_t newbits;
         slong len1, len2, len3, len4;
         ulong degbounds1[4];
         ulong degbounds2[4];
         ulong degbounds3[4];
         flint_bitcnt_t bits4;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -783,7 +793,7 @@ TEST_FUNCTION_START(nmod_mpoly_gcd, state)
         ulong degbounds2[4];
         ulong degbounds3[4];
         flint_bitcnt_t bits4;
-        mp_limb_t modulus;
+        ulong modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);

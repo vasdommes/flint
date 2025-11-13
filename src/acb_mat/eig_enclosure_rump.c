@@ -9,6 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb_mat.h"
+#include "acb.h"
 #include "acb_mat.h"
 
 /*
@@ -48,7 +50,7 @@ acb_approx_sub(acb_t res, const acb_t x, const acb_t y, slong prec)
 }
 
 /* todo: separate out */
-void
+static void
 acb_mat_bound_max_norm(mag_t res, const acb_mat_t A)
 {
     mag_t t;

@@ -192,7 +192,7 @@ static ulong crt_data_find_bits(const crt_data_t C, ulong bn)
 #define aindex(i) (a[i])
 
 #if 0
-void slow_mpn_to_fft_easy(
+static void slow_mpn_to_fft_easy(
     sd_fft_lctx_t Q,
     double* z,
     const uint32_t* a,
@@ -316,8 +316,8 @@ void slow_mpn_to_fft_easy(
 }
 
 #else
-void slow_mpn_to_fft_easy(
-    sd_fft_lctx_t Q,
+static void slow_mpn_to_fft_easy(
+    const sd_fft_ctx_t Q,
     double* z,
     const uint32_t* a,
     ulong iq_stop_easy,
@@ -386,7 +386,6 @@ void slow_mpn_to_fft_easy(
             zI[ir+6*BLK_SZ/8] = vec8d_get_index(X, 6);
             zI[ir+7*BLK_SZ/8] = vec8d_get_index(X, 7);
         }
-
     }
 }
 #endif
@@ -394,8 +393,8 @@ void slow_mpn_to_fft_easy(
 #undef aindex
 
 
-void slow_mpn_to_fft(
-    sd_fft_lctx_t Q,
+static void slow_mpn_to_fft(
+    const sd_fft_ctx_t Q,
     double* z, ulong ztrunc,
     const ulong* a_, ulong an_,
     ulong bits,
@@ -513,12 +512,12 @@ FLINT_STATIC_NOINLINE void CAT(mpn_to_ffts_hard, NP)( \
             X[l] = vec4d_reduce_to_pm1n(X[l], P[l], PINV[l]); \
  \
         for (ulong l = 0; l < np; l++) \
-            sd_fft_ctx_set_index(d + l*dstride, i, vec4d_get_index(X[l/VEC_SZ], l%VEC_SZ)); \
+            (d + l*dstride)[i] = vec4d_get_index(X[l/VEC_SZ], l%VEC_SZ); \
     } \
  \
     for (ulong l = 0; l < np; l++) \
         for (ulong i = stop_hard; i < atrunc; i++) \
-            sd_fft_ctx_set_index(d + l*dstride, i, 0.0); \
+            (d + l*dstride)[i] = 0.0; \
 }
 
 DEFINE_IT(4)
@@ -560,7 +559,7 @@ DEFINE_IT(8)
         X[l] = vec4d_reduce_to_pm1n(X[l], P[l], PINV[l]); \
  \
     for (ulong l = 0; l < np; l++) \
-        sd_fft_ctx_set_index(d + l*dstride, i+ir, vec4d_get_index(X[l/VEC_SZ], l%VEC_SZ)); \
+        (d + l*dstride)[i+ir] = vec4d_get_index(X[l/VEC_SZ], l%VEC_SZ); \
 }
 
 #define N_CDIV(a, b) (((a) + (b) - 1) / (b))
@@ -657,7 +656,7 @@ DEFINE_IT(8,192)
 
 
 #define DEFINE_IT(n, n_plus_1) \
-FLINT_FORCE_INLINE void CAT(_add_to_answer_easy, n)(ulong z[], ulong r[], ulong zn, ulong toff, ulong tshift) \
+FLINT_FORCE_INLINE void CAT(_add_to_answer_easy, n)(ulong z[], ulong r[], ulong FLINT_UNUSED(zn), ulong toff, ulong tshift) \
 { \
     FLINT_ASSERT(zn > toff); \
     if (tshift == 0) \
@@ -866,13 +865,13 @@ static void CAT(_mpn_from_ffts, NP)( \
             ulong r[N + 1]; \
             ulong t[N + 1]; \
             ulong l = 0; \
-            double xx = sd_fft_ctx_get_index(d + l*dstride, i); \
+            double xx = (d + l*dstride)[i]; \
             ulong x = vec1d_reduce_to_0n(xx, Rffts[l].p, Rffts[l].pinv); \
  \
             CAT3(_big_mul, N, M)(r, t, crt_data_co_prime(Rcrts + np - 1, l), x); \
             for (l++; l < np; l++) \
             { \
-                xx = sd_fft_ctx_get_index(d + l*dstride, i); \
+                xx = (d + l*dstride)[i]; \
                 x = vec1d_reduce_to_0n(xx, Rffts[l].p, Rffts[l].pinv); \
                 CAT3(_big_addmul, N, M)(r, t, crt_data_co_prime(Rcrts + np - 1, l), x); \
             } \
@@ -897,7 +896,7 @@ DEFINE_IT(7, 6, 5)
 DEFINE_IT(8, 7, 6)
 #undef DEFINE_IT
 
-ulong next_fft_number(ulong p)
+static ulong next_fft_number(ulong p)
 {
     ulong bits, l, q;
     bits = n_nbits(p);
@@ -976,7 +975,7 @@ static void fill_vec_two_pow_tab(
 
 void mpn_ctx_init(mpn_ctx_t R, ulong p)
 {
-    slong i;
+    ulong i;
 
     R->buffer = NULL;
     R->buffer_alloc = 0;
@@ -1230,8 +1229,8 @@ void* mpn_ctx_fit_buffer(mpn_ctx_t R, ulong n)
 }
 
 /* pointwise mul of a with b and m */
-void sd_fft_lctx_point_mul(
-    const sd_fft_lctx_t Q,
+void sd_fft_ctx_point_mul(
+    const sd_fft_ctx_t Q,
     double* a,
     const double* b,
     ulong m_,
@@ -1261,8 +1260,8 @@ void sd_fft_lctx_point_mul(
     }
 }
 
-void sd_fft_lctx_point_sqr(
-    const sd_fft_lctx_t Q,
+void sd_fft_ctx_point_sqr(
+    const sd_fft_ctx_t Q,
     double* a,
     ulong m_,
     ulong depth)
@@ -1313,7 +1312,7 @@ typedef struct {
     int squaring;
 } mod_worker_struct;
 
-void mod_worker_func(void* varg)
+static void mod_worker_func(void* varg)
 {
     mod_worker_struct* X = (mod_worker_struct*) varg;
 
@@ -1340,29 +1339,27 @@ typedef struct fft_worker_struct {
     int squaring;
 } fft_worker_struct;
 
-void fft_worker_func(void* varg)
+static void fft_worker_func(void* varg)
 {
     fft_worker_struct* X = (fft_worker_struct*) varg;
-    sd_fft_lctx_t Q;
     ulong m;
 
     do {
-        sd_fft_lctx_init(Q, X->fctx, X->depth);
+        sd_fft_ctx_struct* Q = X->fctx;
 
         if (!X->squaring)
-            sd_fft_lctx_fft_trunc(Q, X->bbuf, X->depth, X->btrunc, X->ztrunc);
+            sd_fft_trunc(Q, X->bbuf, X->depth, X->btrunc, X->ztrunc);
 
-        sd_fft_lctx_fft_trunc(Q, X->abuf, X->depth, X->atrunc, X->ztrunc);
-        NMOD_RED2(m, X->cop >> (64 - X->depth), X->cop << X->depth, X->fctx->mod);
-        m = nmod_inv(m, X->fctx->mod);
+        sd_fft_trunc(Q, X->abuf, X->depth, X->atrunc, X->ztrunc);
+        NMOD_RED2(m, X->cop >> (FLINT_BITS - X->depth), X->cop << X->depth, Q->mod);
+        m = nmod_inv(m, Q->mod);
 
         if (X->squaring)
-            sd_fft_lctx_point_sqr(Q, X->abuf, m, X->depth);
+            sd_fft_ctx_point_sqr(Q, X->abuf, m, X->depth);
         else
-            sd_fft_lctx_point_mul(Q, X->abuf, X->bbuf, m, X->depth);
+            sd_fft_ctx_point_mul(Q, X->abuf, X->bbuf, m, X->depth);
 
-        sd_fft_lctx_ifft_trunc(Q, X->abuf, X->depth, X->ztrunc);
-        sd_fft_lctx_clear(Q, X->fctx);
+        sd_ifft_trunc(Q, X->abuf, X->depth, X->ztrunc);
     } while (X = X->next, X != NULL);
 }
 
@@ -1385,34 +1382,32 @@ typedef struct mod_fft_worker_struct {
     int squaring;
 } mod_fft_worker_struct;
 
-void mod_fft_worker_func(void* varg)
+static void mod_fft_worker_func(void* varg)
 {
     mod_fft_worker_struct* X = (mod_fft_worker_struct*) varg;
-    sd_fft_lctx_t Q;
     ulong m;
 
     do {
-        sd_fft_lctx_init(Q, X->fctx, X->depth);
+        sd_fft_ctx_struct* Q = X->fctx;
 
         if (!X->squaring)
         {
             slow_mpn_to_fft(Q, X->bbuf, X->btrunc, X->b, X->bn, X->bits, X->two_pow_tab);
-            sd_fft_lctx_fft_trunc(Q, X->bbuf, X->depth, X->btrunc, X->ztrunc);
+            sd_fft_trunc(Q, X->bbuf, X->depth, X->btrunc, X->ztrunc);
         }
 
         slow_mpn_to_fft(Q, X->abuf, X->atrunc, X->a, X->an, X->bits, X->two_pow_tab);
-        sd_fft_lctx_fft_trunc(Q, X->abuf, X->depth, X->atrunc, X->ztrunc);
+        sd_fft_trunc(Q, X->abuf, X->depth, X->atrunc, X->ztrunc);
 
-        NMOD_RED2(m, X->cop >> (64 - X->depth), X->cop << X->depth, X->fctx->mod);
-        m = nmod_inv(m, X->fctx->mod);
+        NMOD_RED2(m, X->cop >> (FLINT_BITS - X->depth), X->cop << X->depth, Q->mod);
+        m = nmod_inv(m, Q->mod);
 
         if (X->squaring)
-            sd_fft_lctx_point_sqr(Q, X->abuf, m, X->depth);
+            sd_fft_ctx_point_sqr(Q, X->abuf, m, X->depth);
         else
-            sd_fft_lctx_point_mul(Q, X->abuf, X->bbuf, m, X->depth);
+            sd_fft_ctx_point_mul(Q, X->abuf, X->bbuf, m, X->depth);
 
-        sd_fft_lctx_ifft_trunc(Q, X->abuf, X->depth, X->ztrunc);
-        sd_fft_lctx_clear(Q, X->fctx);
+        sd_ifft_trunc(Q, X->abuf, X->depth, X->ztrunc);
     } while (X = X->next, X != NULL);
 }
 
@@ -1432,7 +1427,7 @@ typedef struct {
     ulong overhang_buffer[MPN_CTX_NCRTS];
 } crt_worker_struct;
 
-void crt_worker_func(void* varg)
+static void crt_worker_func(void* varg)
 {
     crt_worker_struct* X = (crt_worker_struct*) varg;
 
@@ -1704,7 +1699,7 @@ timeit_start(timer);
             thread_pool_wait(global_thread_pool, P.handles[i - 1]);
 
         unsigned char cf = 0;
-        for (ulong i = 1; i <= P.nhandles; i++)
+        for (slong i = 1; i <= P.nhandles; i++)
         {
             ulong start = w[i].start_easy*P.bits/64;
             if (i == P.nhandles)

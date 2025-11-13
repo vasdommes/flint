@@ -26,8 +26,8 @@ nmod_mat_mul_check(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B)
 {
     slong i, j, k;
 
-    mp_limb_t s0, s1, s2;
-    mp_limb_t t0, t1;
+    ulong s0, s1, s2;
+    ulong t0, t1;
 
     for (i = 0; i < A->r; i++)
     {
@@ -37,13 +37,13 @@ nmod_mat_mul_check(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B)
 
             for (k = 0; k < A->c; k++)
             {
-                umul_ppmm(t1, t0, A->rows[i][k], B->rows[k][j]);
+                umul_ppmm(t1, t0, nmod_mat_entry(A, i, k), nmod_mat_entry(B, k, j));
                 add_sssaaaaaa(s2, s1, s0, s2, s1, s0, 0, t1, t0);
             }
 
             NMOD_RED(s2, s2, C->mod);
             NMOD_RED3(s0, s2, s1, s0, C->mod);
-            C->rows[i][j] = s0;
+            nmod_mat_entry(C, i, j) = s0;
         }
     }
 }
@@ -57,7 +57,7 @@ TEST_FUNCTION_START(nmod_mat_mul_classical_threaded, state)
     for (i = 0; i < 1000 * flint_test_multiplier(); i++)
     {
         nmod_mat_t A, B, C, D;
-        mp_limb_t mod;
+        ulong mod;
 
         slong m, k, n;
 

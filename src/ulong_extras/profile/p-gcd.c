@@ -10,7 +10,6 @@
 */
 
 #include "profiler.h"
-#include "flint.h"
 #include "ulong_extras.h"
 
 #define ITERS 1000
@@ -74,8 +73,8 @@ int main(void)
 						i, i, max/(double)ITERS);
 	}
 
-   flint_randclear(state);
    flint_free(params.rnums1);
    flint_free(params.rnums2);
+   FLINT_TEST_CLEAR(state);
    return 0;
 }

@@ -23,7 +23,7 @@ TEST_FUNCTION_START(nmod_poly_mat_sqr, state)
     {
         nmod_poly_mat_t A, C;
         nmod_mat_t a, c, d;
-        mp_limb_t x, mod;
+        ulong x, mod;
         slong m, deg;
 
         mod = n_randtest_prime(state, 0);
@@ -42,7 +42,7 @@ TEST_FUNCTION_START(nmod_poly_mat_sqr, state)
 
         nmod_poly_mat_sqr(C, A);
 
-        x = n_randint(state, 0);
+        x = n_randint(state, mod);
 
         nmod_poly_mat_evaluate_nmod(a, A, x);
         nmod_poly_mat_evaluate_nmod(d, C, x);
@@ -73,7 +73,7 @@ TEST_FUNCTION_START(nmod_poly_mat_sqr, state)
     {
         nmod_poly_mat_t A, B;
         slong m, deg;
-        mp_limb_t mod;
+        ulong mod;
 
         mod = n_randtest_prime(state, 0);
         m = n_randint(state, 20);

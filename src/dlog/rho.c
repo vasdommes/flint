@@ -9,14 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "nmod.h"
 #include "dlog.h"
-
-#ifdef __GNUC__
-# define floor __builtin_floor
-#else
-# include <math.h>
-#endif
 
 static ulong
 dlog_single(ulong b, ulong a, const nmod_t mod, ulong n)
@@ -74,7 +69,11 @@ dlog_rho(const dlog_rho_t t, ulong b)
     ulong x[2], e[2], f[2], g;
     flint_rand_t state;
 
-    flint_randinit(state);
+    flint_rand_init(state);
+
+    /* Fixme: the general algorithm hangs */
+    if (t->mod.n <= 3)
+        return dlog_single(b, t->a, t->mod, t->n.n);
 
     do {
 
@@ -105,7 +104,7 @@ dlog_rho(const dlog_rho_t t, ulong b)
 
     } while (e[0] == e[1] && f[0] == f[1]);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     /* e = f * log(b) */
     e[0] = nmod_sub(e[0], e[1], t->n);
@@ -116,3 +115,4 @@ dlog_rho(const dlog_rho_t t, ulong b)
     else
         return nmod_div(e[0], f[0], t->n);
 }
+

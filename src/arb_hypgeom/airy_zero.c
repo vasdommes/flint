@@ -9,13 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
+#include "arb.h"
 #include "arb_hypgeom.h"
-
-#ifdef __GNUC__
-# define ldexp __builtin_ldexp
-#else
-# include <math.h>
-#endif
 
 /*
 https://dlmf.nist.gov/9.9
@@ -54,7 +50,7 @@ static const double initial[4][10] = {{
  -3098043823061022.0,-3359196018589429.0,-3610552233837226.0,
 }};
 
-void
+static void
 _arb_hypgeom_airy_zero(arb_t res, const fmpz_t n, int which, slong prec)
 {
     slong asymp_accuracy, wp;

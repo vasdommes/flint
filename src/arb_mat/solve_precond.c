@@ -9,9 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "arb.h"
 #include "arb_mat.h"
 
-int
+static int
 _arb_mat_solve_c(arb_mat_t X, const arb_mat_t A, const arb_mat_t B, slong prec)
 {
     int result;
@@ -51,7 +52,7 @@ _arb_mat_solve_c(arb_mat_t X, const arb_mat_t A, const arb_mat_t B, slong prec)
     return result;
 }
 
-int
+static int
 _arb_mat_solve_d(arb_mat_t X, const arb_mat_t A, const arb_mat_t B, slong prec)
 {
     int result;

@@ -68,7 +68,7 @@ add_columns(fmpz_mat_t H, const fmpz_mat_t B, const fmpz_mat_t H1, flint_rand_t 
     /* set the last row of Bu to be random, such that Bu is nonsingular */
     while (fmpz_is_zero(tmp))
     {
-        _fmpz_vec_randtest(Bu->rows[n - 1], state, n, bits);
+        _fmpz_vec_randtest(fmpz_mat_row(Bu, n - 1), state, n, bits);
 
         fmpz_zero(tmp);
         for (j = 0; j < n; j++)
@@ -262,7 +262,7 @@ double_det(fmpz_t d1, fmpz_t d2, const fmpz_mat_t B, const fmpz_mat_t c,
 {
     slong i, j, n;
     slong *P;
-    mp_limb_t p, u1mod, u2mod, v1mod, v2mod;
+    ulong p, u1mod, u2mod, v1mod, v2mod;
     fmpz_t bound, prod, s1, s2, t, u1, u2, v1, v2;
     fmpz_mat_t dt, Bt;
     fmpq_t tmpq;

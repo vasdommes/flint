@@ -9,11 +9,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_dirichlet.h"
 #include "gr_special.h"
 #include "gr_vec.h"
-
-/* todo: overloads */
+#include "gr_series.h"
 
 int gr_dirichlet_chi_fmpz(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, const fmpz_t n, gr_ctx_t ctx)
 {
@@ -76,6 +76,9 @@ int gr_dirichlet_l(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t
         return status;
     }
 
+    if (ctx->which_ring == GR_CTX_GR_SERIES)
+        return gr_series_dirichlet_l(res, G, chi, s, ctx);
+
     return GR_UNABLE;
 }
 
@@ -113,6 +116,9 @@ int gr_dirichlet_hardy_z(gr_ptr res, const dirichlet_group_t G, const dirichlet_
         return status;
     }
 
+    if (ctx->which_ring == GR_CTX_GR_SERIES)
+        return gr_series_dirichlet_hardy_z(res, G, chi, s, ctx);
+
     return GR_UNABLE;
 }
 
@@ -149,6 +155,9 @@ int gr_dirichlet_hardy_theta(gr_ptr res, const dirichlet_group_t G, const dirich
         acb_clear(t);
         return status;
     }
+
+    if (ctx->which_ring == GR_CTX_GR_SERIES)
+        return gr_series_dirichlet_hardy_theta(res, G, chi, s, ctx);
 
     return GR_UNABLE;
 }

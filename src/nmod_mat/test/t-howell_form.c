@@ -22,8 +22,8 @@ nmod_mat_is_in_howell_form(const nmod_mat_t A)
     slong i, j, r;
     int numberpivots = 0;
     int prevrowzero = 0;
-    mp_ptr extra_row;
-    mp_limb_t g;
+    nn_ptr extra_row;
+    ulong g;
 
     if (nmod_mat_is_zero(A))
         return 1;
@@ -110,7 +110,7 @@ nmod_mat_is_in_howell_form(const nmod_mat_t A)
 
         g = A->mod.n/g;
 
-        _nmod_vec_scalar_mul_nmod(extra_row, A->rows[i], A->c, g, A->mod);
+        _nmod_vec_scalar_mul_nmod(extra_row, nmod_mat_entry_ptr(A, i, 0), A->c, g, A->mod);
 
         for ( j = pivots[i] + 1; j < A->c; j++)
         {
@@ -123,7 +123,7 @@ nmod_mat_is_in_howell_form(const nmod_mat_t A)
                         if(!(extra_row[j] % nmod_mat_entry(A, r, pivots[r])))
                         {
                             g = extra_row[j]/nmod_mat_entry(A, r, pivots[r]);
-                            _nmod_vec_scalar_addmul_nmod(extra_row, A->rows[r],
+                            _nmod_vec_scalar_addmul_nmod(extra_row, nmod_mat_entry_ptr(A, r, 0),
                                 A->c, nmod_neg(g, A->mod), A->mod);
                         }
 
@@ -150,11 +150,11 @@ TEST_FUNCTION_START(nmod_mat_howell_form, state)
     for (i = 0; i < 10000*flint_test_multiplier(); i++)
     {
         nmod_mat_t A, B, D;
-        mp_limb_t mod;
+        ulong mod;
         slong j, k, m, n, r1, r2;
         slong *perm;
         int equal;
-        mp_limb_t c;
+        ulong c;
 
         mod = n_randtest_not_zero(state);
 

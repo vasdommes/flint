@@ -9,15 +9,12 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "thread_support.h"
 #include "arb.h"
+#include "arb/impl.h"
 #include "acb_dirichlet.h"
-
-#ifdef __GNUC__
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
+#include "bernoulli/impl.h"
 
 #if FLINT64
 #define ARB_EULER_NUMBER_TAB_SIZE 25
@@ -44,7 +41,7 @@ arb_euler_number_mag(double n)
     return x;
 }
 
-void
+static void
 arb_euler_number_ui_beta(arb_t res, ulong n, slong prec)
 {
     slong pi_prec;
@@ -143,7 +140,7 @@ nmod_from_redc(ulong x, nmod_redc_t rmod)
     return nmod_redc(x, rmod.n, rmod.ninv);
 }
 
-ulong
+static ulong
 nmod_redc_pow_ui(ulong a, ulong exp, nmod_redc_t rmod)
 {
     ulong x;
@@ -292,7 +289,7 @@ euler_mod_p_powsum_noredc(ulong n, ulong p, const unsigned int * divtab)
     return s;
 }
 
-ulong
+static ulong
 euler_mod_p_powsum_redc(ulong n, ulong p, const unsigned int * divtab)
 {
     unsigned int * pows;
@@ -401,7 +398,7 @@ euler_mod_p_powsum(ulong n, ulong p, const unsigned int * divtab)
         return euler_mod_p_powsum_noredc(n, p, divtab);
 }
 
-static void
+void
 divisor_table_odd(unsigned int * tab, slong len)
 {
     slong i, j;
@@ -428,8 +425,8 @@ typedef struct
 {
     ulong n;
     const unsigned int * divtab;
-    mp_ptr primes;
-    mp_ptr residues;
+    nn_ptr primes;
+    nn_ptr residues;
 }
 mod_p_param_t;
 
@@ -444,17 +441,13 @@ mod_p_worker(slong i, void * param)
 #define TIMING 0
 #define DEBUG 0
 
-/* todo: optimize basecase and move to flint */
-void
-_arb_tree_crt(fmpz_t r, fmpz_t m, mp_srcptr residues, mp_srcptr primes, slong len);
-
 void
 arb_fmpz_euler_number_ui_multi_mod(fmpz_t num, ulong n, double alpha)
 {
     n_primes_t prime_iter;
     slong i, bits, mod_bits, zeta_bits, num_primes;
     ulong p;
-    mp_ptr primes, residues;
+    nn_ptr primes, residues;
     mag_t primes_product;
     unsigned int * divtab_odd;
     fmpz_t M;
@@ -519,8 +512,8 @@ arb_fmpz_euler_number_ui_multi_mod(fmpz_t num, ulong n, double alpha)
     printf("\nn = %lu, bits = %lu, num_primes = %ld\n", n, bits, num_primes);
 #endif
 
-    primes = flint_malloc(sizeof(mp_limb_t) * num_primes);
-    residues = flint_malloc(sizeof(mp_limb_t) * num_primes);
+    primes = flint_malloc(sizeof(ulong) * num_primes);
+    residues = flint_malloc(sizeof(ulong) * num_primes);
 
     p = 5;
     n_primes_jump_after(prime_iter, 5);

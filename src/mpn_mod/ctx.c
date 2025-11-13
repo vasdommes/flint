@@ -11,15 +11,15 @@
 
 #include "fmpz.h"
 #include "mpn_mod.h"
+#include "gr.h"
 
 int _mpn_mod_methods_initialized = 0;
 
 gr_static_method_table _mpn_mod_methods;
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wcast-function-type"
-#endif
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_CAST_FUNCTION_TYPE
+
 gr_method_tab_input _mpn_mod_methods_input[] =
 {
     {GR_METHOD_CTX_WRITE,       (gr_funcptr) mpn_mod_ctx_write},
@@ -56,6 +56,7 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_SET_UI,          (gr_funcptr) mpn_mod_set_ui},
     {GR_METHOD_SET_FMPZ,        (gr_funcptr) mpn_mod_set_fmpz},
     {GR_METHOD_SET_OTHER,       (gr_funcptr) mpn_mod_set_other},
+    {GR_METHOD_GET_FMPZ,        (gr_funcptr) mpn_mod_get_fmpz},
     {GR_METHOD_NEG,             (gr_funcptr) mpn_mod_neg},
     {GR_METHOD_ADD,             (gr_funcptr) mpn_mod_add},
     {GR_METHOD_ADD_UI,          (gr_funcptr) mpn_mod_add_ui},
@@ -110,6 +111,7 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_VEC_MUL,         (gr_funcptr) _mpn_mod_vec_mul},
     {GR_METHOD_VEC_MUL_SCALAR,  (gr_funcptr) _mpn_mod_vec_mul_scalar},
     {GR_METHOD_VEC_ADDMUL_SCALAR,    (gr_funcptr) _mpn_mod_vec_addmul_scalar},
+    {GR_METHOD_VEC_SUBMUL_SCALAR,    (gr_funcptr) _mpn_mod_vec_submul_scalar},
     {GR_METHOD_SCALAR_MUL_VEC,  (gr_funcptr) _mpn_mod_scalar_mul_vec},
 
     {GR_METHOD_VEC_DOT,         (gr_funcptr) _mpn_mod_vec_dot},
@@ -131,21 +133,22 @@ gr_method_tab_input _mpn_mod_methods_input[] =
     {GR_METHOD_MAT_NONSINGULAR_SOLVE_TRIU,                 (gr_funcptr) mpn_mod_mat_nonsingular_solve_triu},
     {GR_METHOD_MAT_LU,          (gr_funcptr) mpn_mod_mat_lu},
     {GR_METHOD_MAT_DET,         (gr_funcptr) mpn_mod_mat_det},
+    {GR_METHOD_MAT_CHARPOLY,    (gr_funcptr) _mpn_mod_mat_charpoly},
+    {GR_METHOD_MAT_REDUCE_ROW,  (gr_funcptr) mpn_mod_mat_reduce_row},
     {0,                         (gr_funcptr) NULL},
 };
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
+
+DIAGNOSTIC_POP
 
 int
-_gr_ctx_init_mpn_mod(gr_ctx_t ctx, mp_srcptr n, mp_size_t nlimbs)
+_gr_ctx_init_mpn_mod(gr_ctx_t ctx, nn_srcptr n, slong nlimbs)
 {
-    mp_bitcnt_t norm;
+    flint_bitcnt_t norm;
     if (nlimbs < MPN_MOD_MIN_LIMBS || nlimbs > MPN_MOD_MAX_LIMBS || n[nlimbs - 1] == 0)
         return GR_UNABLE;
 
     ctx->which_ring = GR_CTX_MPN_MOD;
-    ctx->sizeof_elem = nlimbs * sizeof(mp_limb_t);
+    ctx->sizeof_elem = nlimbs * sizeof(ulong);
 
     GR_CTX_DATA_AS_PTR(ctx) = flint_malloc(sizeof(_mpn_mod_ctx_struct));
 

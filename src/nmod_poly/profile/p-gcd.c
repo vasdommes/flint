@@ -13,7 +13,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "flint.h"
 #include "nmod_poly.h"
 
 /*
@@ -28,7 +27,7 @@
 
 int main(void)
 {
-    mp_limb_t p[] = {17ul, 2147483659ul, 9223372036854775837ul};
+    ulong p[] = {17ul, 2147483659ul, 9223372036854775837ul};
     const slong degs[]      = {   20,   40,  60,  80, 100, 120, 140, 160, 180, 200,
                                 220,  240, 260, 280, 300, 320, 340, 360, 380, 400,
                                 420,  440, 460, 480, 500, 520, 540, 560, 580, 600,
@@ -127,6 +126,6 @@ int main(void)
     }
     flint_printf("]\n");
 
-    flint_randclear(state);
+    FLINT_TEST_CLEAR(state);
     return 0;
 }

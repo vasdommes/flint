@@ -15,7 +15,7 @@
 #include "mpoly.h"
 #include "fq_zech_mpoly.h"
 
-slong _fq_zech_mpoly_derivative(fq_zech_struct * Acoeff,       ulong * Aexp,
+static slong _fq_zech_mpoly_derivative(fq_zech_struct * Acoeff,       ulong * Aexp,
                  const fq_zech_struct * Bcoeff, const ulong * Bexp, slong Blen,
           flint_bitcnt_t bits, slong N, slong offset, slong shift, ulong * oneexp,
                                                      const fq_zech_ctx_t fqctx)
@@ -26,7 +26,7 @@ slong _fq_zech_mpoly_derivative(fq_zech_struct * Acoeff,       ulong * Aexp,
     Alen = 0;
     for (i = 0; i < Blen; i++)
     {
-        mp_limb_t cr;
+        ulong cr;
         ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
         ulong c = (Bexp[N*i + offset] >> shift) & mask;
         if (c == 0)
@@ -43,7 +43,7 @@ slong _fq_zech_mpoly_derivative(fq_zech_struct * Acoeff,       ulong * Aexp,
 }
 
 
-slong _fq_zech_mpoly_derivative_mp(fq_zech_struct * Acoeff,       ulong * Aexp,
+static slong _fq_zech_mpoly_derivative_mp(fq_zech_struct * Acoeff,       ulong * Aexp,
                  const fq_zech_struct * Bcoeff, const ulong * Bexp, slong Blen,
           flint_bitcnt_t bits, slong N, slong offset,              ulong * oneexp,
                                                      const fq_zech_ctx_t fqctx)
@@ -56,7 +56,7 @@ slong _fq_zech_mpoly_derivative_mp(fq_zech_struct * Acoeff,       ulong * Aexp,
     Alen = 0;
     for (i = 0; i < Blen; i++)
     {
-        mp_limb_t cr;
+        ulong cr;
         fmpz_set_ui_array(c, Bexp + N*i + offset, bits/FLINT_BITS);
         if (fmpz_is_zero(c))
             continue;

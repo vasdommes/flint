@@ -42,23 +42,27 @@ in `\mathbb{Z}/7\mathbb Z[x]`.
 
 .. code:: c
 
-   #include "fmpz_mod_poly.h"
-   int main()
+   #include "flint/fmpz_mod.h"
+   #include "flint/fmpz_mod_poly.h"
+   int main(void)
    {
-       fmpz_t n;
+       fmpz_mod_ctx_t ctx;
        fmpz_mod_poly_t x, y;
 
-       fmpz_init_set_ui(n, 7);
-       fmpz_mod_poly_init(x, n);
-       fmpz_mod_poly_init(y, n);
-       fmpz_mod_poly_set_coeff_ui(x, 3, 5);
-       fmpz_mod_poly_set_coeff_ui(x, 0, 6);
-       fmpz_mod_poly_sqr(y, x);
-       fmpz_mod_poly_print(x); flint_printf("\n");
-       fmpz_mod_poly_print(y); flint_printf("\n");
-       fmpz_mod_poly_clear(x);
-       fmpz_mod_poly_clear(y);
-       fmpz_clear(n);
+       fmpz_mod_ctx_init_ui(ctx, 7);
+       fmpz_mod_poly_init(x, ctx);
+       fmpz_mod_poly_init(y, ctx);
+       fmpz_mod_poly_set_coeff_ui(x, 3, 5, ctx);
+       fmpz_mod_poly_set_coeff_ui(x, 0, 6, ctx);
+       fmpz_mod_poly_sqr(y, x, ctx);
+
+       flint_printf("x = %{fmpz_mod_poly} (%{fmpz_mod_ctx})\n"
+                    "x^2 = %{fmpz_mod_poly} (%{fmpz_mod_ctx})\n",
+                    x, ctx, y, ctx);
+
+       fmpz_mod_poly_clear(x, ctx);
+       fmpz_mod_poly_clear(y, ctx);
+       fmpz_mod_ctx_clear(ctx);
    }
 
 The output is:
@@ -437,11 +441,13 @@ Scalar multiplication and division
 
 
 .. function:: void _fmpz_mod_poly_scalar_mul_fmpz(fmpz * res, const fmpz * poly, slong len, const fmpz_t x, const fmpz_mod_ctx_t ctx)
+              void _fmpz_mod_poly_scalar_mul_ui(fmpz * res, const fmpz * poly, slong len, ulong x, const fmpz_mod_ctx_t ctx)
 
     Sets ``(res, len``) to ``(poly, len)`` multiplied by `x`,
     reduced modulo `p`.
 
 .. function:: void fmpz_mod_poly_scalar_mul_fmpz(fmpz_mod_poly_t res, const fmpz_mod_poly_t poly, const fmpz_t x, const fmpz_mod_ctx_t ctx)
+              void fmpz_mod_poly_scalar_mul_ui(fmpz_mod_poly_t res, const fmpz_mod_poly_t poly, ulong x, const fmpz_mod_ctx_t ctx)
 
     Sets ``res`` to ``poly`` multiplied by `x`.
 
@@ -1909,7 +1915,7 @@ Berlekamp-Massey Algorithm
 
 .. function:: const fmpz * fmpz_mod_berlekamp_massey_points(const fmpz_mod_berlekamp_massey_t B)
 
-    Return a pointer the array of points stored in ``B``. This may be ``NULL`` if func::fmpz_mod_berlekamp_massey_point_count returns ``0``.
+    Return a pointer the array of points stored in ``B``. This may be ``NULL`` if :func:`fmpz_mod_berlekamp_massey_point_count` returns ``0``.
 
 .. function:: const fmpz_mod_poly_struct * fmpz_mod_berlekamp_massey_V_poly(const fmpz_mod_berlekamp_massey_t B)
 

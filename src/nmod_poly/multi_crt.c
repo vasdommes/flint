@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include "nmod_poly.h"
 
+PUSH_OPTIONS
+DIAGNOSTIC_IGNORE_MAYBE_UNINITIALIZED
+
 void nmod_poly_multi_crt_init(nmod_poly_multi_crt_t P)
 {
     P->prog = NULL;
@@ -285,15 +288,8 @@ int nmod_poly_multi_crt_precompute(
         m[i] = moduli + i;
     }
 
-    /* GCC really wants to complain about this one */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
     success = nmod_poly_multi_crt_precompute_p(P, m, len);
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
+
     TMP_END;
 
     return success;
@@ -507,3 +503,5 @@ void _nmod_poly_multi_crt_run_p(
         }
     }
 }
+
+POP_OPTIONS

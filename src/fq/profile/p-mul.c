@@ -10,7 +10,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fmpz.h"
 #include "fq.h"
@@ -42,7 +41,7 @@ main(void)
     fq_randtest_not_zero(a,state,ctx);
     fq_randtest_not_zero(b,state,ctx);
 
-    FLINT_TEST_CLEANUP(state);
+    FLINT_TEST_CLEAR(state);
 
     return 0;
 

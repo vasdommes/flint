@@ -14,6 +14,10 @@
 #include <double_extras.h>
 #include "fmpz.h"
 #include "fmpz_poly.h"
+#include "fmpz_poly/impl.h"
+
+PUSH_OPTIONS
+DIAGNOSTIC_IGNORE_MAYBE_UNINITIALIZED
 
 /* Naive double+exponent arithmetic; not designed to deal with
    underflow/overflow. */
@@ -105,7 +109,9 @@ dpe_mul(dpe_t x, dpe_t y)
     return res;
 }
 
-double _fmpz_poly_evaluate_horner_d_2exp2_precomp(slong * exp, const double * poly, const slong * poly_exp, slong n, double d, slong dexp)
+double
+_fmpz_poly_evaluate_horner_d_2exp2_precomp(slong * exp, const double * poly,
+        const slong * poly_exp, slong n, double d, slong dexp)
 {
     dpe_t s, t, x;
     slong i;
@@ -164,15 +170,7 @@ double _fmpz_poly_evaluate_horner_d_2exp2(slong * exp, const fmpz * poly, slong 
         p[i] = fmpz_get_d_2exp(&p_exp[i], poly + i);
     }
 
-    /* GCC really wants to complain about this one */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
     v = _fmpz_poly_evaluate_horner_d_2exp2_precomp(exp, p, p_exp, n, d, dexp);
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
     TMP_END;
 
@@ -206,3 +204,5 @@ double fmpz_poly_evaluate_horner_d_2exp(slong * exp, const fmpz_poly_t poly, dou
 
    return _fmpz_poly_evaluate_horner_d_2exp(exp, poly->coeffs, poly->length, d);
 }
+
+POP_OPTIONS

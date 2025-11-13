@@ -392,7 +392,7 @@ Composition
               void acb_poly_taylor_shift(acb_poly_t g, const acb_poly_t f, const acb_t c, slong prec)
 
     Sets *g* to the Taylor shift `f(x+c)`.
-    The underscore methods act in-place on *g* = *f* which has length *n*.
+    The underscore method acts in-place on *g* = *f* which has length *n*.
 
 .. function:: void _acb_poly_compose(acb_ptr res, acb_srcptr poly1, slong len1, acb_srcptr poly2, slong len2, slong prec)
               void acb_poly_compose(acb_poly_t res, const acb_poly_t poly1, const acb_poly_t poly2, slong prec)
@@ -848,6 +848,13 @@ Elementary functions
     Sets *s* to the sinc function of the power series *h*, truncated
     to length *n*.
 
+.. function:: void _acb_poly_sinc_pi_series(acb_ptr s, acb_srcptr h, slong hlen, slong n, slong prec)
+
+.. function:: void acb_poly_sinc_pi_series(acb_poly_t s, const acb_poly_t h, slong n, slong prec)
+
+    Compute the sinc function of the input multiplied by `\pi`.
+
+
 Lambert W function
 -------------------------------------------------------------------------------
 
@@ -1103,13 +1110,6 @@ Root-finding
     it is possible that not all of the polynomial's roots are contained
     among them.
 
-.. function:: void _acb_poly_refine_roots_durand_kerner(acb_ptr roots, acb_srcptr poly, slong len, slong prec)
-
-    Refines the given roots simultaneously using a single iteration
-    of the Durand-Kerner method. The radius of each root is set to an
-    approximation of the correction, giving a rough estimate of its error (not
-    a rigorous bound).
-
 .. function:: slong _acb_poly_find_roots(acb_ptr roots, acb_srcptr poly, acb_srcptr initial, slong len, slong maxiter, slong prec)
 
 .. function:: slong acb_poly_find_roots(acb_ptr roots, const acb_poly_t poly, acb_srcptr initial, slong maxiter, slong prec)
@@ -1132,7 +1132,13 @@ Root-finding
     a default value. Finally, the approximate roots are validated rigorously.
 
     Initial values for the iteration can be provided as the array *initial*.
-    If *initial* is set to *NULL*, default values `(0.4+0.9i)^k` are used.
+    If *initial* is set to *NULL*, default values are chosen using the
+    Newton polygon technique of [Bin1996]_.
+    Suppose that the polynomial is `\sum_k a_k x^k` and
+    let `k_1, \ldots, k_q` denote the index coordinates of the
+    vertices in the convex hull of `(k, \log |a_k|)`.
+    For each `2 \le i \le q`, we pick `m_i = k_i - k_{i-1}` points
+    on the circle with radius `r_i = (|a_{k_{i-1}} / a_{k_i} |)^{1/m_i}`.
 
     The polynomial is assumed to be squarefree. If there are repeated
     roots, the iteration is likely to find them (with low numerical accuracy),

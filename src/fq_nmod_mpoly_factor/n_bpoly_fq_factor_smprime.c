@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "fq_nmod.h"
 #include "nmod_mat.h"
 #include "fmpz_poly_factor.h"
@@ -479,7 +480,7 @@ static void n_fq_bpoly_lift_start(
                                                 r*sizeof(n_fq_bpoly_struct *));
 
     /* linear lifting has large memory requirements wrt r */
-    if (r < 20 + 5*FLINT_BIT_COUNT(degx))
+    if (r < 20 + 5 * (slong) FLINT_BIT_COUNT(degx))
         L->use_linear = 1;
     else
         L->use_linear = 0;
@@ -529,7 +530,7 @@ static void n_fq_bpoly_lift_start(
     FLINT_ASSERT(degx == n_fq_poly_degree(A->coeffs + 0));
 
     /* try evaluation when not too many local factors */
-    if (r < 10 + FLINT_BIT_COUNT(degx))
+    if (r < 10 + (slong) FLINT_BIT_COUNT(degx))
         L->Eok = nmod_eval_interp_set_degree_modulus(L->E, degx, ctx->mod);
     else
         L->Eok = 0;
@@ -956,11 +957,10 @@ static void _lattice(
     n_fq_bpoly_t Q, R, dg;
     n_fq_bpoly_struct * ld;
     nmod_mat_t M, T1, T2;
-    int nlimbs;
-    mp_limb_t * trow;
+    ulong * trow;
 
-    nlimbs = _nmod_vec_dot_bound_limbs(r, ctx->mod);
-    trow = (mp_limb_t *) flint_malloc(r*sizeof(mp_limb_t));
+    const dot_params_t params = _nmod_vec_dot_params(r, ctx->mod);
+    trow = (ulong *) flint_malloc(r*sizeof(ulong));
     n_fq_bpoly_init(Q);
     n_fq_bpoly_init(R);
     n_fq_bpoly_init(dg);
@@ -984,20 +984,20 @@ static void _lattice(
         nmod_mat_init(M, d*(lift_order - CLD[k]), nrows, ctx->modulus->mod.n);
 
         for (j = CLD[k]; j < lift_order; j++)
-        for (l = 0; l < d; l++)
-        {
-            for (i = 0; i < r; i++)
+            for (l = 0; l < d; l++)
             {
-                if (k >= ld[i].length || j >= ld[i].coeffs[k].length)
-                    trow[i] = 0;
-                else
-                    trow[i] = ld[i].coeffs[k].coeffs[d*j + l];
-            }
+                for (i = 0; i < r; i++)
+                {
+                    if (k >= ld[i].length || j >= ld[i].coeffs[k].length)
+                        trow[i] = 0;
+                    else
+                        trow[i] = ld[i].coeffs[k].coeffs[d*j + l];
+                }
 
-            for (i = 0; i < nrows; i++)
-                nmod_mat_entry(M, (j - CLD[k])*d + l, i) =
-                          _nmod_vec_dot(trow, N->rows[i], r, ctx->mod, nlimbs);
-        }
+                for (i = 0; i < nrows; i++)
+                    nmod_mat_entry(M, (j - CLD[k])*d + l, i) =
+                              _nmod_vec_dot(trow, nmod_mat_entry_ptr(N, i, 0), r, ctx->mod, params);
+            }
 
         nmod_mat_init_nullspace_tr(T1, M);
 

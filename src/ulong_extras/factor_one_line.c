@@ -10,14 +10,13 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 
 #define FLINT_ONE_LINE_MULTIPLIER 480
 
-mp_limb_t n_factor_one_line(mp_limb_t n, ulong iters)
+ulong n_factor_one_line(ulong n, ulong iters)
 {
-    mp_limb_t orig_n = n, in, square, sqrti, mod, factor, factoring = iters, iin;
+    ulong orig_n = n, in, square, sqrti, mod, factor, factoring = iters, iin;
     n *= FLINT_ONE_LINE_MULTIPLIER;
 
     iin = 0;

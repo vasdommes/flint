@@ -14,6 +14,7 @@
 #ifndef FLINT_NTL_INT_H
 #define FLINT_NTL_INT_H
 
+#include <gmp.h>
 #include <NTL/ZZX.h>
 #include <NTL/ZZ_pXFactoring.h>
 #include <NTL/ZZ_pEX.h>
@@ -41,8 +42,8 @@ inline void fmpz_set_ZZ(fmpz_t rop, const ZZ& op)
         fmpz_zero(rop);
     else
     {
-        const mp_size_t lw = op.size();
-        const mp_limb_t *xp = ((mp_limb_t *) (((slong *) (x)) + 2));
+        const slong lw = op.size();
+        const ulong *xp = ((ulong *) (((slong *) (x)) + 2));
 
         if (lw == 0)
             fmpz_zero(rop);
@@ -50,9 +51,9 @@ inline void fmpz_set_ZZ(fmpz_t rop, const ZZ& op)
             fmpz_set_ui(rop, xp[0]);
         else
         {
-            __mpz_struct *mf = _fmpz_promote(rop);
+            mpz_ptr mf = _fmpz_promote(rop);
 
-            mpz_import(mf, lw, -1, sizeof(mp_limb_t), 0, 0, xp);
+            mpz_import(mf, lw, -1, sizeof(ulong), 0, 0, xp);
         }
 
         if (op < WORD(0))
@@ -65,7 +66,7 @@ inline void fmpz_set_ZZ(fmpz_t rop, const ZZ& op)
  */
 inline void fmpz_get_ZZ(NTL_NNS ZZ& rop, const fmpz_t op)
 {
-   mp_limb_t *xp;
+   ulong *xp;
    _ntl_gbigint *x = &rop.rep;
    slong lw = fmpz_size(op);
    fmpz c = *op;
@@ -77,11 +78,11 @@ inline void fmpz_get_ZZ(NTL_NNS ZZ& rop, const fmpz_t op)
    }
 
    _ntl_gsetlength(x, lw);
-   xp = ((mp_limb_t *) (((slong *) (*x)) + 2));  // data
+   xp = ((ulong *) (((slong *) (*x)) + 2));  // data
 
    if (COEFF_IS_MPZ(c))
    {
-      __mpz_struct * m = COEFF_TO_PTR(c);
+      mpz_ptr m = COEFF_TO_PTR(c);
       mpn_copyi(xp, m->_mp_d, lw);
    } else
    {

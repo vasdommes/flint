@@ -31,7 +31,7 @@ fmpz_set(fmpz_t f, const fmpz_t g)
     }
     else                        /* g is large */
     {
-        __mpz_struct * mf = _fmpz_promote(f);
+        mpz_ptr mf = _fmpz_promote(f);
         mpz_set(mf, COEFF_TO_PTR(*g));
     }
 }
@@ -55,7 +55,7 @@ fmpz_set_d(fmpz_t f, double c)
     }
     else
     {
-        __mpz_struct * z = _fmpz_promote(f);
+        mpz_ptr z = _fmpz_promote(f);
         mpz_set_d(z, c);
         _fmpz_demote_val(f);
     }
@@ -92,7 +92,7 @@ fmpz_set_mpf(fmpz_t f, const mpf_t x)
     }
     else
     {
-        __mpz_struct *z = _fmpz_promote(f);
+        mpz_ptr z = _fmpz_promote(f);
         mpz_set_f(z, x);
     }
 }
@@ -102,34 +102,14 @@ fmpz_set_mpz(fmpz_t f, const mpz_t x)
 {
     int size = (slong) x->_mp_size;
 
-    if (size == 0)             /* x is zero */
-    {
+    if (size == 0)
         fmpz_zero(f);
-    }
-    else if (size == 1)        /* x is positive and 1 limb */
-    {
+    else if (size == 1)
         fmpz_set_ui(f, flint_mpz_get_ui(x));
-    }
-    else if (size == -1)       /* x is negative and 1 limb */
-    {
-        ulong uval = flint_mpz_get_ui(x);
-        if (uval <= COEFF_MAX)  /* x is small */
-        {
-            _fmpz_demote(f);
-            *f = -uval;
-        }
-        else                    /* x is large but one limb */
-        {
-            __mpz_struct * mf = _fmpz_promote(f);
-            flint_mpz_set_ui(mf, uval);
-            mpz_neg(mf, mf);
-        }
-    }
-    else                        /* x is more than one limb */
-    {
-        __mpz_struct * mf = _fmpz_promote(f);
-        mpz_set(mf, x);
-    }
+    else if (size == -1)
+        fmpz_neg_ui(f, flint_mpz_get_ui(x));
+    else
+        mpz_set(_fmpz_promote(f), x);
 }
 
 /*
@@ -159,8 +139,8 @@ void fmpz_set_signed_ui_array(fmpz_t f, const ulong * c, slong n)
     }
     else
     {
-        __mpz_struct * z = _fmpz_promote(f);
-        mp_limb_t * zd = FLINT_MPZ_REALLOC(z, n);
+        mpz_ptr z = _fmpz_promote(f);
+        ulong * zd = FLINT_MPZ_REALLOC(z, n);
 
         if (csign == 0)
         {
@@ -206,12 +186,11 @@ fmpz_set_signed_uiuiui(fmpz_t r, ulong hi, ulong mid, ulong lo)
     }
     else
     {
-        __mpz_struct * z = _fmpz_promote(r);
-        if (z->_mp_alloc < 3)
-            mpz_realloc2(z, 3 * FLINT_BITS);
-        z->_mp_d[0] = lo;
-        z->_mp_d[1] = mid;
-        z->_mp_d[2] = hi;
+        mpz_ptr z = _fmpz_promote(r);
+        mp_ptr zp = FLINT_MPZ_REALLOC(z, 3);
+        zp[0] = lo;
+        zp[1] = mid;
+        zp[2] = hi;
         z->_mp_size = negate ? -3 : 3;
     }
 }
@@ -236,10 +215,24 @@ void fmpz_set_ui_array(fmpz_t out, const ulong * in, slong in_len)
     }
     else
     {
-        __mpz_struct * mpz = _fmpz_promote(out);
-        if (mpz->_mp_alloc < size)
-            mpz_realloc2(mpz, FLINT_BITS * size);
+        mpz_ptr mpz = _fmpz_promote(out);
+        mp_ptr mp = FLINT_MPZ_REALLOC(mpz, size);
         mpz->_mp_size = size;
-        flint_mpn_copyi(mpz->_mp_d, in, size);
+        flint_mpn_copyi(mp, in, size);
     }
+}
+
+void fmpz_set_mpn_large(fmpz_t z, nn_srcptr src, slong n, int negative)
+{
+    mpz_ptr zz;
+    mp_ptr zp;
+    slong i;
+
+    zz = _fmpz_promote(z);
+    zp = FLINT_MPZ_REALLOC(zz, n);
+
+    for (i = 0; i < n; i++)
+        zp[i] = src[i];
+
+    zz->_mp_size = negative ? -n : n;
 }

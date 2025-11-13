@@ -11,6 +11,7 @@
 
 #include <mpfr.h>
 #include "double_extras.h"
+#include "mpn_extras.h"
 #include "fmpq.h"
 #include "arf.h"
 
@@ -61,8 +62,8 @@ arf_get_d(const arf_t x, arf_rnd_t rnd)
     else
     {
         arf_t t;
-        mp_srcptr tp;
-        mp_size_t tn;
+        nn_srcptr tp;
+        slong tn;
         double v;
 
         /* also catches bignum exponents */
@@ -80,7 +81,7 @@ arf_get_d(const arf_t x, arf_rnd_t rnd)
             mpfr_t xx;
             ARF_GET_MPN_READONLY(tp, tn, x);
 
-            xx->_mpfr_d = (mp_ptr) tp;
+            xx->_mpfr_d = (nn_ptr) tp;
             xx->_mpfr_prec = tn * FLINT_BITS;
             xx->_mpfr_sign = ARF_SGNBIT(x) ? -1 : 1;
             xx->_mpfr_exp = ARF_EXP(x);
@@ -158,8 +159,8 @@ arf_get_fmpz_2exp(fmpz_t man, fmpz_t exp, const arf_t x)
     }
     else
     {
-        mp_srcptr xptr;
-        mp_size_t xn;
+        nn_srcptr xptr;
+        slong xn;
         int shift;
 
         ARF_GET_MPN_READONLY(xptr, xn, x);
@@ -177,15 +178,13 @@ arf_get_fmpz_2exp(fmpz_t man, fmpz_t exp, const arf_t x)
         }
         else
         {
-            __mpz_struct * z = _fmpz_promote(man);
-
-            if (z->_mp_alloc < xn)
-                mpz_realloc(z, xn);
+            mpz_ptr z = _fmpz_promote(man);
+            mp_ptr zptr = FLINT_MPZ_REALLOC(z, xn);
 
             if (shift == 0)
-                flint_mpn_copyi(z->_mp_d, xptr, xn);
+                flint_mpn_copyi(zptr, xptr, xn);
             else
-                mpn_rshift(z->_mp_d, xptr, xn, shift);
+                mpn_rshift(zptr, xptr, xn, shift);
 
             /* top limb cannot be zero */
             z->_mp_size = ARF_SGNBIT(x) ? -xn : xn;
@@ -198,11 +197,11 @@ arf_get_fmpz(fmpz_t z, const arf_t x, arf_rnd_t rnd)
 {
     slong exp;
     int negative, inexact, value, roundup;
-    mp_size_t xn, zn;
-    mp_srcptr xp;
-    __mpz_struct * zz;
-    mp_ptr zp;
-    mp_limb_t v, v2, v3;
+    slong xn, zn;
+    nn_srcptr xp;
+    mpz_ptr zz;
+    nn_ptr zp;
+    ulong v, v2, v3;
 
     if (arf_is_special(x))
     {
@@ -320,10 +319,7 @@ arf_get_fmpz(fmpz_t z, const arf_t x, arf_rnd_t rnd)
     zn = (exp + (rnd != ARF_RND_DOWN) + FLINT_BITS - 1) / FLINT_BITS;
 
     zz = _fmpz_promote(z);
-    if (zz->_mp_alloc < zn)
-        mpz_realloc2(zz, zn * FLINT_BITS);
-
-    zp = zz->_mp_d;
+    zp = FLINT_MPZ_REALLOC(zz, zn);
 
     if (rnd == ARF_RND_DOWN)
     {
@@ -406,13 +402,13 @@ arf_get_fmpz_fixed_si(fmpz_t y, const arf_t x, slong e)
 }
 
 int
-_arf_get_integer_mpn(mp_ptr y, mp_srcptr x, mp_size_t xn, slong exp)
+_arf_get_integer_mpn(nn_ptr y, nn_srcptr x, slong xn, slong exp)
 {
     slong bot_exp = exp - xn * FLINT_BITS;
 
     if (bot_exp >= 0)
     {
-        mp_size_t bot_limbs;
+        slong bot_limbs;
         flint_bitcnt_t bot_bits;
 
         bot_limbs = bot_exp / FLINT_BITS;
@@ -435,9 +431,9 @@ _arf_get_integer_mpn(mp_ptr y, mp_srcptr x, mp_size_t xn, slong exp)
     }
     else
     {
-        mp_size_t top_limbs;
+        slong top_limbs;
         flint_bitcnt_t top_bits;
-        mp_limb_t cy;
+        ulong cy;
 
         top_limbs = exp / FLINT_BITS;
         top_bits = exp % FLINT_BITS;
@@ -472,7 +468,7 @@ arf_get_mag(mag_t y, const arf_t x)
     }
     else
     {
-        mp_limb_t t, u;
+        ulong t, u;
 
         ARF_GET_TOP_LIMB(t, x);
         t = (t >> (FLINT_BITS - MAG_BITS)) + LIMB_ONE;
@@ -503,7 +499,7 @@ arf_get_mag_lower(mag_t y, const arf_t x)
     }
     else
     {
-        mp_limb_t t;
+        ulong t;
         ARF_GET_TOP_LIMB(t, x);
         MAG_MAN(y) = t >> (FLINT_BITS - MAG_BITS);
         _fmpz_set_fast(MAG_EXPREF(y), ARF_EXPREF(x));
@@ -575,12 +571,12 @@ arf_get_mpfr(mpfr_t x, const arf_t y, mpfr_rnd_t rnd)
     else
     {
         __mpfr_struct t;
-        mp_size_t n;
-        mp_srcptr d;
+        slong n;
+        nn_srcptr d;
 
         ARF_GET_MPN_READONLY(d, n, y);
 
-        t._mpfr_d = (mp_ptr) d;
+        t._mpfr_d = (nn_ptr) d;
         t._mpfr_exp = ARF_EXP(y);
         t._mpfr_prec = n * FLINT_BITS;
         t._mpfr_sign = ARF_SGNBIT(y) ? -1 : 1;

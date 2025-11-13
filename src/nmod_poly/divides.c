@@ -13,10 +13,10 @@
 #include "nmod_vec.h"
 #include "nmod_poly.h"
 
-int _nmod_poly_divides(mp_ptr Q, mp_srcptr A, slong lenA,
-                                           mp_srcptr B, slong lenB, nmod_t mod)
+int _nmod_poly_divides(nn_ptr Q, nn_srcptr A, slong lenA,
+                                           nn_srcptr B, slong lenB, nmod_t mod)
 {
-    mp_ptr R;
+    nn_ptr R;
     slong i, lenQ = lenA - lenB + 1;
     int res = 1;
 
@@ -28,9 +28,9 @@ int _nmod_poly_divides(mp_ptr Q, mp_srcptr A, slong lenA,
     if (lenA < 2*lenB - 1)
     {
         slong offset = 0;
-        mp_ptr P;
+        nn_ptr P;
 
-        P = (mp_ptr) _nmod_vec_init(2*lenQ - 1);
+        P = (nn_ptr) _nmod_vec_init(2*lenQ - 1);
 
         _nmod_vec_zero(R, lenB - 1);
 
@@ -86,7 +86,7 @@ int _nmod_poly_divides(mp_ptr Q, mp_srcptr A, slong lenA,
 int nmod_poly_divides(nmod_poly_t Q, const nmod_poly_t A, const nmod_poly_t B)
 {
     nmod_poly_t tQ;
-    mp_ptr q;
+    nn_ptr q;
     slong lenA, lenB;
     int res;
 
@@ -126,11 +126,11 @@ int nmod_poly_divides(nmod_poly_t Q, const nmod_poly_t A, const nmod_poly_t B)
 
 /* check if (p, n) = mullow(poly1, len1, poly2, n, n) where len1 > 0, n >= 0 */
 static int
-_nmod_poly_mullow_classical_check(mp_srcptr p, mp_srcptr poly1, slong len1,
-                            mp_srcptr poly2, slong n, nmod_t mod)
+_nmod_poly_mullow_classical_check(nn_srcptr p, nn_srcptr poly1, slong len1,
+                            nn_srcptr poly2, slong n, nmod_t mod)
 {
-    slong i, j, bits, log_len, nlimbs, n1;
-    mp_limb_t c;
+    slong i, j, bits, log_len, n1;
+    ulong c;
 
     len1 = FLINT_MIN(len1, n);
 
@@ -140,6 +140,7 @@ _nmod_poly_mullow_classical_check(mp_srcptr p, mp_srcptr poly1, slong len1,
     if (n == 1)
         return p[0] == nmod_mul(poly1[0], poly2[0], mod);
 
+    // TODO could what is below make more direct use of nmod_vec_dot?
     log_len = FLINT_BIT_COUNT(n);
     bits = FLINT_BITS - (slong) mod.norm;
     bits = 2 * bits + log_len;
@@ -160,10 +161,11 @@ _nmod_poly_mullow_classical_check(mp_srcptr p, mp_srcptr poly1, slong len1,
         }
     } else
     {
+        dot_params_t params = {_DOT2, 0};
         if (bits <= 2 * FLINT_BITS)
-            nlimbs = 2;
+            params.method = _DOT2;
         else
-            nlimbs = 3;
+            params.method = _DOT3;
 
         for (i = 0; i < n; i++)
         {
@@ -171,7 +173,7 @@ _nmod_poly_mullow_classical_check(mp_srcptr p, mp_srcptr poly1, slong len1,
 
             c = _nmod_vec_dot_rev(poly1,
                     poly2 + i - n1,
-                    n1 + 1, mod, nlimbs);
+                    n1 + 1, mod, params);
 
             if (p[i] != c)
                 return 0;
@@ -181,8 +183,8 @@ _nmod_poly_mullow_classical_check(mp_srcptr p, mp_srcptr poly1, slong len1,
     return 1;
 }
 
-int _nmod_poly_divides_classical(mp_ptr Q, mp_srcptr A, slong lenA,
-                                           mp_srcptr B, slong lenB, nmod_t mod)
+int _nmod_poly_divides_classical(nn_ptr Q, nn_srcptr A, slong lenA,
+                                           nn_srcptr B, slong lenB, nmod_t mod)
 {
     slong lenQ = lenA - lenB + 1;
     int res;
@@ -202,7 +204,7 @@ int nmod_poly_divides_classical(nmod_poly_t Q, const nmod_poly_t A,
 		                                           const nmod_poly_t B)
 {
     nmod_poly_t tQ;
-    mp_ptr q;
+    nn_ptr q;
     slong lenA, lenB;
     int res;
 

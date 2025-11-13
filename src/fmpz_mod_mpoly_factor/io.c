@@ -109,24 +109,6 @@ void fmpz_mod_mpoly_factor_print_pretty(
     }
 }
 
-void fmpz_mod_mpolyu_print_pretty(
-    const fmpz_mod_mpolyu_t poly,
-    const char ** x,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i;
-    if (poly->length == 0)
-        flint_printf("0");
-    for (i = 0; i < poly->length; i++)
-    {
-        if (i != 0)
-            flint_printf(" + ");
-        flint_printf("(");
-        fmpz_mod_mpoly_print_pretty(poly->coeffs + i,x,ctx);
-        flint_printf(")*X^%wd",poly->exps[i]);
-    }
-}
-
 void fmpz_mod_bpoly_print_pretty(
     const fmpz_mod_bpoly_t A,
     const char * xvar,
@@ -161,7 +143,7 @@ void fmpz_mod_polyu3_print_pretty(
     const char * var0,
     const char * var1,
     const char * var2,
-    const fmpz_mod_ctx_t ctx)
+    const fmpz_mod_ctx_t FLINT_UNUSED(ctx))
 {
     slong i;
     int first = 1;

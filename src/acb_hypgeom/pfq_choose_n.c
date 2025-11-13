@@ -9,19 +9,14 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "acb_poly.h"
 #include "acb_hypgeom.h"
-
-#ifdef __GNUC__
-# define floor __builtin_floor
-# define log __builtin_log
-#else
-# include <math.h>
-#endif
+#include "acb_hypgeom/impl.h"
 
 #define D_ABS(x) ((x) < 0.0 ? (-(x)) : (x))
 
-int
+static int
 acb_hypgeom_pfq_choose_n_double(slong * nn,
     const double * are, const double * aim, slong p,
     const double * bre, const double * bim, slong q,

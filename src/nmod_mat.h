@@ -26,20 +26,25 @@
 extern "C" {
 #endif
 
-#define nmod_mat_entry(mat,i,j) ((mat)->rows[(i)][(j)])
+#define nmod_mat_entry(mat,i,j) ((mat)->entries[(i) * (mat)->stride + (j)])
 
 NMOD_MAT_INLINE
-mp_limb_t nmod_mat_get_entry(const nmod_mat_t mat, slong i, slong j)
+ulong nmod_mat_get_entry(const nmod_mat_t mat, slong i, slong j)
 {
-   return mat->rows[i][j];
+   return nmod_mat_entry(mat, i, j);
 }
 
 NMOD_MAT_INLINE
-mp_limb_t * nmod_mat_entry_ptr(const nmod_mat_t mat, slong i, slong j)
+ulong * nmod_mat_entry_ptr(const nmod_mat_t mat, slong i, slong j)
 {
-   return mat->rows[i] + j;
+   return &nmod_mat_entry(mat, i, j);
 }
 
+NMOD_MAT_INLINE
+ulong * nmod_mat_row_ptr(const nmod_mat_t mat, slong i)
+{
+   return &nmod_mat_entry(mat, i, 0);
+}
 /* See inlines.c */
 
 NMOD_MAT_INLINE
@@ -54,11 +59,16 @@ slong nmod_mat_ncols(const nmod_mat_t mat)
    return mat->c;
 }
 
-/* TODO: Document */
-void nmod_mat_set_mod(nmod_mat_t mat, mp_limb_t n);
+void nmod_mat_set_mod(nmod_mat_t mat, ulong n);
+
+NMOD_MAT_INLINE
+nmod_t nmod_mat_mod(const nmod_mat_t mat)
+{
+   return mat->mod;
+}
 
 /* Memory management */
-void nmod_mat_init(nmod_mat_t mat, slong rows, slong cols, mp_limb_t n);
+void nmod_mat_init(nmod_mat_t mat, slong rows, slong cols, ulong n);
 void nmod_mat_init_set(nmod_mat_t mat, const nmod_mat_t src);
 void nmod_mat_clear(nmod_mat_t mat);
 void nmod_mat_one(nmod_mat_t mat);
@@ -71,17 +81,33 @@ nmod_mat_swap_entrywise(nmod_mat_t mat1, nmod_mat_t mat2)
     slong i, j;
     for (i = 0; i < nmod_mat_nrows(mat1); i++)
     {
-       mp_limb_t * row1 = mat1->rows[i];
-       mp_limb_t * row2 = mat2->rows[i];
+       ulong * row1 = nmod_mat_entry_ptr(mat1, i, 0);
+       ulong * row2 = nmod_mat_entry_ptr(mat2, i, 0);
        for (j = 0; j < nmod_mat_ncols(mat1); j++)
-          FLINT_SWAP(mp_limb_t, row1[j], row2[j]);
+          FLINT_SWAP(ulong, row1[j], row2[j]);
     }
 }
 
 /* Windows and concatenation */
 
-void nmod_mat_window_init(nmod_mat_t window, const nmod_mat_t mat, slong r1, slong c1, slong r2, slong c2);
-void nmod_mat_window_clear(nmod_mat_t window);
+NMOD_MAT_INLINE void
+nmod_mat_window_init(nmod_mat_t window, const nmod_mat_t mat,
+    slong r1, slong c1, slong r2, slong c2)
+{
+    FLINT_ASSERT(r1 >= 0 && r1 <= r2 && r2 <= mat->r);
+    FLINT_ASSERT(c2 >= 0 && c1 <= c2 && c2 <= mat->c);
+
+    window->entries = nmod_mat_entry_ptr(mat, r1, c1);
+    window->r = r2 - r1;
+    window->c = c2 - c1;
+    window->stride = mat->stride;
+    window->mod = mat->mod;
+}
+
+NMOD_MAT_INLINE void
+nmod_mat_window_clear(nmod_mat_t FLINT_UNUSED(window))
+{
+}
 
 void nmod_mat_concat_horizontal(nmod_mat_t res,
                            const nmod_mat_t mat1,  const nmod_mat_t mat2);
@@ -91,8 +117,9 @@ void nmod_mat_concat_vertical(nmod_mat_t res,
 /* Random matrix generation */
 void nmod_mat_randtest(nmod_mat_t mat, flint_rand_t state);
 void nmod_mat_randfull(nmod_mat_t mat, flint_rand_t state);
+void nmod_mat_rand(nmod_mat_t mat, flint_rand_t state);
 int nmod_mat_randpermdiag(nmod_mat_t mat, flint_rand_t state,
-                 mp_srcptr diag, slong n);
+                 nn_srcptr diag, slong n);
 void nmod_mat_randrank(nmod_mat_t, flint_rand_t state, slong rank);
 void nmod_mat_randops(nmod_mat_t mat, flint_rand_t state, slong count);
 void nmod_mat_randtril(nmod_mat_t mat, flint_rand_t state, int unit);
@@ -138,12 +165,13 @@ void nmod_mat_neg(nmod_mat_t B, const nmod_mat_t A);
 
 /* Matrix-scalar arithmetic */
 
-void nmod_mat_scalar_mul(nmod_mat_t B, const nmod_mat_t A, mp_limb_t c);
-void nmod_mat_scalar_addmul_ui(nmod_mat_t dest,
-                       const nmod_mat_t X, const nmod_mat_t Y, const mp_limb_t b);
-
-
-void nmod_mat_scalar_mul_fmpz(nmod_mat_t res, const nmod_mat_t M, const fmpz_t c);
+void _nmod_mat_scalar_mul_generic(nmod_mat_t B, const nmod_mat_t A, ulong c);
+void _nmod_mat_scalar_mul_precomp(nmod_mat_t B, const nmod_mat_t A, ulong c, ulong c_pr);
+void nmod_mat_scalar_mul(nmod_mat_t B, const nmod_mat_t A, ulong c);
+void nmod_mat_scalar_mul_fmpz(nmod_mat_t B, const nmod_mat_t A, const fmpz_t c);
+void _nmod_mat_scalar_addmul_ui_generic(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B, const ulong c);
+void _nmod_mat_scalar_addmul_ui_precomp(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B, const ulong c, const ulong c_pr);
+void nmod_mat_scalar_addmul_ui(nmod_mat_t C, const nmod_mat_t A, const nmod_mat_t B, const ulong c);
 
 /* Matrix multiplication */
 
@@ -171,17 +199,17 @@ void nmod_mat_addmul(nmod_mat_t D, const nmod_mat_t C,
 void nmod_mat_submul(nmod_mat_t D, const nmod_mat_t C,
                                 const nmod_mat_t A, const nmod_mat_t B);
 
-void nmod_mat_mul_nmod_vec(mp_limb_t * c, const nmod_mat_t A,
-                                              const mp_limb_t * b, slong blen);
+void nmod_mat_mul_nmod_vec(ulong * c, const nmod_mat_t A,
+                                              const ulong * b, slong blen);
 
-void nmod_mat_mul_nmod_vec_ptr(mp_limb_t * const * c,
-                  const nmod_mat_t A, const mp_limb_t * const * b, slong blen);
+void nmod_mat_mul_nmod_vec_ptr(ulong * const * c,
+                  const nmod_mat_t A, const ulong * const * b, slong blen);
 
-void nmod_mat_nmod_vec_mul(mp_limb_t * c, const mp_limb_t * a,
+void nmod_mat_nmod_vec_mul(ulong * c, const ulong * a,
                                                slong alen, const nmod_mat_t B);
 
-void nmod_mat_nmod_vec_mul_ptr(mp_limb_t * const * c,
-                  const mp_limb_t * const * a, slong alen, const nmod_mat_t B);
+void nmod_mat_nmod_vec_mul_ptr(ulong * const * c,
+                  const ulong * const * a, slong alen, const nmod_mat_t B);
 
 /* Exponent */
 
@@ -190,15 +218,15 @@ void nmod_mat_pow(nmod_mat_t dest, const nmod_mat_t mat, ulong pow);
 
 /* Trace */
 
-mp_limb_t nmod_mat_trace(const nmod_mat_t mat);
+ulong nmod_mat_trace(const nmod_mat_t mat);
 
 /* Determinant */
 
-mp_limb_t _nmod_mat_det(nmod_mat_t A);
-mp_limb_t nmod_mat_det(const nmod_mat_t A);
+ulong _nmod_mat_det(nmod_mat_t A);
+ulong nmod_mat_det(const nmod_mat_t A);
 
-mp_limb_t _nmod_mat_det_howell(nmod_mat_t A);
-mp_limb_t nmod_mat_det_howell(const nmod_mat_t A);
+ulong _nmod_mat_det_howell(nmod_mat_t A);
+ulong nmod_mat_det_howell(const nmod_mat_t A);
 
 /* Rank */
 
@@ -215,10 +243,17 @@ void nmod_mat_swap_rows(nmod_mat_t mat, slong * perm, slong r, slong s)
 {
     if (r != s && !nmod_mat_is_empty(mat))
     {
+        slong i;
+        nn_ptr u, v;
+
         if (perm)
             FLINT_SWAP(slong, perm[r], perm[s]);
 
-        FLINT_SWAP(mp_ptr, mat->rows[r], mat->rows[s]);
+        u = nmod_mat_entry_ptr(mat, r, 0);
+        v = nmod_mat_entry_ptr(mat, s, 0);
+
+        for (i = 0; i < mat->c; i++)
+            FLINT_SWAP(ulong, u[i], v[i]);
     }
 }
 
@@ -242,7 +277,7 @@ void nmod_mat_swap_cols(nmod_mat_t mat, slong * perm, slong r, slong s)
             FLINT_SWAP(slong, perm[r], perm[s]);
 
         for (i = 0; i < mat->r; i++)
-            FLINT_SWAP(mp_limb_t, mat->rows[i][r], mat->rows[i][s]);
+            FLINT_SWAP(ulong, nmod_mat_entry(mat, i, r), nmod_mat_entry(mat, i, s));
     }
 }
 
@@ -261,7 +296,7 @@ void nmod_mat_invert_cols(nmod_mat_t mat, slong * perm)
 
         for (t = 0; t < mat->r; t++)
             for (i = 0; i < k; i++)
-                FLINT_SWAP(mp_limb_t, mat->rows[t][i], mat->rows[t][c - i - 1]);
+                FLINT_SWAP(ulong, nmod_mat_entry(mat, t, i), nmod_mat_entry(mat, t, c - i - 1));
     }
 }
 
@@ -287,7 +322,7 @@ slong nmod_mat_lu_recursive(slong * P, nmod_mat_t A, int rank_check);
 /* Nonsingular solving */
 
 int nmod_mat_solve(nmod_mat_t X, const nmod_mat_t A, const nmod_mat_t B);
-int nmod_mat_solve_vec(mp_ptr x, const nmod_mat_t A, mp_srcptr b);
+int nmod_mat_solve_vec(nn_ptr x, const nmod_mat_t A, nn_srcptr b);
 
 /* Solving */
 
@@ -351,7 +386,7 @@ void nmod_mat_similarity(nmod_mat_t M, slong r, ulong d);
 
 /* Inlines *******************************************************************/
 
-void nmod_mat_set_entry(nmod_mat_t mat, slong i, slong j, mp_limb_t x);
+void nmod_mat_set_entry(nmod_mat_t mat, slong i, slong j, ulong x);
 
 #ifdef __cplusplus
 }

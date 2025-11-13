@@ -9,7 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "ulong_extras.h"
 #include "fmpz.h"
 #include "mpoly.h"
@@ -23,7 +22,7 @@ main(void)
     timeit_t timer;
     flint_rand_t state;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     flint_printf("------------------------------\n");
     total_time = 0;
@@ -115,7 +114,7 @@ main(void)
     }
     flint_printf("irreducible time: %wd ms\n\n", total_time);
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
     return 0;
 }

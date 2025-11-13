@@ -3,7 +3,7 @@
 **longlong.h** -- support functions for multi-word arithmetic
 ===============================================================================
 
-Leading and trailing zeroes
+Bit manipulation
 -------------------------------------------------------------------------------
 
 .. macro:: flint_clz(x)
@@ -17,6 +17,17 @@ Leading and trailing zeroes
 
     As for ``flint_clz()``, but counts from the least significant end. If `x` is
     zero then the return value is undefined.
+
+.. function:: flint_bitcnt_t FLINT_BIT_COUNT(ulong x)
+
+    Returns the number of binary bits required to represent *x*. If *x* is zero
+    it returns *0*. This is an inline-function only.
+
+.. macro:: FLINT_FLOG2(x)
+           FLINT_CLOG2(x)
+
+    For `x \ge 1`, it returns `\lfloor \log_2 x \rfloor`
+    and `\lceil \log_2 x \rceil`, respectively.
 
 Addition and subtraction
 -------------------------------------------------------------------------------
@@ -69,7 +80,7 @@ Division
 .. macro:: udiv_qrnnd(q, r, n1, n0, d)
 
     Computes the non-negative integers `q` and `r` in `d q + r = n_1 B + n_0`,
-    where `B = 2^{\mathtt{FLINT\_BITS}}`. Assumes that `d < n_1`.
+    where `B = 2^{\mathtt{FLINT\_BITS}}`. Assumes that `n_1 < d`.
 
 .. macro:: sdiv_qrnnd(quotient, remainder, high_numerator, low_numerator, denominator)
 
@@ -78,12 +89,5 @@ Division
 .. macro:: udiv_qrnnd_preinv(q, r, n1, n0, d, di)
 
     Works like ``udiv_qrnnd``, but takes a precomputed inverse ``di`` as 
-    computed by ::func::`n_preinvert_limb`.
-
-Miscellaneous
--------------------------------------------------------------------------------
-
-.. macro:: byte_swap(x)
-
-    Swap the order of the bytes in the word `x`, i.e. most significant byte
-    becomes least significant byte, etc.
+    computed by :func:`n_preinvert_limb_prenorm`. This function assumes ``d``
+    is normalised, i.e. with most significant bit set.

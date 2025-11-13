@@ -18,13 +18,21 @@
 #define FEXPR_INLINE static inline
 #endif
 
+#include "mpoly_types.h"
+#include "arf_types.h"
+#include "gr_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "mpoly_types.h"
-#include "mpn_extras.h"
-#include "calcium.h"
+/* FIXME: We need calcium_stream in ca_types.h, but this header includes qqbar.h
+   which conditionally defines functions using fexpr_t if and only if FEXPR_H is
+   defined. And at this point FEXPR_H is defined, but not fexpr_t... */
+#ifndef calcium_stream_struct
+# define calcium_stream_struct gr_stream_struct
+# define calcium_stream_t gr_stream_t
+#endif
 
 #define FEXPR_TYPE_SMALL_INT     UWORD(0)
 #define FEXPR_TYPE_SMALL_SYMBOL  UWORD(1)
@@ -139,9 +147,11 @@ fexpr_set(fexpr_t res, const fexpr_t expr)
 {
     if (res != expr)
     {
+        slong i;
         slong size = fexpr_size(expr);
         fexpr_fit_size(res, size);
-        flint_mpn_copyi(res->data, expr->data, size);
+        for (i = 0; i < size; i++)
+            res->data[i] = expr->data[i];
     }
 }
 
@@ -152,22 +162,10 @@ fexpr_swap(fexpr_t a, fexpr_t b)
 }
 
 FEXPR_INLINE int
-_mpn_equal(mp_srcptr a, mp_srcptr b, slong len)
-{
-    slong i;
-
-    for (i = 0; i < len; i++)
-        if (a[i] != b[i])
-            return 0;
-
-    return 1;
-}
-
-FEXPR_INLINE int
 fexpr_equal(const fexpr_t a, const fexpr_t b)
 {
     ulong ha, hb;
-    slong sa, sb;
+    slong i, sa, sb;
 
     ha = a->data[0];
     hb = b->data[0];
@@ -181,7 +179,11 @@ fexpr_equal(const fexpr_t a, const fexpr_t b)
     if (sa != sb)
         return 0;
 
-    return _mpn_equal(a->data + 1, b->data + 1, sa - 1);
+    for (i = 1; i < sa; i++)
+        if (a->data[i] != b->data[i])
+            return 0;
+
+    return 1;
 }
 
 /* todo: document, test */
@@ -273,10 +275,11 @@ fexpr_set_symbol_builtin(fexpr_t res, slong id)
 }
 
 void fexpr_set_symbol_str(fexpr_t res, const char * s);
-char * fexpr_get_symbol_str(const fexpr_t expr);
-
 void fexpr_set_string(fexpr_t res, const char * s);
+
+char * fexpr_get_symbol_str(const fexpr_t expr);
 char * fexpr_get_string(const fexpr_t expr);
+char * fexpr_get_decimal_str(const fexpr_t expr, slong digits, ulong flags);
 
 slong fexpr_depth(const fexpr_t expr);
 slong fexpr_num_leaves(const fexpr_t expr);

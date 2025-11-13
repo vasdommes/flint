@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "acb.h"
 #include "acb_dirichlet.h"
 
 static void
@@ -99,14 +100,4 @@ acb_dirichlet_gauss_sum(acb_t res, const dirichlet_group_t G, const dirichlet_ch
         else
             acb_dirichlet_gauss_sum_theta(res, G, chi, prec);
     }
-}
-
-void
-acb_dirichlet_gauss_sum_ui(acb_t res, const dirichlet_group_t G, ulong a, slong prec)
-{
-    dirichlet_char_t chi;
-    dirichlet_char_init(chi, G);
-    dirichlet_char_log(chi, G, a);
-    acb_dirichlet_gauss_sum(res, G, chi, prec);
-    dirichlet_char_clear(chi);
 }

@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "bernoulli.h"
 
 const short bernoulli_bound_tab[256] = {
@@ -55,7 +56,7 @@ bernoulli_bound_2exp_si(ulong n)
         if (n == 1)
             return -WORD(1);
         else
-            return LONG_MIN;
+            return WORD_MIN;
     }
     else if (n < 512)
     {
@@ -64,7 +65,7 @@ bernoulli_bound_2exp_si(ulong n)
     else
     {
         /* |B_n| < 4 * n! / (2*pi)^n < 4 * (n+1)^(n+1) e^(-n) / (2*pi)^n */
-        mp_limb_t l, u, hi, lo;
+        ulong l, u, hi, lo;
         int b, shift;
 
         b = FLINT_BIT_COUNT(n + 1);

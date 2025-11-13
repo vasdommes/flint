@@ -9,14 +9,13 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "flint.h"
 #include "fmpz_poly.h"
 #include "fmpz_poly_mat.h"
 
 void
 fmpz_poly_mat_clear(fmpz_poly_mat_t A)
 {
-    if (A->entries)
+    if (A->entries != NULL)
     {
         slong i;
 
@@ -24,7 +23,5 @@ fmpz_poly_mat_clear(fmpz_poly_mat_t A)
             fmpz_poly_clear(A->entries + i);
 
         flint_free(A->entries);
-        flint_free(A->rows);
-    } else if (A->r != 0)
-        flint_free(A->rows);
+    }
 }

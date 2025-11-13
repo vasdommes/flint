@@ -11,9 +11,11 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "mpn_extras.h"
 #include "nmod.h"
 #include "nmod_vec.h"
 #include "nmod_poly.h"
+#include "nmod_poly/impl.h"
 
 static
 slong NMOD_DIVREM_BC_ITCH(slong lenA, slong lenB, nmod_t mod)
@@ -30,8 +32,8 @@ slong NMOD_DIVREM_BC_ITCH(slong lenA, slong lenB, nmod_t mod)
 }
 
 
-void _nmod_poly_divrem_q0_preinv1(mp_ptr Q, mp_ptr R,
-                          mp_srcptr A, mp_srcptr B, slong lenA, mp_limb_t invL, nmod_t mod)
+void _nmod_poly_divrem_q0_preinv1(nn_ptr Q, nn_ptr R,
+                          nn_srcptr A, nn_srcptr B, slong lenA, ulong invL, nmod_t mod)
 {
     if (lenA == 1)
     {
@@ -53,9 +55,9 @@ void _nmod_poly_divrem_q0_preinv1(mp_ptr Q, mp_ptr R,
     }
 }
 
-void _nmod_poly_divrem_q1_preinv1(mp_ptr Q, mp_ptr R,
-                          mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
-                          mp_limb_t invL, nmod_t mod)
+static void _nmod_poly_divrem_q1_preinv1(nn_ptr Q, nn_ptr R,
+                          nn_srcptr A, slong lenA, nn_srcptr B, slong lenB,
+                          ulong invL, nmod_t mod)
 {
     if (lenB == 1)
     {
@@ -63,7 +65,7 @@ void _nmod_poly_divrem_q1_preinv1(mp_ptr Q, mp_ptr R,
     }
     else
     {
-        mp_limb_t q0, q1, t, t0, t1, t2, s0, s1;
+        ulong q0, q1, t, t0, t1, t2, s0, s1;
         slong i;
 
         q1 = nmod_mul(A[lenA-1], invL, mod);
@@ -81,7 +83,7 @@ void _nmod_poly_divrem_q1_preinv1(mp_ptr Q, mp_ptr R,
         {
             for (i = 1; i < lenB - 1; i++)
             {
-                NMOD_RED2(R[i], 0, A[i] + q1*B[i - 1] + q0*B[i], mod);
+                NMOD_RED2(R[i], UWORD(0), A[i] + q1*B[i - 1] + q0*B[i], mod);
             }
         }
         else if (mod.norm != 0)
@@ -117,15 +119,15 @@ void _nmod_poly_divrem_q1_preinv1(mp_ptr Q, mp_ptr R,
     }
 }
 
-void
-_nmod_poly_divrem_basecase_preinv1_1(mp_ptr Q, mp_ptr R, mp_ptr W,
-                             mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
-                             mp_limb_t invL,
+static void
+_nmod_poly_divrem_basecase_preinv1_1(nn_ptr Q, nn_ptr R, nn_ptr W,
+                             nn_srcptr A, slong lenA, nn_srcptr B, slong lenB,
+                             ulong invL,
                              nmod_t mod)
 {
     slong iR;
-    mp_ptr ptrQ = Q - lenB + 1;
-    mp_ptr R1 = W;
+    nn_ptr ptrQ = Q - lenB + 1;
+    nn_ptr R1 = W;
 
     flint_mpn_copyi(R1, A, lenA);
 
@@ -141,7 +143,7 @@ _nmod_poly_divrem_basecase_preinv1_1(mp_ptr Q, mp_ptr R, mp_ptr W,
 
             if (lenB > 1)
             {
-                const mp_limb_t c = n_negmod(ptrQ[iR], mod.n);
+                const ulong c = n_negmod(ptrQ[iR], mod.n);
                 mpn_addmul_1(R1 + iR - lenB + 1, B, lenB - 1, c);
             }
         }
@@ -151,14 +153,14 @@ _nmod_poly_divrem_basecase_preinv1_1(mp_ptr Q, mp_ptr R, mp_ptr W,
         _nmod_vec_reduce(R, R1, lenB - 1, mod);
 }
 
-void
-_nmod_poly_divrem_basecase_preinv1_2(mp_ptr Q, mp_ptr R, mp_ptr W,
-                             mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
-                             mp_limb_t invL,
+static void
+_nmod_poly_divrem_basecase_preinv1_2(nn_ptr Q, nn_ptr R, nn_ptr W,
+                             nn_srcptr A, slong lenA, nn_srcptr B, slong lenB,
+                             ulong invL,
                              nmod_t mod)
 {
     slong iR, i;
-    mp_ptr B2 = W, R2 = W + 2*(lenB - 1), ptrQ = Q - lenB + 1;
+    nn_ptr B2 = W, R2 = W + 2*(lenB - 1), ptrQ = Q - lenB + 1;
 
     for (i = 0; i < lenB - 1; i++)
     {
@@ -173,7 +175,7 @@ _nmod_poly_divrem_basecase_preinv1_2(mp_ptr Q, mp_ptr R, mp_ptr W,
 
     for (iR = lenA - 1; iR >= lenB - 1; )
     {
-        mp_limb_t r =
+        ulong r =
             n_ll_mod_preinv(R2[2 * iR + 1], R2[2 * iR], mod.n, mod.ninv);
 
         while ((iR + 1 >= lenB) && (r == WORD(0)))
@@ -190,7 +192,7 @@ _nmod_poly_divrem_basecase_preinv1_2(mp_ptr Q, mp_ptr R, mp_ptr W,
 
             if (lenB > 1)
             {
-                const mp_limb_t c = n_negmod(ptrQ[iR], mod.n);
+                const ulong c = n_negmod(ptrQ[iR], mod.n);
                 mpn_addmul_1(R2 + 2 * (iR - lenB + 1), B2, 2 * lenB - 2, c);
             }
             iR--;
@@ -201,14 +203,14 @@ _nmod_poly_divrem_basecase_preinv1_2(mp_ptr Q, mp_ptr R, mp_ptr W,
         R[iR] = n_ll_mod_preinv(R2[2*iR+1], R2[2*iR], mod.n, mod.ninv);
 }
 
-void
-_nmod_poly_divrem_basecase_preinv1_3(mp_ptr Q, mp_ptr R, mp_ptr W,
-                                     mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
-                                     mp_limb_t invL,
+static void
+_nmod_poly_divrem_basecase_preinv1_3(nn_ptr Q, nn_ptr R, nn_ptr W,
+                                     nn_srcptr A, slong lenA, nn_srcptr B, slong lenB,
+                                     ulong invL,
                                      nmod_t mod)
 {
     slong iR, i;
-    mp_ptr B3 = W, R3 = W + 3*(lenB - 1), ptrQ = Q - lenB + 1;
+    nn_ptr B3 = W, R3 = W + 3*(lenB - 1), ptrQ = Q - lenB + 1;
 
     for (i = 0; i < lenB - 1; i++)
     {
@@ -225,7 +227,7 @@ _nmod_poly_divrem_basecase_preinv1_3(mp_ptr Q, mp_ptr R, mp_ptr W,
 
     for (iR = lenA - 1; iR >= lenB - 1; )
     {
-        mp_limb_t r =
+        ulong r =
             n_lll_mod_preinv(R3[3 * iR + 2], R3[3 * iR + 1],
                              R3[3 * iR], mod.n, mod.ninv);
 
@@ -243,7 +245,7 @@ _nmod_poly_divrem_basecase_preinv1_3(mp_ptr Q, mp_ptr R, mp_ptr W,
 
             if (lenB > 1)
             {
-                const mp_limb_t c = n_negmod(ptrQ[iR], mod.n);
+                const ulong c = n_negmod(ptrQ[iR], mod.n);
                 mpn_addmul_1(R3 + 3 * (iR - lenB + 1), B3, 3 * lenB - 3, c);
             }
             iR--;
@@ -256,9 +258,9 @@ _nmod_poly_divrem_basecase_preinv1_3(mp_ptr Q, mp_ptr R, mp_ptr W,
 }
 
 void
-_nmod_poly_divrem_basecase_preinv1(mp_ptr Q, mp_ptr R,
-                           mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
-                           mp_limb_t invB,
+_nmod_poly_divrem_basecase_preinv1(nn_ptr Q, nn_ptr R,
+                           nn_srcptr A, slong lenA, nn_srcptr B, slong lenB,
+                           ulong invB,
                            nmod_t mod)
 {
     if (lenA == lenB + 1)
@@ -275,12 +277,12 @@ _nmod_poly_divrem_basecase_preinv1(mp_ptr Q, mp_ptr R,
     }
     else
     {
-        mp_ptr W;
+        nn_ptr W;
         TMP_INIT;
         slong bits = 2 * (FLINT_BITS - mod.norm) + FLINT_BIT_COUNT(lenA - lenB + 1);
 
         TMP_START;
-        W = TMP_ALLOC(NMOD_DIVREM_BC_ITCH(lenA, lenB, mod)*sizeof(mp_limb_t));
+        W = TMP_ALLOC(NMOD_DIVREM_BC_ITCH(lenA, lenB, mod)*sizeof(ulong));
 
         if (bits <= FLINT_BITS)
             _nmod_poly_divrem_basecase_preinv1_1(Q, R, W, A, lenA, B, lenB, invB, mod);
@@ -294,10 +296,10 @@ _nmod_poly_divrem_basecase_preinv1(mp_ptr Q, mp_ptr R,
 }
 
 void
-_nmod_poly_divrem_basecase(mp_ptr Q, mp_ptr R, mp_srcptr A, slong lenA,
-                                  mp_srcptr B, slong lenB, nmod_t mod)
+_nmod_poly_divrem_basecase(nn_ptr Q, nn_ptr R, nn_srcptr A, slong lenA,
+                                  nn_srcptr B, slong lenB, nmod_t mod)
 {
-    mp_limb_t invB;
+    ulong invB;
 
     invB = (B[lenB - 1] == 1) ? 1 : n_invmod(B[lenB - 1], mod.n);
     _nmod_poly_divrem_basecase_preinv1(Q, R, A, lenA, B, lenB, invB, mod);
@@ -308,7 +310,7 @@ void nmod_poly_divrem_basecase(nmod_poly_t Q, nmod_poly_t R,
 {
     const slong lenA = A->length, lenB = B->length;
     nmod_poly_t tQ, tR;
-    mp_ptr q, r;
+    nn_ptr q, r;
 
     if (lenB == 0)
     {
@@ -319,7 +321,7 @@ void nmod_poly_divrem_basecase(nmod_poly_t Q, nmod_poly_t R,
             return;
         } else
         {
-            flint_throw(FLINT_ERROR, "Exception (nmod_poly_divrem). Division by zero.");
+            flint_throw(FLINT_DIVZERO, "Exception (nmod_poly_divrem). Division by zero.");
         }
     }
 

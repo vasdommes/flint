@@ -9,14 +9,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
 #include "ulong_extras.h"
 #include "arb.h"
-
-#ifdef __GNUC__
-# define pow __builtin_pow
-#else
-# include <math.h>
-#endif
+#include "arb/impl.h"
 
 void
 arb_exp_taylor_sum_rs_generic(arb_t res, const arb_t x, slong N, slong prec)
@@ -44,7 +40,7 @@ arb_exp_taylor_sum_rs_generic(arb_t res, const arb_t x, slong N, slong prec)
     {
         arb_ptr tpow;
         slong j, k, m, M, tp, xmag;
-        mp_limb_t c, d, chi, clo;
+        ulong c, d, chi, clo;
 
         xmag = arf_abs_bound_lt_2exp_si(arb_midref(x));
 

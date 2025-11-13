@@ -9,6 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "gr.h"
 #include "gr_mat.h"
 
 #define E(i,j) GR_MAT_ENTRY(A, i, j, sz)
@@ -124,7 +125,7 @@ gr_mat_det_cofactor(gr_ptr res, const gr_mat_t A, gr_ctx_t ctx)
     if (n == 0)
         return gr_one(res, ctx);
     else if (n == 1)
-        return gr_set(res, A->rows[0], ctx);
+        return gr_set(res, gr_mat_entry_srcptr(A, 0, 0, ctx), ctx);
     else if (n == 2)
         return _gr_mat_det_2x2(res, A, ctx);
     else if (n == 3)

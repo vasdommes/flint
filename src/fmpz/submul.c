@@ -13,15 +13,12 @@
 
 #include "gmpcompat.h"
 #include "fmpz.h"
-
-/* defined in addmul.c */
-void
-_flint_mpz_addmul_large(mpz_ptr z, mpz_srcptr x, mpz_srcptr y, int negate);
+#include "fmpz/impl.h"
 
 void fmpz_submul(fmpz_t f, const fmpz_t g, const fmpz_t h)
 {
     fmpz c1, c2, c3;
-    __mpz_struct * mf;
+    mpz_ptr mf;
 
     c1 = *g;
 	c2 = *h;
@@ -118,7 +115,7 @@ void fmpz_submul_si(fmpz_t f, const fmpz_t g, slong x)
         mpz_ptr pF = _fmpz_promote_val(f);
 
         if (x < 0)
-            flint_mpz_addmul_ui(pF, pG, -x);
+            flint_mpz_addmul_ui(pF, pG, -(ulong) x);
         else
             flint_mpz_submul_ui(pF, pG, x);
 

@@ -45,7 +45,7 @@ _fq_nmod_unrank(fq_nmod_t x, ulong r, const fq_nmod_ctx_t ctx)
 }
 
 static int
-n_is_prime_power(mp_limb_t * p, mp_limb_t n)
+n_is_prime_power(ulong * p, ulong n)
 {
     n_factor_t fac;
 
@@ -67,7 +67,7 @@ n_is_prime_power(mp_limb_t * p, mp_limb_t n)
 
 /* Jacobsthal matrix of order q = p^d */
 /* Could speed up greatly for d = 1. */
-void
+static void
 fmpz_mat_jacobsthal(fmpz_mat_t Q)
 {
     int * quadratic;
@@ -128,7 +128,7 @@ fmpz_mat_jacobsthal(fmpz_mat_t Q)
 /* 2 -- n = 2^v * 2*(p^e + 1) */
 /* 3 -- n = 2^v */
 static int
-paley_construction(mp_limb_t * q, mp_limb_t n)
+paley_construction(ulong * q, ulong n)
 {
     int i, v;
 
@@ -169,7 +169,7 @@ fmpz_mat_set2x2(fmpz_mat_t A, slong i, slong j,
 int
 fmpz_mat_hadamard(fmpz_mat_t A)
 {
-    mp_limb_t m, n, q;
+    ulong m, n, q;
     int kind;
 
     n = fmpz_mat_nrows(A);
@@ -249,9 +249,9 @@ fmpz_mat_hadamard(fmpz_mat_t A)
         ulong i;
         for (i = 0; i < m; i++)
         {
-            _fmpz_vec_set(A->rows[i] + m, A->rows[i], m);
-            _fmpz_vec_set(A->rows[i + m], A->rows[i], m);
-            _fmpz_vec_neg(A->rows[i + m] + m, A->rows[i], m);
+            _fmpz_vec_set(fmpz_mat_entry(A, i, m), fmpz_mat_entry(A, i, 0), m);
+            _fmpz_vec_set(fmpz_mat_entry(A, i + m, 0), fmpz_mat_entry(A, i, 0), m);
+            _fmpz_vec_neg(fmpz_mat_entry(A, i + m, m), fmpz_mat_entry(A, i, 0), m);
         }
     }
 

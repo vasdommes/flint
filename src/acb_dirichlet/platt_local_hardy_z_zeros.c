@@ -11,14 +11,10 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
+#include "acb.h"
 #include "acb_dirichlet.h"
 #include "arb_calc.h"
-
-#ifdef __GNUC__
-# define exp __builtin_exp
-#else
-# include <math.h>
-#endif
 
 static const slong LOOPCOUNT = 4;
 
@@ -1074,7 +1070,6 @@ finish:
     return zeros_count;
 }
 
-
 slong
 _acb_dirichlet_platt_isolate_local_hardy_z_zeros(
         arf_interval_ptr res, const fmpz_t n, slong len,
@@ -1090,7 +1085,6 @@ _acb_dirichlet_platt_isolate_local_hardy_z_zeros(
     platt_ctx_clear(ctx);
     return zeros_count;
 }
-
 
 static void
 _refine_local_hardy_z_zero_illinois(arb_t res,
@@ -1439,7 +1433,6 @@ finish:
     return p;
 }
 
-
 /* Returns the number of zeros found. */
 slong
 acb_dirichlet_platt_isolate_local_hardy_z_zeros(
@@ -1467,7 +1460,6 @@ acb_dirichlet_platt_isolate_local_hardy_z_zeros(
     }
     return 0;
 }
-
 
 /* Returns the number of zeros found. */
 slong

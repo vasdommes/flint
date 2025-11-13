@@ -73,7 +73,7 @@ void fq_nmod_mpoly_factor_swap_base(fq_nmod_mpoly_t p,
     fq_nmod_mpoly_swap(p, f->poly + i, ctx);
 }
 
-slong fq_nmod_mpoly_factor_get_exp_si(fq_nmod_mpoly_factor_t f, slong i, const fq_nmod_mpoly_ctx_t ctx);
+slong fq_nmod_mpoly_factor_get_exp_si(fq_nmod_mpoly_factor_t f, slong i, const fq_nmod_mpoly_ctx_t FLINT_UNUSED(ctx));
 
 void fq_nmod_mpoly_factor_set(fq_nmod_mpoly_factor_t a,
                 const fq_nmod_mpoly_factor_t b, const fq_nmod_mpoly_ctx_t ctx);
@@ -373,7 +373,7 @@ int fq_nmod_mpoly_factor_irred_lgprime_zippel(
 /*****************************************************************************/
 
 void fq_nmod_mpoly_compression_do(fq_nmod_mpoly_t L,
-               const fq_nmod_mpoly_ctx_t Lctx, mp_limb_t * Acoeffs, slong Alen,
+               const fq_nmod_mpoly_ctx_t Lctx, ulong * Acoeffs, slong Alen,
                                                         mpoly_compression_t M);
 
 void fq_nmod_mpoly_compression_undo(fq_nmod_mpoly_t A,
@@ -409,7 +409,7 @@ typedef fq_nmod_mpoly_pfrac_struct fq_nmod_mpoly_pfrac_t[1];
 
 
 int fq_nmod_mpoly_pfrac_init(
-    fq_nmod_mpoly_pfrac_t I,
+    fq_nmod_mpoly_pfrac_t Iv,
     flint_bitcnt_t bits,
     slong l, slong r,
     const fq_nmod_mpoly_struct * betas,
@@ -417,14 +417,14 @@ int fq_nmod_mpoly_pfrac_init(
     const fq_nmod_mpoly_ctx_t ctx);
 
 void fq_nmod_mpoly_pfrac_clear(
-    fq_nmod_mpoly_pfrac_t I,
+    fq_nmod_mpoly_pfrac_t Iv,
     const fq_nmod_mpoly_ctx_t ctx);
 
 int fq_nmod_mpoly_pfrac(
     slong r,
     fq_nmod_mpoly_t t,
     const slong * deg,
-    fq_nmod_mpoly_pfrac_t I,
+    fq_nmod_mpoly_pfrac_t Iv,
     const fq_nmod_mpoly_ctx_t ctx);
 
 int fq_nmod_mpoly_hlift(
@@ -472,7 +472,7 @@ int n_fq_bpoly_hlift(
     const fq_nmod_t alpha,
     slong degree_inner, /* required degree in x */
     const fq_nmod_ctx_t ctx,
-    n_poly_bpoly_stack_t St);
+    n_poly_bpoly_stack_t FLINT_UNUSED(St));
 
 int n_fq_polyu3_hlift(
     slong r,
@@ -498,7 +498,7 @@ int fq_nmod_mpoly_factor_zippel(fq_nmod_mpoly_factor_t f,
 
 int _fq_nmod_mpoly_eval_rest_n_fq_poly(n_poly_struct * E,
     slong * starts, slong * ends, slong * stops, ulong * es,
-    const mp_limb_t * Acoeffs, const ulong * Aexps, slong Alen, slong var,
+    const ulong * Acoeffs, const ulong * Aexps, slong Alen, slong var,
     const n_fq_poly_struct * alphas, const slong * offsets, const slong * shifts,
                     slong N, ulong mask, slong nvars, const fq_nmod_ctx_t ctx);
 

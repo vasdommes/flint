@@ -15,10 +15,10 @@
 #include "nmod_mpoly.h"
 
 /* A = D - B*C */
-slong _nmod_mpoly_mulsub1(nmod_mpoly_t A,
-                 const mp_limb_t * Dcoeff, const ulong * Dexp, slong Dlen,
-                 const mp_limb_t * Bcoeff, const ulong * Bexp, slong Blen,
-                 const mp_limb_t * Ccoeff, const ulong * Cexp, slong Clen,
+static slong _nmod_mpoly_mulsub1(nmod_mpoly_t A,
+                 const ulong * Dcoeff, const ulong * Dexp, slong Dlen,
+                 const ulong * Bcoeff, const ulong * Bexp, slong Blen,
+                 const ulong * Ccoeff, const ulong * Cexp, slong Clen,
                                          ulong maskhi, nmod_t fctx)
 {
     slong i, j;
@@ -30,11 +30,11 @@ slong _nmod_mpoly_mulsub1(nmod_mpoly_t A,
     mpoly_heap_t * x;
     slong Di;
     slong Alen;
-    mp_limb_t * Acoeff = A->coeffs;
+    ulong * Acoeff = A->coeffs;
     ulong * Aexp = A->exps;
     ulong exp;
     slong * hind;
-    mp_limb_t acc0, acc1, acc2, pp1, pp0;
+    ulong acc0, acc1, acc2, pp1, pp0;
     TMP_INIT;
 
     FLINT_ASSERT(Blen > 0);
@@ -174,10 +174,10 @@ slong _nmod_mpoly_mulsub1(nmod_mpoly_t A,
 }
 
 /* A = D - B*C */
-void _nmod_mpoly_mulsub(nmod_mpoly_t A,
-                 const mp_limb_t * Dcoeff, const ulong * Dexp, slong Dlen,
-                 const mp_limb_t * Bcoeff, const ulong * Bexp, slong Blen,
-                 const mp_limb_t * Ccoeff, const ulong * Cexp, slong Clen,
+static void _nmod_mpoly_mulsub(nmod_mpoly_t A,
+                 const ulong * Dcoeff, const ulong * Dexp, slong Dlen,
+                 const ulong * Bcoeff, const ulong * Bexp, slong Blen,
+                 const ulong * Ccoeff, const ulong * Cexp, slong Clen,
               flint_bitcnt_t bits, slong N, const ulong * cmpmask, nmod_t fctx)
 {
     slong i, j;
@@ -189,13 +189,13 @@ void _nmod_mpoly_mulsub(nmod_mpoly_t A,
     mpoly_heap_t * x;
     slong Di;
     slong Alen;
-    mp_limb_t * Acoeff = A->coeffs;
+    ulong * Acoeff = A->coeffs;
     ulong * Aexp = A->exps;
     ulong * exp, * exps;
     ulong ** exp_list;
     slong exp_next;
     slong * hind;
-    mp_limb_t acc0, acc1, acc2, pp1, pp0;
+    ulong acc0, acc1, acc2, pp1, pp0;
     TMP_INIT;
 
     FLINT_ASSERT(Blen > 0);

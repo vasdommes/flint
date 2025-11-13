@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     if (out == CSV)
         flint_printf("# %-12s, %7s, %7s, %7s\n","name", "prec", "len", "factor", "time");
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     for (j = 0; j < nj; j++)
     {
@@ -112,12 +112,12 @@ int main(int argc, char *argv[])
                     flint_printf("{ \"name\": \"%s\", \"prec\": %d, \"len\": %d, \"factor\": %s, \"time\": ",
                             name[l], prec[j], len[i], factor[i]);
 
-                TIMEIT_ONCE_START
+                TIMEIT_ONCE_START;
 
                 for (m = 0; m < nm; m++)
                     func[l](w, u, v, len[i], prec[j]);
 
-                TIMEIT_ONCE_STOP
+                TIMEIT_ONCE_STOP;
 
                     if (out == JSON)
                         flint_printf("}\n");

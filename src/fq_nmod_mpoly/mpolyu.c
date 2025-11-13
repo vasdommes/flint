@@ -17,6 +17,10 @@
 #include "fq_nmod_mpoly.h"
 #include "fq_nmod_mpoly_factor.h"
 
+#if FLINT_WANT_ASSERT
+# include "longlong.h"
+#endif
+
 int fq_nmod_mpolyu_is_canonical(const fq_nmod_mpolyu_t A,
                                                  const fq_nmod_mpoly_ctx_t ctx)
 {
@@ -325,7 +329,7 @@ void fq_nmod_mpoly_from_mpolyu_perm_inflate(
     slong i, j, k, l;
     slong NA, NB;
     slong Alen;
-    mp_limb_t * Acoeff;
+    ulong * Acoeff;
     ulong * Aexp;
     ulong * uexps;
     ulong * Aexps;
@@ -383,7 +387,7 @@ void fq_nmod_mpoly_from_mpolyu_perm_inflate(
     fq_nmod_mpoly_sort_terms(A, ctx);
 }
 
-
+#if 0
 /*
     Convert B to A using the variable permutation perm.
     The uctx should be the context of the coefficients of A.
@@ -466,7 +470,6 @@ void fq_nmod_mpoly_to_mpolyuu_perm_deflate(
     TMP_END;
 }
 
-
 /*
     Convert B to A using the variable permutation vector perm.
     A must be constructed with bits = Abits.
@@ -496,7 +499,7 @@ void fq_nmod_mpoly_from_mpolyuu_perm_inflate( /* only for 2 main vars */
     slong i, j, k, l;
     slong NA, NB;
     slong Alen;
-    mp_limb_t * Acoeff;
+    ulong * Acoeff;
     ulong * Aexp;
     ulong * uexps;
     ulong * Aexps;
@@ -553,12 +556,9 @@ void fq_nmod_mpoly_from_mpolyuu_perm_inflate( /* only for 2 main vars */
     fq_nmod_mpoly_sort_terms(A, ctx);
     TMP_END;
 }
-
-
-
+#endif
 
 /** 0 variables *************************************/
-
 
 void fq_nmod_mpoly_to_mpolyl_perm_deflate(
     fq_nmod_mpoly_t A,
@@ -764,14 +764,14 @@ void fq_nmod_mpolyu_divexact_mpoly_inplace(
     if (fq_nmod_mpoly_is_fq_nmod(c, ctx))
     {
         slong d = fq_nmod_ctx_degree(ctx->fqctx);
-        mp_limb_t * inv;
+        ulong * inv;
 
         if (_n_fq_is_one(c->coeffs + d*0, d))
             return;
 
         TMP_START;
 
-        inv = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
+        inv = (ulong *) TMP_ALLOC(d*sizeof(ulong));
 
         n_fq_inv(inv, c->coeffs + d*0, ctx->fqctx);
 

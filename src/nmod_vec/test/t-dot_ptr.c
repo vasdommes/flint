@@ -21,10 +21,9 @@ TEST_FUNCTION_START(nmod_vec_dot_ptr, state)
     {
         slong len;
         nmod_t mod;
-        mp_limb_t m, res, res2;
-        mp_ptr x, y;
-        mp_ptr * z;
-        int limbs1;
+        ulong m, res, res2;
+        nn_ptr x, y;
+        nn_ptr * z;
         slong j, offset;
 
         len = n_randint(state, 1000) + 1;
@@ -35,7 +34,7 @@ TEST_FUNCTION_START(nmod_vec_dot_ptr, state)
 
         x = _nmod_vec_init(len);
         y = _nmod_vec_init(len);
-        z = flint_malloc(sizeof(mp_ptr) * len);
+        z = flint_malloc(sizeof(nn_ptr) * len);
 
         _nmod_vec_randtest(x, state, len, mod);
         _nmod_vec_randtest(y, state, len, mod);
@@ -43,17 +42,17 @@ TEST_FUNCTION_START(nmod_vec_dot_ptr, state)
         for (j = 0; j < len; j++)
             z[j] = &y[j] + offset;
 
-        limbs1 = _nmod_vec_dot_bound_limbs(len, mod);
+        const dot_params_t params = _nmod_vec_dot_params(len, mod);
 
-        res = _nmod_vec_dot_ptr(x, z, -offset, len, mod, limbs1);
-        res2 = _nmod_vec_dot(x, y, len, mod, limbs1);
+        res = _nmod_vec_dot_ptr(x, z, -offset, len, mod, params);
+        res2 = _nmod_vec_dot(x, y, len, mod, params);
 
         if (res != res2)
             TEST_FUNCTION_FAIL(
                     "m = %wu\n"
                     "len = %wd\n"
-                    "limbs1 = %d\n",
-                    m, len, limbs1);
+                    "method = %d\n",
+                    m, len, params.method);
 
         _nmod_vec_clear(x);
         _nmod_vec_clear(y);

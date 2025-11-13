@@ -72,7 +72,7 @@ static int _factor_irred_compressed(
 
     Abits = A->bits;
 
-    flint_randinit(state);
+    flint_rand_init(state);
 
     if (nvars < 2)
     {
@@ -220,7 +220,7 @@ static int _factor_irred_compressed(
         fmpz_mod_mpoly_factor_clear(lcAf, ctx);
     }
 
-    flint_randclear(state);
+    flint_rand_clear(state);
 
 #if FLINT_WANT_ASSERT
     if (success)
@@ -485,7 +485,7 @@ cleanup_less:
     Assume each factor in f is sep.
     Replace f by an irreducible factorization.
 */
-int fmpz_mod_mpoly_factor_irred(
+static int fmpz_mod_mpoly_factor_irred(
     fmpz_mod_mpoly_factor_t f,
     const fmpz_mod_mpoly_ctx_t ctx,
     unsigned int algo)

@@ -13,6 +13,9 @@
 #include "mpoly.h"
 #include "fmpz_mod_mpoly.h"
 
+PUSH_OPTIONS
+DIAGNOSTIC_IGNORE_MAYBE_UNINITIALIZED
+
 void _fmpz_mod_mpoly_set_coeff_fmpz_fmpz(
     fmpz_mod_mpoly_t A,
     const fmpz_t c,
@@ -101,15 +104,7 @@ void fmpz_mod_mpoly_set_coeff_fmpz_fmpz(
     for (i = 0; i < nvars; i++)
         newexp[i] = *exp[i];
 
-    /* GCC really wants to complain about this one */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
     _fmpz_mod_mpoly_set_coeff_fmpz_fmpz(A, c, newexp, ctx);
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
     TMP_END;
 }
@@ -131,3 +126,5 @@ void fmpz_mod_mpoly_set_coeff_si_fmpz(fmpz_mod_mpoly_t poly,
     fmpz_mod_mpoly_set_coeff_fmpz_fmpz(poly, C, exp, ctx);
     fmpz_clear(C);
 }
+
+POP_OPTIONS

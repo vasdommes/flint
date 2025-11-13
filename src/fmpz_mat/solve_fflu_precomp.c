@@ -20,7 +20,9 @@
 #define BB(ii,jj) fmpz_mat_entry(B,(ii),(jj))
 #define LU(ii,jj) fmpz_mat_entry(FFLU,(ii),(jj))
 
-void
+#define r_shift(in, c) (((c) == FLINT_BITS) ? WORD(0) : ((in) >> (c)))
+
+static void
 fmpz_mat_set_perm(fmpz_mat_t X, const slong * perm, const fmpz_mat_t B)
 {
     if (X == B)

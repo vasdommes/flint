@@ -10,12 +10,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#ifdef __GNUC__
-# define sqrt __builtin_sqrt
-#else
-# include <math.h>
-#endif
-
+#include <math.h>
 #include "gmpcompat.h"
 #include "mpn_extras.h"
 #include "nmod.h"
@@ -69,7 +64,7 @@ static mpz_srcptr _fmpz_mpoly_get_mpz_signed_uiuiui(ulong * sm, fmpz x, mpz_ptr 
 /* try to prove that A is not a square */
 static int _is_proved_not_square(
     int count,
-    mp_limb_t * p,
+    ulong * p,
     flint_rand_t state,
     const fmpz * Acoeffs,
     const ulong * Aexps,
@@ -79,7 +74,7 @@ static int _is_proved_not_square(
 {
     int success = 0;
     slong i, N = mpoly_words_per_exp(Abits, mctx);
-    mp_limb_t eval, * alphas;
+    ulong eval, * alphas;
     nmod_t mod;
     ulong * t;
     TMP_INIT;
@@ -99,7 +94,7 @@ static int _is_proved_not_square(
     /* try at most 3*count evaluations */
     count *= 3;
 
-    alphas = (mp_limb_t *) TMP_ALLOC(mctx->nvars*sizeof(mp_limb_t));
+    alphas = (ulong *) TMP_ALLOC(mctx->nvars*sizeof(ulong));
 
 next_p:
 
@@ -139,7 +134,7 @@ cleanup:
    TODO: copy this strategy for the "small" case (i.e. no fmpz arithmetic)
          to the other fmpz mpoly mul/div functions.
 */
-slong _fmpz_mpoly_sqrt_heap1(
+static slong _fmpz_mpoly_sqrt_heap1(
     fmpz ** polyq, ulong ** expq, slong * allocq,
     const fmpz * Acoeffs, const ulong * Aexps, slong Alen,
     flint_bitcnt_t bits,
@@ -164,7 +159,7 @@ slong _fmpz_mpoly_sqrt_heap1(
     ulong acc_sm[3], acc_sm2[3], pp[3];
     int lt_divides, q_rest_small;
     flint_rand_t heuristic_state;
-    mp_limb_t heuristic_p = UWORD(1) << (SMALL_FMPZ_BITCOUNT_MAX);
+    ulong heuristic_p = UWORD(1) << (SMALL_FMPZ_BITCOUNT_MAX);
     int heuristic_count = 0;
     ulong lc_abs = 0; /* 2*sqrt(lc) if it fits in ulong, otherwise 0 */
     ulong lc_norm = 0;
@@ -175,7 +170,7 @@ slong _fmpz_mpoly_sqrt_heap1(
     FLINT_ASSERT(mpoly_words_per_exp(bits, mctx) == 1);
     mpoly_get_cmpmask(&maskhi, 1, bits, mctx);
 
-    flint_randinit(heuristic_state);
+    flint_rand_init(heuristic_state);
 
     mpz_init(r);
     mpz_init(acc);
@@ -555,7 +550,7 @@ slong _fmpz_mpoly_sqrt_heap1(
 
 cleanup:
 
-    flint_randclear(heuristic_state);
+    flint_rand_clear(heuristic_state);
 
     mpz_clear(r);
     mpz_clear(acc);
@@ -612,7 +607,7 @@ slong _fmpz_mpoly_sqrt_heap(
     ulong acc_sm[3], acc_sm2[3], pp[3];
     int halves, use_heap, lt_divides, q_rest_small;
     flint_rand_t heuristic_state;
-    mp_limb_t heuristic_p = UWORD(1) << (SMALL_FMPZ_BITCOUNT_MAX);
+    ulong heuristic_p = UWORD(1) << (SMALL_FMPZ_BITCOUNT_MAX);
     int heuristic_count = 0;
     ulong lc_abs = 0; /* 2*sqrt(lc) if it fits in ulong, otherwise 0 */
     ulong lc_norm = 0;
@@ -630,7 +625,7 @@ slong _fmpz_mpoly_sqrt_heap(
     cmpmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     mpoly_get_cmpmask(cmpmask, N, bits, mctx);
 
-    flint_randinit(heuristic_state);
+    flint_rand_init(heuristic_state);
 
     mpz_init(r);
     mpz_init(acc);
@@ -1065,7 +1060,7 @@ slong _fmpz_mpoly_sqrt_heap(
 
 cleanup:
 
-    flint_randclear(heuristic_state);
+    flint_rand_clear(heuristic_state);
 
     mpz_clear(r);
     mpz_clear(acc);

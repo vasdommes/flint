@@ -11,6 +11,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "longlong.h"
 #include "gr_poly.h"
 #include "gr_vec.h"
 
@@ -218,7 +219,7 @@ __mat_mul_strassen(gr_ptr * C, slong * lenC,
 }
 
 /*
-    Computs the matrix product C of the two 2x2 matrices A and B,
+    Computes the matrix product C of the two 2x2 matrices A and B,
     using either classical or Strassen multiplication depending
     on the degrees of the input polynomials.
 
@@ -275,7 +276,7 @@ __mat_mul(gr_ptr * C, slong * lenC,
  */
 
 
-int
+static int
 _gr_poly_hgcd_recursive_iter(
     slong * ans_sgn,
     gr_ptr * M, slong * lenM,
@@ -373,7 +374,7 @@ _gr_poly_hgcd_recursive_iter(
     the first two arguments are allowed to be NULL.
  */
 
-int _gr_poly_hgcd_recursive(
+static int _gr_poly_hgcd_recursive(
     slong * ans_sgn,
     gr_ptr * M, slong * lenM,
     gr_ptr A, slong * lenA,
