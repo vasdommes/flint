@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # latest alpine release
-FROM alpine:3.19 AS build
+FROM alpine:3.24 AS build
 
 # Argument for ./configure --host (target architecture/OS/..., e.g. arm64)
 # If empty, configure command will ignore it and build for current machine
@@ -32,7 +32,7 @@ RUN echo FLINT target host=$FLINT_CONFIGURE_HOST && \
     make -j`nproc` install
 
 # Take only FLINT headers and binaries + load necessary dynamic libraries
-FROM alpine:3.19 as install
+FROM alpine:3.24 AS install
 RUN apk add \
     gmp \
     libgmpxx \
