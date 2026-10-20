@@ -46,7 +46,7 @@ _gr_poly_compose_series_brent_kung(gr_ptr res, gr_srcptr poly1, slong len1,
         status |= _gr_vec_set(Brow(i), GR_ENTRY(poly1, i * m, sz), m, ctx);
     status |= _gr_vec_set(Brow(i), GR_ENTRY(poly1, i * m, sz), len1 % m, ctx);
 
-    /* Set rows of A to powers of poly2 */
+    /* Set rows of A to powers of poly2 (cf. _gr_vec_set_powers) */
     status |= gr_one(Arow(0), ctx);
     status |= _gr_vec_set(Arow(1), poly2, len2, ctx);
 
@@ -122,8 +122,7 @@ gr_poly_compose_series_brent_kung(gr_poly_t res,
         gr_poly_fit_length(res, lenr, ctx);
         status = _gr_poly_compose_series_brent_kung(res->coeffs, poly1->coeffs, len1,
                                         poly2->coeffs, len2, lenr, ctx);
-        _gr_poly_set_length(res, lenr, ctx);
-        _gr_poly_normalise(res, ctx);
+        _gr_poly_set_length_normalise(res, lenr, ctx);
     }
     else
     {
@@ -131,8 +130,7 @@ gr_poly_compose_series_brent_kung(gr_poly_t res,
         gr_poly_init2(t, lenr, ctx);
         status = _gr_poly_compose_series_brent_kung(t->coeffs, poly1->coeffs, len1,
                                         poly2->coeffs, len2, lenr, ctx);
-        _gr_poly_set_length(t, lenr, ctx);
-        _gr_poly_normalise(t, ctx);
+        _gr_poly_set_length_normalise(t, lenr, ctx);
         gr_poly_swap(res, t, ctx);
         gr_poly_clear(t, ctx);
     }

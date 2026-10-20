@@ -31,11 +31,11 @@ flint_mpn_sqr_and_add_a(nn_ptr y, nn_ptr a, nn_ptr n, ulong n_size, nn_ptr ninv,
 
     /* Since carry cannot be greater than 1, if carry
        then simply subtract for modulo (a < n, y < n, a + y < 2n).
-       If no carry, then check if y > n before subtracting. */
+       If no carry, then check if y >= n before subtracting. */
 
     if (cy)
         mpn_sub_n(y, y, n, n_size);
-    else if (mpn_cmp(y, n, n_size) > 0)
+    else if (mpn_cmp(y, n, n_size) >= 0)
             mpn_sub_n(y, y, n, n_size);
 }
 
@@ -170,7 +170,7 @@ fmpz_factor_pollard_brent_single(fmpz_t p_factor, fmpz_t n_in, fmpz_t yi,
 {
     nn_ptr a, y, n, ninv, temp;
     ulong n_size, normbits, ans, size, cy;
-    ulong al, yl, val, valinv;
+    ulong al, yl, val;
     mpz_ptr fac, mptr;
     int ret;
 
@@ -187,17 +187,9 @@ fmpz_factor_pollard_brent_single(fmpz_t p_factor, fmpz_t n_in, fmpz_t yi,
     if (n_size == 1)
     {
         val = fmpz_get_ui(n_in);
-        normbits = flint_clz(val);
-        val <<= normbits;
-        valinv = n_preinvert_limb(val);
-
         al = fmpz_get_ui(ai);
         yl = fmpz_get_ui(yi);
-        al <<= normbits;
-        yl <<= normbits;
-
-        ret = n_factor_pollard_brent_single(&ans, val, valinv, al, yl, normbits, max_iters);
-        ans >>= normbits;
+        ret = n_factor_pollard_brent_single(&ans, val, al, yl, max_iters);
         fmpz_set_ui(p_factor, ans);
         return ret;
     }

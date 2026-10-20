@@ -379,42 +379,6 @@ Multiplication
     Sets ``rop`` to the product of ``op1`` and ``op2``
     using classical polynomial multiplication.
 
-.. function:: void _fq_zech_poly_mul_reorder(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, const fq_zech_ctx_t ctx)
-
-    Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
-    and ``(op2, len2)``, assuming that ``len1`` and ``len2`` are
-    non-zero.
-
-    Permits zero padding.  Supports aliasing.
-
-.. function:: void fq_zech_poly_mul_reorder(fq_zech_poly_t rop, const fq_zech_poly_t op1, const fq_zech_poly_t op2, const fq_zech_ctx_t ctx)
-
-    Sets ``rop`` to the product of ``op1`` and ``op2``,
-    reordering the two indeterminates `X` and `Y` when viewing
-    the polynomials as elements of `\mathbf{F}_p[X,Y]`.
-
-    Suppose `\mathbf{F}_q = \mathbf{F}_p[X]/ (f(X))` and recall
-    that elements of `\mathbf{F}_q` are internally represented
-    by elements of type ``fmpz_poly``.  For small degree extensions
-    but polynomials in `\mathbf{F}_q[Y]` of large degree `n`, we
-    change the representation to
-
-
-    .. math::
-
-
-        \begin{split}
-        g(Y) & = \sum_{i=0}^{n} a_i(X) Y^i \\
-             & = \sum_{j=0}^{d} \sum_{i=0}^{n} \text{Coeff}(a_i(X), j) Y^i.
-        \end{split}
-
-
-
-    This allows us to use a poor algorithm (such as classical multiplication)
-    in the `X`-direction and leverage the existing fast integer
-    multiplication routines in the `Y`-direction where the polynomial
-    degree `n` is large.
-
 .. function:: void _fq_zech_poly_mul_KS(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, const fq_zech_ctx_t ctx)
 
     Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
@@ -430,10 +394,32 @@ Multiplication
     coefficient in `\mathbf{F}_{q}` as an integer and reducing
     this problem to multiplying two polynomials over the integers.
 
+.. function:: void _fq_zech_poly_mul_univariate(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, const fq_zech_ctx_t ctx)
+
+    Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
+    and ``(op2, len2)``.
+
+    Permits zero padding and places no assumptions on the
+    lengths ``len1`` and ``len2`` other than that both are positive.
+    Supports aliasing.
+
+.. function:: void fq_zech_poly_mul_univariate(fq_zech_poly_t rop, const fq_zech_poly_t op1, const fq_zech_poly_t op2, const fq_zech_ctx_t ctx)
+
+    Sets ``rop`` to the product of ``op1`` and ``op2``
+    using a bivariate to univariate transformation: the coordinates of
+    the coefficients (with respect to the polynomial basis of
+    `\mathbf{F}_q` over `\mathbf{F}_p`) are packed with stride `2d - 1`
+    into polynomials over `\mathbf{Z}/p\mathbf{Z}` which are multiplied
+    using :func:`_nmod_poly_mullow`, after which each block of `2d - 1`
+    coordinates is reduced modulo the defining polynomial and converted
+    back to the Zech logarithm representation.
+
 .. function:: void _fq_zech_poly_mul(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, const fq_zech_ctx_t ctx)
 
     Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
-    and ``(op2, len2)``, choosing an appropriate algorithm.
+    and ``(op2, len2)``, choosing an appropriate algorithm (classical multiplication or
+    :func:`_fq_zech_poly_mul_univariate`, according to
+    :func:`_fq_zech_poly_mulmid_want_univariate`).
 
     Permits zero padding.  Does not support aliasing.
 
@@ -469,10 +455,62 @@ Multiplication
 
     Sets ``rop`` to the product of ``op1`` and ``op2``.
 
+.. function:: void _fq_zech_poly_mullow_univariate(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, slong n, const fq_zech_ctx_t ctx)
+
+    Sets ``(rop, n)`` to the lowest `n` coefficients of the product of
+    ``(op1, len1)`` and ``(op2, len2)``, computed using a
+    bivariate to univariate transformation (see
+    :func:`fq_zech_poly_mul_univariate`).
+
+    Assumes that ``len1`` and ``len2`` are positive, but does allow
+    for the polynomials to be zero-padded.  The polynomials may be zero,
+    too.  Assumes `n` is positive; if `n` exceeds ``len1 + len2 - 1``,
+    the high coefficients are set to zero.  Supports aliasing between
+    ``rop``, ``op1`` and ``op2``.
+
+.. function:: void fq_zech_poly_mullow_univariate(fq_zech_poly_t rop, const fq_zech_poly_t op1, const fq_zech_poly_t op2, slong n, const fq_zech_ctx_t ctx)
+
+    Sets ``rop`` to the lowest `n` coefficients of the product of
+    ``op1`` and ``op2``, computed using a bivariate to univariate
+    transformation.
+
+.. function:: void _fq_zech_poly_mulmid_univariate(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, slong nlo, slong nhi, const fq_zech_ctx_t ctx)
+
+    Sets ``(rop, nhi - nlo)`` to the coefficients of index `nlo` up to
+    `nhi - 1` of the product of ``(op1, len1)`` and ``(op2, len2)``,
+    computed using a bivariate to univariate transformation (see
+    :func:`fq_zech_poly_mul_univariate`) and :func:`_nmod_poly_mulmid`.
+
+    Assumes that ``len1`` and ``len2`` are positive and that
+    `0 \le nlo < nhi`; zero padding is permitted, and coefficients with
+    index at least ``len1 + len2 - 1`` are set to zero.
+    Supports aliasing between ``rop``, ``op1`` and ``op2``.
+
+.. function:: slong _fq_zech_poly_mul_univariate_threshold(const fq_zech_ctx_t ctx)
+              int _fq_zech_poly_mulmid_want_univariate(slong len1, slong len2, slong nlo, slong nhi, const fq_zech_ctx_t ctx)
+              int _fq_zech_poly_sqr_want_univariate(slong len, const fq_zech_ctx_t ctx)
+
+    Tuning functions used to choose between classical and univariate
+    multiplication. Classical multiplication costs one Zech logarithm
+    table lookup per term, while univariate multiplication costs `O(d)`
+    operations per output coefficient, where `d` is the degree of the field.
+    The first function returns the average number of terms per output
+    coefficient at which the univariate algorithm becomes faster for a
+    full product; this is about `9d` when the Zech logarithm tables fit
+    in cache and smaller for large fields.
+
+    The second function returns whether coefficients `nlo` to `nhi - 1`
+    of the product of polynomials of length ``len1`` and ``len2``
+    (``len1`` and ``len2`` positive and `nlo < nhi`) should
+    be computed using :func:`_fq_zech_poly_mulmid_univariate` rather than
+    the classical algorithm; the third function answers the same question
+    for the square of a polynomial of length ``len``.
+
 .. function:: void _fq_zech_poly_mullow(fq_zech_struct * rop, const fq_zech_struct * op1, slong len1, const fq_zech_struct * op2, slong len2, slong n, const fq_zech_ctx_t ctx)
 
     Sets ``(rop, n)`` to the lowest `n` coefficients of the product of
-    ``(op1, len1)`` and ``(op2, len2)``.
+    ``(op1, len1)`` and ``(op2, len2)``, choosing an appropriate algorithm
+    (classical multiplication or :func:`_fq_zech_poly_mullow_univariate`).
 
     Assumes ``0 < n <= len1 + len2 - 1``.  Allows for zero-padding in
     the inputs.  Does not support aliasing between the inputs and the output.
@@ -533,7 +571,8 @@ Multiplication
     and ``poly2`` upon polynomial division by ``f``.
 
     It is required that ``finv`` is the inverse of the reverse of
-    ``f`` mod ``x^lenf``.
+    ``f`` mod ``x^lenf`` and that ``len1 + len2 - 1 <= 2*lenf - 2``;
+    ``poly1`` and ``poly2`` need not be reduced modulo ``f``.
 
     Aliasing of ``res`` with any of the inputs is not permitted.
 
@@ -579,7 +618,8 @@ Squaring
 .. function:: void _fq_zech_poly_sqr(fq_zech_struct * rop, const fq_zech_struct * op, slong len, const fq_zech_ctx_t ctx)
 
     Sets ``(rop, 2 * len - 1)`` to the square of ``(op, len)``,
-    choosing an appropriate algorithm.
+    choosing an appropriate algorithm (classical squaring or
+    :func:`_fq_zech_poly_mul_univariate`).
 
     Permits zero padding.  Does not support aliasing.
 
@@ -1095,22 +1135,26 @@ Square root
     Set the first `n` terms of `g` to the series expansion of `1/\sqrt{h}`.
     It is assumed that `n > 0`, that `h` has constant term 1 and that `h`
     is zero-padded as necessary to length `n`. Aliasing is not permitted.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void fq_zech_poly_invsqrt_series(fq_zech_poly_t g, const fq_zech_poly_t h, slong n, fq_zech_ctx_t ctx)
 
     Set `g` to the series expansion of `1/\sqrt{h}` to order `O(x^n)`.
     It is assumed that `h` has constant term 1.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void _fq_zech_poly_sqrt_series(fq_zech_struct * g, const fq_zech_struct * h, slong n, fq_zech_ctx_t ctx)
 
     Set the first `n` terms of `g` to the series expansion of `\sqrt{h}`.
     It is assumed that `n > 0`, that `h` has constant term 1 and that `h`
     is zero-padded as necessary to length `n`. Aliasing is not permitted.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void fq_zech_poly_sqrt_series(fq_zech_poly_t g, const fq_zech_poly_t h, slong n, fq_zech_ctx_t ctx)
 
     Set `g` to the series expansion of `\sqrt{h}` to order `O(x^n)`.
     It is assumed that `h` has constant term 1.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: int _fq_zech_poly_sqrt(fq_zech_struct * s, const fq_zech_struct * p, slong n, fq_zech_ctx_t mod)
 

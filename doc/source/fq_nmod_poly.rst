@@ -379,42 +379,6 @@ Multiplication
     Sets ``rop`` to the product of ``op1`` and ``op2``
     using classical polynomial multiplication.
 
-.. function:: void _fq_nmod_poly_mul_reorder(fq_nmod_struct * rop, const fq_nmod_struct * op1, slong len1, const fq_nmod_struct * op2, slong len2, const fq_nmod_ctx_t ctx)
-
-    Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
-    and ``(op2, len2)``, assuming that ``len1`` and ``len2`` are
-    non-zero.
-
-    Permits zero padding.  Supports aliasing.
-
-.. function:: void fq_nmod_poly_mul_reorder(fq_nmod_poly_t rop, const fq_nmod_poly_t op1, const fq_nmod_poly_t op2, const fq_nmod_ctx_t ctx)
-
-    Sets ``rop`` to the product of ``op1`` and ``op2``,
-    reordering the two indeterminates `X` and `Y` when viewing
-    the polynomials as elements of `\mathbf{F}_p[X,Y]`.
-
-    Suppose `\mathbf{F}_q = \mathbf{F}_p[X]/ (f(X))` and recall
-    that elements of `\mathbf{F}_q` are internally represented
-    by elements of type ``fmpz_poly``.  For small degree extensions
-    but polynomials in `\mathbf{F}_q[Y]` of large degree `n`, we
-    change the representation to
-
-
-    .. math::
-
-
-        \begin{split}
-        g(Y) & = \sum_{i=0}^{n} a_i(X) Y^i \\
-             & = \sum_{j=0}^{d} \sum_{i=0}^{n} \text{Coeff}(a_i(X), j) Y^i.
-        \end{split}
-
-
-
-    This allows us to use a poor algorithm (such as classical multiplication)
-    in the `X`-direction and leverage the existing fast integer
-    multiplication routines in the `Y`-direction where the polynomial
-    degree `n` is large.
-
 .. function:: void _fq_nmod_poly_mul_univariate(fq_nmod_struct * rop, const fq_nmod_struct * op1, slong len1, const fq_nmod_struct * op2, slong len2, const fq_nmod_ctx_t ctx)
 
     Sets ``(rop, len1 + len2 - 1)`` to the product of ``(op1, len1)``
@@ -564,7 +528,8 @@ Multiplication
     and ``poly2`` upon polynomial division by ``f``.
 
     It is required that ``finv`` is the inverse of the reverse of
-    ``f`` mod ``x^lenf``.
+    ``f`` mod ``x^lenf`` and that ``len1 + len2 - 1 <= 2*lenf - 2``;
+    ``poly1`` and ``poly2`` need not be reduced modulo ``f``.
 
     Aliasing of ``res`` with any of the inputs is not permitted.
 
@@ -1130,22 +1095,26 @@ Square root
     Set the first `n` terms of `g` to the series expansion of `1/\sqrt{h}`.
     It is assumed that `n > 0`, that `h` has constant term 1 and that `h`
     is zero-padded as necessary to length `n`. Aliasing is not permitted.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void fq_nmod_poly_invsqrt_series(fq_nmod_poly_t g, const fq_nmod_poly_t h, slong n, fq_nmod_ctx_t ctx)
 
     Set `g` to the series expansion of `1/\sqrt{h}` to order `O(x^n)`.
     It is assumed that `h` has constant term 1.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void _fq_nmod_poly_sqrt_series(fq_nmod_struct * g, const fq_nmod_struct * h, slong n, fq_nmod_ctx_t ctx)
 
     Set the first `n` terms of `g` to the series expansion of `\sqrt{h}`.
     It is assumed that `n > 0`, that `h` has constant term 1 and that `h`
     is zero-padded as necessary to length `n`. Aliasing is not permitted.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: void fq_nmod_poly_sqrt_series(fq_nmod_poly_t g, const fq_nmod_poly_t h, slong n, fq_nmod_ctx_t ctx)
 
     Set `g` to the series expansion of `\sqrt{h}` to order `O(x^n)`.
     It is assumed that `h` has constant term 1.
+    An exception is raised in characteristic 2 when `n > 1`.
 
 .. function:: int _fq_nmod_poly_sqrt(fq_nmod_struct * s, const fq_nmod_struct * p, slong n, fq_nmod_ctx_t mod)
 

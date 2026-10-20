@@ -454,7 +454,7 @@ void fmpq_mpoly_push_term_si_ui(fmpq_mpoly_t A,
 void fmpq_mpoly_reduce(fmpq_mpoly_t A, const fmpq_mpoly_ctx_t ctx);
 
 void fmpq_mpoly_reduce_easy(fmpq_mpoly_t A, slong easy_length,
-                                                       const fmpq_mpoly_ctx_t);
+                                                       const fmpq_mpoly_ctx_t ctx);
 
 FMPQ_MPOLY_INLINE
 void fmpq_mpoly_sort_terms(fmpq_mpoly_t A, const fmpq_mpoly_ctx_t ctx)
@@ -468,9 +468,6 @@ void fmpq_mpoly_combine_like_terms(fmpq_mpoly_t A, const fmpq_mpoly_ctx_t ctx)
     fmpz_mpoly_combine_like_terms(A->zpoly, ctx->zctx);
     fmpq_mpoly_reduce(A, ctx);
 }
-
-void fmpq_mpoly_reverse(fmpq_mpoly_t A, const fmpq_mpoly_t B,
-                                                   const fmpq_mpoly_ctx_t ctx);
 
 void fmpq_mpoly_assert_canonical(const fmpq_mpoly_t poly,
                                                    const fmpq_mpoly_ctx_t ctx);

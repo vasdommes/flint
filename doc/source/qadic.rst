@@ -80,6 +80,30 @@ elements.
     arithmetic in `\mathbf{Q}_p / (p^N)` such as powers of `p` close 
     to `p^N`.
 
+.. function:: void qadic_ctx_init_modulus(qadic_ctx_t ctx, const fmpz_t p, const fmpz_mod_poly_t modulus, slong min, slong max, const char *var, enum padic_print_mode mode)
+              void qadic_ctx_init_modulus_nmod(qadic_ctx_t ctx, ulong p, const nmod_poly_t modulus, slong min, slong max, const char *var, enum padic_print_mode mode)
+
+    Initialises the context ``ctx`` with prime `p`, given defining polynomial ``modulus``, variable name ``var``
+    and printing mode ``mode``.
+
+    Stores powers of `p` with exponents between ``min`` (inclusive) and
+    ``max`` exclusive.  Assumes that ``min`` is at most ``max``.
+
+    Assumes that `p` is a prime.
+
+    Assumes that ``modulus`` is a monic irreducible polynomial over
+    `\mathbf{F}_{p}`.
+
+    Assumes that the string ``var`` is a null-terminated string
+    of length at least one.
+
+    Assumes that the printing mode is one of ``PADIC_TERSE``,
+    ``PADIC_SERIES``, or ``PADIC_VAL_UNIT``.
+
+    This function also carries out some relevant precomputation for
+    arithmetic in `\mathbf{Q}_p / (p^N)` such as powers of `p` close
+    to `p^N`.
+
 .. function:: void qadic_ctx_clear(qadic_ctx_t ctx)
 
     Clears all memory that has been allocated as part of the context.
@@ -198,7 +222,8 @@ Assignments and conversions
 
     Sets ``rop`` to the generator `X` for the extension 
     when `N > 0`, and zero otherwise.  If the extension degree 
-    is one, raises an abort signal.
+    is one, so that the defining polynomial is `X + a_0`, sets
+    ``rop`` to `-a_0`, reduced in the context.
 
 .. function:: void qadic_set_ui(qadic_t rop, ulong op, const qadic_ctx_t ctx)
 
@@ -308,6 +333,16 @@ Square root
     Return ``1`` if the input is a square (to input precision). If so, set
     ``rop`` to a square root (truncated to output precision).
 
+.. function:: struct qadic2_sqrt_precomp *_qadic_char2_sqrt_precomp_init(const qadic_ctx_t ctx)
+.. function:: int _qadic_char2_sqrt_with_precomp(qadic_t rop, const qadic_t op, const qadic_ctx_t ctx, const struct qadic2_sqrt_precomp *data)
+.. function:: void _qadic_char2_sqrt_precomp_clear(struct qadic2_sqrt_precomp *data)
+
+    To compute a qadic square root in characteristic 2, we need to solve the Artin-Schreier equation to get
+    the initial square root approximation. The data needed to solve it can be precomputed once, since it
+    depends only on the extension itself.
+
+    Note that ``struct qadic2_sqrt_precomp *`` is an opaque pointer; the definition of the struct is not provided.
+
 
 Special functions
 --------------------------------------------------------------------------------
@@ -381,8 +416,7 @@ Special functions
                 & = - \sum_{i=1}^{\infty} \frac{(1-x)^i}{i}.
 
     Assumes that `y = 1 - x` is non-zero and that `v = \operatorname{ord}_p(y)` 
-    is at least `1` when `p` is odd and at least `2` when `p = 2` 
-    so that the series converges.
+    is at least `1` so that the series converges.
 
     Assumes that `y` is reduced modulo `p^N`.
 
@@ -406,8 +440,8 @@ Special functions
 
 
 
-    Assumes that `v = \operatorname{ord}_p(y)` is at least `1` when `p` is odd and 
-    at least `2` when `p = 2` so that the series converges.
+    Assumes that `y` is non-zero and that `v = \operatorname{ord}_p(y)` is
+    at least `1` so that the series converges.
 
     Supports aliasing between `z` and `y`.
 
@@ -434,8 +468,7 @@ Special functions
                 & = - \sum_{i=1}^{\infty} \frac{(1-x)^i}{i}.
 
     Assumes that `y = 1 - x` is non-zero and that `v = \operatorname{ord}_p(y)` 
-    is at least `1` when `p` is odd and at least `2` when `p = 2` 
-    so that the series converges.
+    is at least `1` so that the series converges.
 
     Assumes that `(y, d)` is reduced modulo `p^N`.
 
@@ -456,8 +489,7 @@ Special functions
         \log_p(x) = \sum_{i=1}^{\infty} (-1)^{i-1} \frac{(x-1)^i}{i}
 
 
-    but this only converges when `\operatorname{ord}_p(x)` is at least `2` or `1` 
-    when `p = 2` or `p > 2`, respectively.
+    but this only converges when `\operatorname{ord}_p(x - 1)` is at least `1`.
 
 .. function:: void _qadic_frobenius_a(fmpz * rop, slong e, const fmpz * a, const slong * j, slong lena, const fmpz_t p, slong N)
 

@@ -17,10 +17,23 @@
 #include "nmod_poly.h"
 #include "gr_poly.h"
 
+static const short nmod_poly_xgcd_hgcd_cutoff_tab[64] = {
+    159, 89, 75, 85, 72, 78, 81, 89, 85, 89, 93, 97, 97, 93, 101, 97, 97,
+    106, 106, 121, 111, 101, 101, 101, 106, 106, 106, 101, 106, 182, 191, 191,
+    200, 231, 200, 191, 220, 210, 210, 231, 231, 220, 210, 220, 242, 210, 231,
+    220, 254, 254, 242, 242, 242, 254, 306, 306, 266, 306, 292, 306, 321, 306,
+    388, 166,
+};
+
+slong nmod_poly_xgcd_hgcd_cutoff(nmod_t mod)
+{
+    return nmod_poly_xgcd_hgcd_cutoff_tab[NMOD_BITS(mod) - 1];
+}
+
 slong _nmod_poly_xgcd(nn_ptr G, nn_ptr S, nn_ptr T,
                      nn_srcptr A, slong lenA, nn_srcptr B, slong lenB, nmod_t mod)
 {
-    slong cutoff = NMOD_BITS(mod) <= 8 ? NMOD_POLY_SMALL_GCD_CUTOFF : NMOD_POLY_GCD_CUTOFF;
+    slong cutoff = nmod_poly_xgcd_hgcd_cutoff(mod);
 
     if (lenB < cutoff)
     {
@@ -28,10 +41,13 @@ slong _nmod_poly_xgcd(nn_ptr G, nn_ptr S, nn_ptr T,
     }
     else
     {
+        slong inner_cutoff = nmod_poly_hgcd_iter_recursive_cutoff(mod);
         slong lenG = 0;
         gr_ctx_t ctx;
         _gr_ctx_init_nmod(ctx, &mod);
-        GR_MUST_SUCCEED(_gr_poly_xgcd_hgcd(&lenG, G, S, T, A, lenA, B, lenB, NMOD_POLY_HGCD_CUTOFF, cutoff, ctx));
+        if (_gr_poly_xgcd_hgcd(&lenG, G, S, T, A, lenA, B, lenB, inner_cutoff, cutoff, ctx) != GR_SUCCESS)
+            flint_throw(FLINT_IMPINV, "Exception (nmod_poly_xgcd). Impossible inverse: "
+                "a leading coefficient is not invertible (the modulus must be prime).\n");
         return lenG;
     }
 }
@@ -151,106 +167,13 @@ slong _nmod_poly_xgcd_euclidean(nn_ptr G, nn_ptr S, nn_ptr T,
                                nn_srcptr A, slong lenA,
                                nn_srcptr B, slong lenB, nmod_t mod)
 {
-    flint_mpn_zero(G, lenB);
-    flint_mpn_zero(S, lenB - 1);
-    flint_mpn_zero(T, lenA - 1);
-
-    if (lenB == 1)
-    {
-        G[0] = B[0];
-        T[0] = 1;
-        return 1;
-    }
-    else
-    {
-        nn_ptr Q, R;
-        slong lenQ, lenR, lenG;
-
-        Q = _nmod_vec_init(2 * lenA);
-        R = Q + lenA;
-
-        _nmod_poly_divrem(Q, R, A, lenA, B, lenB, mod);
-        lenR = lenB - 1;
-        MPN_NORM(R, lenR);
-
-        if (lenR == 0)
-        {
-            _nmod_vec_set(G, B, lenB);
-            T[0] = 1;
-            lenG = lenB;
-        }
-        else
-        {
-            nn_ptr D, U, V1, V3, W;
-            slong lenD, lenU, lenV1, lenV3, lenW;
-
-            W  = _nmod_vec_init(FLINT_MAX(5 * lenB, lenA + lenB));
-            D  = W  + lenB;
-            U  = D  + lenB;
-            V1 = U  + lenB;
-            V3 = V1 + lenB;
-
-            lenU = 0;
-            _nmod_vec_set(D, B, lenB);
-            lenD = lenB;
-            V1[0] = 1;
-            lenV1 = 1;
-            lenV3 = 0;
-            MPN_SWAP(V3, lenV3, R, lenR);
-
-            do {
-                _nmod_poly_divrem(Q, R, D, lenD, V3, lenV3, mod);
-                lenQ = lenD - lenV3 + 1;
-                lenR = lenV3 - 1;
-                MPN_NORM(R, lenR);
-
-                if (lenV1 >= lenQ)
-                    _nmod_poly_mul(W, V1, lenV1, Q, lenQ, mod);
-                else
-                    _nmod_poly_mul(W, Q, lenQ, V1, lenV1, mod);
-                lenW = lenQ + lenV1 - 1;
-
-                _nmod_poly_sub(U, U, lenU, W, lenW, mod);
-                lenU = FLINT_MAX(lenU, lenW);
-                MPN_NORM(U, lenU);
-
-                MPN_SWAP(U, lenU, V1, lenV1);
-                {
-                    nn_ptr __t;
-                    slong __tn;
-
-                    __t = D;
-                    D   = V3;
-                    V3  = R;
-                    R   = __t;
-                    __tn  = lenD;
-                    lenD  = lenV3;
-                    lenV3 = lenR;
-                    lenR  = __tn;
-                }
-
-            } while (lenV3 != 0);
-
-            _nmod_vec_set(G, D, lenD);
-            _nmod_vec_set(S, U, lenU);
-
-            {
-                lenQ = lenA + lenU - 1;
-
-                _nmod_poly_mul(Q, A, lenA, S, lenU, mod);
-                _nmod_vec_neg(Q, Q, lenQ, mod);
-                _nmod_poly_add(Q, G, lenD, Q, lenQ, mod);
-
-                _nmod_poly_divrem(T, W, Q, lenQ, B, lenB, mod);
-            }
-
-            _nmod_vec_clear(W);
-            lenG = lenD;
-        }
-
-        _nmod_vec_clear(Q);
-        return lenG;
-    }
+    slong lenG = 0;
+    gr_ctx_t ctx;
+    _gr_ctx_init_nmod(ctx, &mod);
+    if (_gr_poly_xgcd_euclidean(&lenG, G, S, T, A, lenA, B, lenB, ctx) != GR_SUCCESS)
+        flint_throw(FLINT_IMPINV, "Exception (nmod_poly_xgcd_euclidean). Impossible inverse: "
+            "a leading coefficient is not invertible (the modulus must be prime).\n");
+    return lenG;
 }
 
 void
@@ -367,11 +290,14 @@ nmod_poly_xgcd_euclidean(nmod_poly_t G, nmod_poly_t S, nmod_poly_t T,
 slong _nmod_poly_xgcd_hgcd(nn_ptr G, nn_ptr S, nn_ptr T,
                      nn_srcptr A, slong lenA, nn_srcptr B, slong lenB, nmod_t mod)
 {
-    slong cutoff = NMOD_BITS(mod) <= 8 ? NMOD_POLY_SMALL_GCD_CUTOFF : NMOD_POLY_GCD_CUTOFF;
+    slong cutoff = nmod_poly_xgcd_hgcd_cutoff(mod);
+    slong inner_cutoff = nmod_poly_hgcd_iter_recursive_cutoff(mod);
     slong lenG = 0;
     gr_ctx_t ctx;
     _gr_ctx_init_nmod(ctx, &mod);
-    GR_MUST_SUCCEED(_gr_poly_xgcd_hgcd(&lenG, G, S, T, A, lenA, B, lenB, NMOD_POLY_HGCD_CUTOFF, cutoff, ctx));
+    if (_gr_poly_xgcd_hgcd(&lenG, G, S, T, A, lenA, B, lenB, inner_cutoff, cutoff, ctx) != GR_SUCCESS)
+        flint_throw(FLINT_IMPINV, "Exception (nmod_poly_xgcd_hgcd). Impossible inverse: "
+            "a leading coefficient is not invertible (the modulus must be prime).\n");
     return lenG;
 }
 

@@ -79,16 +79,11 @@ typedef struct
 {
     fmpz_mod_ctx_struct * ctx;
     truth_t is_prime;
+    int pretend;
     fmpz a;    /* when used as finite field with defining polynomial x - a */
+    fmpz * factor;
 }
 _gr_fmpz_mod_ctx_struct;
-
-typedef struct
-{
-    nmod_t nmod;
-    ulong a;   /* when used as finite field with defining polynomial x - a */
-}
-_gr_nmod_ctx_struct;
 
 /* end hack */
 

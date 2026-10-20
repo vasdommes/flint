@@ -44,7 +44,7 @@ gr_mat_randrowops(gr_mat_t mat, flint_rand_t state, slong count, gr_ctx_t ctx)
 }
 #endif
 
-TEST_GR_FUNCTION_START(gr_mat_rref_fflu, state, count_success, count_unable, count_domain)
+TEST_GR_FUNCTION_START(gr_mat_rref_fflu, state, count_success, count_domain, count_unable)
 {
     slong iter;
 
@@ -56,7 +56,7 @@ TEST_GR_FUNCTION_START(gr_mat_rref_fflu, state, count_success, count_unable, cou
         slong rank1, rank2, r, c;
         int status = GR_SUCCESS;
 
-        gr_ctx_init_random(ctx, state);
+        gr_ctx_init_random_commutative_ring(ctx, state);
 
         r = n_randint(state, 6);
         c = n_randint(state, 6);
@@ -67,10 +67,25 @@ TEST_GR_FUNCTION_START(gr_mat_rref_fflu, state, count_success, count_unable, cou
         gr_mat_init(R2, r, c, ctx);
 
         status |= gr_mat_randtest(A, state, ctx);
+        if (n_randint(state, 8) == 0)
+            status |= gr_mat_zero(A, ctx);
         status |= gr_mat_set(B, A, ctx);
         status |= gr_mat_randrowops(B, state, 1 + n_randint(state, 20), ctx);
 
+        /* the output must be overwritten, also for a zero matrix */
+        GR_IGNORE(gr_mat_randtest(R, state, ctx));
+        GR_IGNORE(gr_mat_randtest(R2, state, ctx));
+
         status |= gr_mat_rref_fflu(&rank1, R, A, ctx);
+
+        if (status == GR_SUCCESS && gr_mat_is_zero(A, ctx) == T_TRUE &&
+            (rank1 != 0 || gr_mat_is_zero(R, ctx) == T_FALSE))
+        {
+            flint_printf("FAIL: zero matrix\n");
+            gr_ctx_println(ctx);
+            flint_printf("R: "); gr_mat_print(R, ctx); flint_printf("\n");
+            flint_abort();
+        }
 
         if (status == GR_SUCCESS)
         {
@@ -104,5 +119,5 @@ TEST_GR_FUNCTION_START(gr_mat_rref_fflu, state, count_success, count_unable, cou
         gr_ctx_clear(ctx);
     }
 
-    TEST_GR_FUNCTION_END(state, count_success, count_unable, count_domain);
+    TEST_GR_FUNCTION_END(state, count_success, count_domain, count_unable);
 }

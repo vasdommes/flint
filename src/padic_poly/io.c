@@ -91,21 +91,17 @@ int _padic_poly_fprint_pretty(FILE *file,
             flint_fprintf(file, "*%s", var);
         }
 
-        fmpz_abs(padic_unit(x), poly);
-        padic_val(x) = val;
-        _padic_canonicalise(x, ctx);
+        if (!fmpz_is_zero(poly))
+        {
+            fmpz_abs(padic_unit(x), poly);
+            padic_val(x) = val;
+            _padic_canonicalise(x, ctx);
 
-        if (fmpz_sgn(poly) > 0)
-        {
-            fputc('+', file);
+            fputc(fmpz_sgn(poly) > 0 ? '+' : '-', file);
+            fputc('(', file);
+            padic_fprint(file, x, ctx);
+            fputc(')', file);
         }
-        else if (fmpz_sgn(poly) < 0)
-        {
-            fputc('-', file);
-        }
-        fputc('(', file);
-        padic_fprint(file, x, ctx);
-        fputc(')', file);
     }
     else  /* len >= 3 */
     {
@@ -194,7 +190,7 @@ int padic_poly_fprint(FILE *file, const padic_poly_t poly, const padic_ctx_t ctx
 int padic_poly_fprint_pretty(FILE * file, const padic_poly_t poly, const char * var, const padic_ctx_t ctx) { return _padic_poly_fprint_pretty(file, poly->coeffs, poly->length, poly->val, var, ctx); }
 int _padic_poly_print(const fmpz *poly, slong val, slong len, const padic_ctx_t ctx) { return _padic_poly_fprint(stdout, poly, val, len, ctx); }
 int padic_poly_print(const padic_poly_t poly, const padic_ctx_t ctx) { return padic_poly_fprint(stdout, poly, ctx); }
-int _padic_poly_print_pretty(const fmpz *poly, slong val, slong len, const char *var, const padic_ctx_t ctx) { return _padic_poly_fprint_pretty(stdout, poly, val, len, var, ctx); }
+int _padic_poly_print_pretty(const fmpz *poly, slong len, slong val, const char *var, const padic_ctx_t ctx) { return _padic_poly_fprint_pretty(stdout, poly, len, val, var, ctx); }
 int padic_poly_print_pretty(const padic_poly_t poly, const char *var, const padic_ctx_t ctx) { return padic_poly_fprint_pretty(stdout, poly, var, ctx); }
 
 int padic_poly_debug(const padic_poly_t poly)

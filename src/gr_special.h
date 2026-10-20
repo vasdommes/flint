@@ -193,6 +193,8 @@ GR_SPECIAL_DEF int gr_bessel_j_y(gr_ptr res1, gr_ptr res2, gr_srcptr x, gr_srcpt
 GR_SPECIAL_DEF int gr_bessel_i_scaled(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx) { return GR_BINARY_OP(ctx, BESSEL_I_SCALED)(res, x, y, ctx); }
 GR_SPECIAL_DEF int gr_bessel_k_scaled(gr_ptr res, gr_srcptr x, gr_srcptr y, gr_ctx_t ctx) { return GR_BINARY_OP(ctx, BESSEL_K_SCALED)(res, x, y, ctx); }
 
+WARN_UNUSED_RESULT int gr_bessel_j_jet(gr_ptr res, gr_srcptr nu, gr_srcptr z, slong len, gr_ctx_t ctx);
+
 GR_SPECIAL_DEF int gr_airy(gr_ptr res1, gr_ptr res2, gr_ptr res3, gr_ptr res4, gr_srcptr x, gr_ctx_t ctx) { return GR_QUATERNARY_UNARY_OP(ctx, AIRY)(res1, res2, res3, res4, x, ctx); }
 GR_SPECIAL_DEF int gr_airy_ai(gr_ptr res, gr_srcptr x, gr_ctx_t ctx) { return GR_UNARY_OP(ctx, AIRY_AI)(res, x, ctx); }
 GR_SPECIAL_DEF int gr_airy_bi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx) { return GR_UNARY_OP(ctx, AIRY_BI)(res, x, ctx); }
@@ -255,7 +257,6 @@ GR_SPECIAL_DEF int gr_zeta_nzeros(gr_ptr res, gr_srcptr t, gr_ctx_t ctx) { retur
 WARN_UNUSED_RESULT int gr_dirichlet_chi_fmpz(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, const fmpz_t n, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_dirichlet_chi_vec(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, slong len, gr_ctx_t ctx);  /* todo: wrap, test */
 WARN_UNUSED_RESULT int gr_dirichlet_l(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, gr_srcptr s, gr_ctx_t ctx);
-WARN_UNUSED_RESULT int gr_dirichlet_l_all(gr_vec_t res, const dirichlet_group_t G, gr_srcptr s, gr_ctx_t ctx);  /* todo: wrap, test */
 WARN_UNUSED_RESULT int gr_dirichlet_hardy_theta(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, gr_srcptr t, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_dirichlet_hardy_z(gr_ptr res, const dirichlet_group_t G, const dirichlet_char_t chi, gr_srcptr t, gr_ctx_t ctx);
 
@@ -282,7 +283,7 @@ GR_SPECIAL_DEF int gr_modular_delta(gr_ptr res, gr_srcptr tau, gr_ctx_t ctx) { r
 GR_SPECIAL_DEF int gr_hilbert_class_poly(gr_ptr res, slong D, gr_srcptr x, gr_ctx_t ctx) { return GR_SI_BINARY_OP(ctx, HILBERT_CLASS_POLY)(res, D, x, ctx); }
 
 GR_SPECIAL_DEF int gr_dedekind_eta(gr_ptr res, gr_srcptr tau, gr_ctx_t ctx) { return GR_UNARY_OP(ctx, DEDEKIND_ETA)(res, tau, ctx); }
-GR_SPECIAL_DEF int gr_dedekind_eta_q(gr_ptr res, gr_srcptr tau, gr_ctx_t ctx) { return GR_UNARY_OP(ctx, DEDEKIND_ETA_Q)(res, tau, ctx); }
+GR_SPECIAL_DEF int gr_dedekind_eta_q(gr_ptr res, gr_srcptr q, gr_ctx_t ctx) { return GR_UNARY_OP(ctx, DEDEKIND_ETA_Q)(res, q, ctx); }
 
 GR_SPECIAL_DEF int gr_eisenstein_e(gr_ptr res, ulong n, gr_srcptr tau, gr_ctx_t ctx) { return GR_UI_BINARY_OP(ctx, EISENSTEIN_E)(res, n, tau, ctx); }
 GR_SPECIAL_DEF int gr_eisenstein_g(gr_ptr res, ulong n, gr_srcptr tau, gr_ctx_t ctx) { return GR_UI_BINARY_OP(ctx, EISENSTEIN_G)(res, n, tau, ctx); }
@@ -344,11 +345,20 @@ WARN_UNUSED_RESULT int gr_generic_sin(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_cos(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_sin_cos(gr_ptr res1, gr_ptr res2, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_tan(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_tanh(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_asin(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_asinh(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_atan(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_atanh(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 
+WARN_UNUSED_RESULT int gr_generic_sec_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_csc_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_asin_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_acos_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_atan_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_acot_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_asec_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
+WARN_UNUSED_RESULT int gr_generic_acsc_pi(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_acot(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_asec(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);
 WARN_UNUSED_RESULT int gr_generic_acsc(gr_ptr res, gr_srcptr x, gr_ctx_t ctx);

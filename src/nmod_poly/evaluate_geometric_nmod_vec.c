@@ -12,91 +12,90 @@
 
 #include "nmod.h"
 #include "nmod_poly.h"
+#include "nmod_poly/impl.h"
 #include "nmod_vec.h"
 
-void
-_nmod_poly_evaluate_geometric_nmod_vec_fast_precomp(nn_ptr vs, nn_srcptr poly, 
-    slong plen, const nmod_geometric_progression_t G, slong len)
+void _nmod_poly_evaluate_geometric_nmod_vec_fast_precomp(nn_ptr vs, nn_srcptr poly, slong plen,
+                                                         const nmod_geometric_progression_t G, slong len,
+                                                         nmod_t mod)
 {
-    nn_ptr a, b;
-    slong i, i_min, G_len, a_len, b_len;
+    FLINT_ASSERT(G->function & 1);
+    FLINT_ASSERT(len <= G->len);
+    FLINT_ASSERT(plen <= G->len);
 
-    G_len = G->len;
-    FLINT_ASSERT(len <= G_len);
-
-    if (plen == 0)
+    /* val = valuation of poly */
+    slong val = 0;
+    for ( ; val < plen; val++)
     {
-        _nmod_vec_zero(vs, G_len);
-        return;
-    }
-
-    for (i_min = 0; i_min < plen; i_min++)
-    {
-        if (poly[i_min] != 0) 
+        if (poly[val] != 0)
         {
             break;
         }
     }
-    
-    a_len = plen - i_min;
-    b_len = G->f->length + a_len - 1;
-    a = _nmod_vec_init(a_len);
-    b = _nmod_vec_init(b_len);
-    
-    for (i = i_min; i < plen; i++)
-    {
-        a[plen - 1 - i] = nmod_mul(G->x[i], poly[i], G->mod);
-    }
 
-    // this is a temporary replacement to _nmod_poly_mulhigh which is not yet optimised
-    nn_ptr Gfr;
-    Gfr = _nmod_vec_init(G->f->length);
-    _nmod_poly_reverse(Gfr, G->f->coeffs, G->f->length, G->f->length);
-    _nmod_poly_reverse(a, a, a_len, a_len);
-    _nmod_poly_mullow(b, Gfr, G->f->length, a, a_len, G->f->length - i_min, G->mod);
-    _nmod_poly_reverse(b, b, b_len, b_len);
-    _nmod_vec_clear(Gfr);
-    //_nmod_poly_mulhigh(b, G->f->coeffs, G->f->length, a, a_len, plen - 1, G->mod);
- 
-    for (i = 0; i < len; i++)
+    if (val == plen) /* covers the case plen == 0 */
     {
-        vs[i] = nmod_mul(G->x[i], b[plen - 1 + i], G->mod);
-    }
-
-    _nmod_vec_clear(a);
-    _nmod_vec_clear(b);
-}
-
-void 
-_nmod_poly_evaluate_geometric_nmod_vec_fast(nn_ptr ys, nn_srcptr poly, 
-    slong plen, ulong r, slong n, nmod_t mod)
-{
-    if (n == 0)
-    {
+        _nmod_vec_zero(vs, len);
         return;
     }
 
+    /** Formula, based on Bluestein's trick:
+     * poly(q**j) = sum_{i=0}^{n-1} poly[i] q**{i*j}  is the coefficient x**{n+j-1} of the product
+     *     (sum_{i=0}^{len-1} poly[i] * q**(-i*i / 2) x**{len-i-1}) * (sum_{i=0}^{2*len-2} q**{i*i/2} x**i)
+     * -> the right-hand polynomial is G->ev_f truncated at precision 2*len - 1
+     * -> the inverses q**(-i*i / 2) are the first len values stored in G->ev_s
+     * 
+     * Thus, goal is to compute [rev(p) * G->ev_f]_{plen - 1}^{len}, where p is poly scaled by G->ev_s
+     * (the bracket notation means coefficients [plen - 1, plen - 1 + len))
+     * If p has valuation val, define a = p / x**val of length alen = plen - val, and this becomes
+     * [rev(a) * (G->ev_f >> x**val)]_{alen - 1}^{len}  (that is, coeffs [alen - 1, alen - 1 + len))
+     * or, without the shift of G->ev_f, [rev(a) * G->ev_f]_{plen - 1}^{len}: this is the product
+     * used when the transform of G->ev_f is stored
+     */
+
+    const slong alen = plen - val;
+
+    TMP_INIT;
+    TMP_START;
+    nn_ptr a = TMP_ALLOC(alen * sizeof(ulong));
+
+    for (slong i = val; i < plen; i++)
+        a[plen - 1 - i] = nmod_mul(G->ev_s[i], poly[i], mod);
+
+    int done = (G->ev_f_fft != NULL)
+        && _nmod_geometric_progression_mulmid_fft(vs, plen - 1, plen - 1 + len, a, alen,
+                                                  G->ev_f_fft, val, alen - 1 + len, mod);
+    if (!done)
+        _nmod_poly_mulmid(vs, G->ev_f->coeffs + val, alen - 1 + len, a, alen, alen - 1, alen - 1 + len, mod);
+
+    for (slong i = 0; i < len; i++)
+        vs[i] = nmod_mul(G->ev_s[i], vs[i], mod);
+
+    TMP_END;
+}
+
+void _nmod_poly_evaluate_geometric_nmod_vec_fast(nn_ptr ys, nn_srcptr poly, slong plen, ulong r, slong n, nmod_t mod)
+{
+    if (n == 0)
+        return;
+
     nmod_geometric_progression_t G;
-    nmod_geometric_progression_init(G, r, FLINT_MAX(n, plen), mod);
-    _nmod_poly_evaluate_geometric_nmod_vec_fast_precomp(ys, poly, plen, G, n);
+    _nmod_geometric_progression_init_function(G, r, FLINT_MAX(n, plen), mod, UWORD(1));
+    _nmod_poly_evaluate_geometric_nmod_vec_fast_precomp(ys, poly, plen, G, n, mod);
     nmod_geometric_progression_clear(G);
 }
 
-void
-nmod_poly_evaluate_geometric_nmod_vec_fast(nn_ptr ys,
-        const nmod_poly_t poly, ulong r, slong n)
+void nmod_poly_evaluate_geometric_nmod_vec_fast(nn_ptr ys, const nmod_poly_t poly, ulong r, slong n)
 {
     _nmod_poly_evaluate_geometric_nmod_vec_fast(ys, poly->coeffs,
                                                 poly->length, r, n, poly->mod);
 }
 
-void
-_nmod_poly_evaluate_geometric_nmod_vec_iter(nn_ptr ys, nn_srcptr coeffs, slong len,
-    ulong r, slong n, nmod_t mod)
+void _nmod_poly_evaluate_geometric_nmod_vec_iter(nn_ptr ys, nn_srcptr coeffs, slong len, ulong r, slong n, nmod_t mod)
 {
     slong i;
     ulong rpow = 1;
-    
+
     ulong r2 = nmod_mul(r, r, mod);
 
     for (i = 0; i < n; i++)
@@ -106,9 +105,7 @@ _nmod_poly_evaluate_geometric_nmod_vec_iter(nn_ptr ys, nn_srcptr coeffs, slong l
     }
 }
 
-void
-nmod_poly_evaluate_geometric_nmod_vec_iter(nn_ptr ys,
-    const nmod_poly_t poly, ulong r, slong n)
+void nmod_poly_evaluate_geometric_nmod_vec_iter(nn_ptr ys, const nmod_poly_t poly, ulong r, slong n)
 {
     _nmod_poly_evaluate_geometric_nmod_vec_iter(ys, poly->coeffs,
                                         poly->length, r, n, poly->mod);

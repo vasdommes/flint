@@ -15,6 +15,7 @@
 
 #include <gmp.h>
 #include "ulong_extras.h"
+#include "mpn_extras.h"
 #include "fmpz.h"
 
 void
@@ -28,11 +29,11 @@ fmpz_randbits_unsigned(fmpz_t f, flint_rand_t state, flint_bitcnt_t bits)
     else
     {
         mpz_ptr mf = _fmpz_promote(f);
-
-        if (!FLINT_RAND_GMP_STATE_IS_INITIALISED(state))
-            _flint_rand_init_gmp_state(state);
-
-        mpz_urandomb(mf, state->__gmp_state, bits);
+        mp_size_t n = BITS_TO_LIMBS(bits);
+        mp_ptr zd = FLINT_MPZ_REALLOC(mf, n);
+        flint_mpn_urandomb(zd, state, bits);
+        MPN_NORM(zd, n);
+        mf->_mp_size = n;
         mpz_setbit(mf, bits - 1);
         _fmpz_demote_val(f);
     }
@@ -57,18 +58,45 @@ fmpz_randm(fmpz_t f, flint_rand_t state, const fmpz_t m)
         _fmpz_demote(f);
         *f =  (sgn >= 0) ? n_randint(state, *m) : - n_randint(state, -(*m));
     }
+    else if (f == m)
+    {
+        fmpz_t t;
+        fmpz_init(t);
+        fmpz_randm(t, state, m);
+        fmpz_swap(f, t);
+        fmpz_clear(t);
+    }
     else
     {
         mpz_ptr mf = _fmpz_promote(f);
-
-        if (!FLINT_RAND_GMP_STATE_IS_INITIALISED(state))
-            _flint_rand_init_gmp_state(state);
-
-        mpz_urandomm(mf, state->__gmp_state, COEFF_TO_PTR(*m));
+        mp_size_t n = BITS_TO_LIMBS(bits);
+        mp_ptr zd = FLINT_MPZ_REALLOC(mf, n);
+        flint_mpn_urandomm(zd, state, COEFF_TO_PTR(*m)->_mp_d, n);
+        MPN_NORM(zd, n);
+        mf->_mp_size = n;
         if (sgn < 0)
             mpz_neg(mf, mf);
         _fmpz_demote_val(f);
     }
+}
+
+void
+fmpz_randm_not_zero(fmpz_t f, flint_rand_t state, const fmpz_t m)
+{
+    fmpz_t mMinusOne;
+
+    if (fmpz_cmp_ui(m, 2) < 0)
+    {
+        flint_throw(FLINT_ERROR, "Exception (fmpz_randm_not_zero). m < 2.\n");
+    }
+
+    fmpz_init(mMinusOne);
+    fmpz_sub_ui(mMinusOne, m, 1);
+
+    fmpz_randm(f, state, mMinusOne); /* 0..m-2 */
+    fmpz_add_ui(f, f, 1); /* 1..m-1 */
+
+    fmpz_clear(mMinusOne);
 }
 
 void fmpz_randprime(fmpz_t f, flint_rand_t state, flint_bitcnt_t bits, int proved)
@@ -126,11 +154,11 @@ fmpz_randtest_unsigned(fmpz_t f, flint_rand_t state, flint_bitcnt_t bits)
     else
     {
         mpz_ptr mf = _fmpz_promote(f);
-
-        if (!FLINT_RAND_GMP_STATE_IS_INITIALISED(state))
-            _flint_rand_init_gmp_state(state);
-
-        mpz_rrandomb(mf, state->__gmp_state, bits);
+        mp_size_t n = BITS_TO_LIMBS(bits);
+        mp_ptr zd = FLINT_MPZ_REALLOC(mf, n);
+        flint_mpn_rrandomb(zd, state, bits);
+        MPN_NORM(zd, n);
+        mf->_mp_size = n;
         _fmpz_demote_val(f);
     }
 }

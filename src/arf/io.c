@@ -86,7 +86,7 @@ int
 arf_load_str(arf_t x, const char* data)
 {
     fmpz_t mantissa, exponent;
-    char * e_str;
+    const char * e_str;
     char * m_str;
     int err = 0;
 
@@ -243,9 +243,7 @@ arf_dump_file(FILE * stream, const arf_t x)
     int nwrite;
     char* data = arf_dump_str(x);
     nwrite = fputs(data, stream);
-    if (nwrite == EOF)
-        return nwrite;
-
     flint_free(data);
-    return 0;
+
+    return (nwrite == EOF) ? nwrite : 0;
 }

@@ -19,6 +19,8 @@
 #endif
 
 #include "fmpz_vec.h"
+#include "fmpz_mod_types.h"
+#include "nmod_types.h"
 #include "padic.h"
 #include "padic_poly.h"
 
@@ -61,6 +63,14 @@ int _qadic_ctx_init_conway_ui(qadic_ctx_t ctx, ulong p, slong d,
 
 void qadic_ctx_init_conway(qadic_ctx_t ctx,
                            const fmpz_t p, slong d, slong min, slong max,
+                           const char *var, enum padic_print_mode mode);
+
+void qadic_ctx_init_modulus(qadic_ctx_t ctx, const fmpz_t p, const fmpz_mod_poly_t modulus,
+                           slong min, slong max,
+                           const char *var, enum padic_print_mode mode);
+
+void qadic_ctx_init_modulus_nmod(qadic_ctx_t ctx, ulong p, const nmod_poly_t modulus,
+                           slong min, slong max,
                            const char *var, enum padic_print_mode mode);
 
 void qadic_ctx_init(qadic_ctx_t ctx,
@@ -263,10 +273,14 @@ QADIC_INLINE void qadic_gen(qadic_t x, const qadic_ctx_t ctx)
     }
     else
     {
-        padic_poly_fit_length(x, 1);
-	fmpz_neg(x->coeffs + 0, ctx->a + 0);
-	_padic_poly_set_length(x, 1);
-	x->val = 0;
+        /* The generator is the root -a_0 of X + a_0, reduced mod p^N */
+        fmpz_t t;
+
+        fmpz_init(t);
+        if (ctx->j[0] == 0)
+            fmpz_neg(t, ctx->a + 0);
+        padic_poly_set_fmpz(x, t, &ctx->pctx);
+        fmpz_clear(t);
     }
 }
 
@@ -438,6 +452,13 @@ void qadic_norm_analytic(padic_t rop, const qadic_t op, const qadic_ctx_t ctx);
 void qadic_norm_resultant(padic_t rop, const qadic_t op, const qadic_ctx_t ctx);
 
 int qadic_sqrt(qadic_t rop, const qadic_t op, const qadic_ctx_t ctx);
+
+struct qadic2_sqrt_precomp;
+
+struct qadic2_sqrt_precomp *_qadic_char2_sqrt_precomp_init(const qadic_ctx_t ctx);
+int _qadic_char2_sqrt_with_precomp(qadic_t rop, const qadic_t op, const qadic_ctx_t ctx,
+                                   const struct qadic2_sqrt_precomp *data);
+void _qadic_char2_sqrt_precomp_clear(struct qadic2_sqrt_precomp *data);
 
 /* Output ********************************************************************/
 

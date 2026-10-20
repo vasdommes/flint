@@ -3,8 +3,55 @@
 **nmod.h** -- integers mod n (word-size n)
 ===============================================================================
 
+Generic rings
+--------------------------------------------------------------------------------
+
+.. function:: int gr_ctx_init_nmod(gr_ctx_t ctx, ulong n)
+              int gr_ctx_init_nmod8(gr_ctx_t ctx, ulong n)
+              int gr_ctx_init_nmod32(gr_ctx_t ctx, ulong n)
+              int gr_ctx_init_nmod_redc(gr_ctx_t ctx, ulong n)
+              int gr_ctx_init_nmod_redc_fast(gr_ctx_t ctx, ulong n)
+
+    Initialize the context object ``ctx`` for generic arithmetic in the ring
+    `R = \mathbb{Z} / n \mathbb{Z}` for word-size `n`
+    using the respective representation.
+
+    The element datatype is :type:`ulong` for all representations
+    except for ``nmod8`` and ``nmod32`` where the type is
+    :type:`uint8` or :type:`uint32` respectively.
+
+    If the modulus is valid, returns ``GR_SUCCESS``. Otherwise, the context
+    object is not initialized and an error code is returned:
+
+    * ``GR_DOMAIN`` is returned if `n = 0`.
+    * ``GR_UNABLE`` is returned if `n` does not satisfy the technical
+      restrictions of a specific representation. For example, ``nmod8`` requires
+      `n \le 255` and ``nmod_redc`` requires that `n` is odd.
+
+.. note ::
+
+    Some generic algorithms need to check whether
+    `R` is a field, i.e. whether `n` is a prime number.
+    To avoid expensive on-the-fly primality tests, it is recommended
+    to call ``gr_ctx_set_is_field(ctx, T_TRUE)`` (if `n` is prime)
+    ``gr_ctx_set_is_field(ctx, T_FALSE)`` (if `n` is composite)
+    after constructing a context object.
+    This is not done automatically as it would slow down creating a context
+    object in the case where one is just interested in basic arithmetic.
+
+.. note ::
+
+    Presently, many operations for ``nmod8``, ``nmod32``, ``nmod_redc`` and
+    ``nmod_redc_fast`` are not as optimized as those for the general-purpose
+    ``nmod``. It is currently recommended to use ``nmod8`` and ``nmod32``
+    only if one specifically wants to minimize memory usage.
+
 Modular reduction and arithmetic
 --------------------------------------------------------------------------------
+
+Many of the functions below assume that their operands are already
+reduced modulo ``mod.n``. These reduced-operand assumptions are not
+checked.
 
 .. function:: void nmod_init(nmod_t * mod, ulong n)
 
@@ -79,6 +126,11 @@ Modular reduction and arithmetic
     ``mod.n``. It is assumed that `a` and `b` are already reduced 
     modulo ``mod.n``.
 
+.. function:: ulong nmod_ui_add_ui(ulong a, ulong b, nmod_t mod)
+
+    Returns `a + b` modulo ``mod.n``. Does not require that `a` and `b` are
+    already reduced modulo ``mod.n``.
+
 .. function:: ulong _nmod_sub(ulong a, ulong b, nmod_t mod)
 
     Returns `a - b` modulo ``mod.n``. It is assumed that ``mod`` 
@@ -109,6 +161,11 @@ Modular reduction and arithmetic
     ``FLINT_BITS`` large. It is assumed that `a` and `b` are already
     reduced modulo ``mod.n``.
 
+.. function:: ulong nmod_ui_mul_ui(ulong a, ulong b, nmod_t mod)
+
+    Returns `ab` modulo ``mod.n``. Does not require that `a` and `b` are
+    already reduced modulo ``mod.n``.
+
 .. function:: ulong nmod_inv(ulong a, nmod_t mod)
 
     Returns `a^{-1}` modulo ``mod.n``. The inverse is assumed to exist.
@@ -130,10 +187,193 @@ Modular reduction and arithmetic
 
 .. function:: ulong nmod_pow_fmpz(ulong a, const fmpz_t e, nmod_t mod)
 
-    Returns `a^e` modulo ``mod.n``. No assumptions are made about 
+    Returns `a^e` modulo ``mod.n``. No assumptions are made about
     ``mod.n``. It is assumed that `a` is already reduced
-    modulo ``mod.n`` and that `e` is not negative.
+    modulo ``mod.n``. If `e` is negative, returns a power of the inverse
+    of `a`; an exception is raised if `a` is not invertible modulo ``mod.n``.
 
+.. function:: ulong nmod_ui_pow_ui(ulong a, ulong e, nmod_t mod)
+
+    Returns `a^e` modulo ``mod.n``. Does not require that `a` is already reduced
+    modulo ``mod.n``.
+
+.. function:: ulong nmod_2_pow_ui(ulong e, nmod_t mod)
+
+    Returns `2^e` modulo ``mod.n``.
+
+.. function:: int _nmod_sqrt_small(ulong * res, ulong a, ulong n)
+
+    For odd `n` and `a` reduced modulo `n`, finds the least `r` with
+    `r^2 = a \bmod n` by exhaustive search; returns 1 and sets *res* to `r`
+    if one exists, and otherwise sets *res* to 0 and returns 0. Every
+    square root `r` satisfies `r \le n/2` or `n - r \le n/2`, so the
+    result is exact whether or not `n` is prime. This takes `O(n)` steps
+    and is intended for tiny `n`.
+
+.. function:: int nmod_sqrt(ulong * res, ulong a, nmod_t mod)
+
+    Assuming that `n` = ``mod.n`` is prime, computes a square root of `a`
+    modulo `n`. If `a` is a square, sets *res* to the square root in
+    `[0, n/2]` (the other root being `n - \textit{res}`) and returns 1.
+    Otherwise sets *res* to 0 and returns 0. It is assumed that `a` is
+    already reduced modulo `n`.
+
+    The primality of `n` is not checked. If `n` is not prime, a return
+    value of 1 still guarantees that *res* squared is `a` modulo `n`,
+    while a return value of 0 is meaningless.
+
+    For `n` below ``NMOD_SQRT_SMALL_CUTOFF`` (128), this is an exhaustive
+    search, see :func:`_nmod_sqrt_small`. Otherwise the arithmetic is
+    done in Montgomery form. When `n \equiv 3 \pmod 4`
+    the root is `a^{(n+1)/4}`, and when `n \equiv 5 \pmod 8` Atkin's
+    formula is used, which also requires a single exponentiation.
+    When `n \equiv 1 \pmod 8`, writing `n - 1 = q 2^s` with `q` odd, the
+    Tonelli-Shanks algorithm is used, with the exponentiations of `a`
+    and of the nonresidue interleaved. For large `s`, a variant of the
+    Tonelli-Shanks descent is used whose `O(s^2)` multiplications are
+    independent of each other, and for very large `s` (relative to the
+    bit size of `n`) Müller's variant of the Cipolla-Lehmer algorithm,
+    whose cost does not depend on `s`. The result is
+    verified by squaring rather than by testing `a` for being a square
+    up front; for prime `n`, this is a complete test.
+
+Montgomery arithmetic
+--------------------------------------------------------------------------------
+
+Let `n` be an odd integer smaller than the machine word modulus
+`R = 2^{32}` or `R = 2^{64}`.
+The Montgomery representation of an integer `x` is the residue `x R \bmod n`.
+We can use Montgomery representations
+for doing arithmetic in `\mathbb{Z} / n \mathbb{Z}`,
+following the rules
+
+.. math ::
+
+    (x + y) R \bmod n = x R + y R \bmod n,
+
+.. math ::
+
+    (x y) R \bmod n = (x R) (y R) / R \bmod n.
+
+The advantage of using the Montgomery representation instead of
+the standard representation `x \bmod n` is that it allows
+for faster multiplication. Montgomery arithmetic is also known as
+REDC arithmetic.
+
+By default moduli up to the full word size are allowed and residues are
+strictly canonicalised to `[0, n)`. We provide sets of alternative
+methods for restricted moduli which, depending on the machine,
+can speed up arithmetic:
+
+* The ``half`` (and ``half_fast``) methods work with half-length
+  `R`, avoiding the need for double-word operations in the internal
+  arithmetic. They are not necessarily faster than the non-``half`` versions.
+  Mixing ``half`` and non-``half`` methods and context objects
+  is not allowed.
+
+* The ``fast`` (and ``half_fast``) accept non-canonical residues in `[0, 2n)`
+  and return non-canonical residues in `[0, 2n)`. The user must convert back
+  to the canonical range `[0, n)` before using any non-``fast`` functions.
+  The ``fast`` methods are generally faster than the non-``fast`` methods.
+
+The restrictions are summarized in the following table, assuming a
+64-bit word size:
+
++--------------------+-----------------+----------+----------------------+
+| Prefix             |   Maximum `n`   |   `R`    |   Canonicalisation   |
++====================+=================+==========+======================+
+| ``redc``           |  `2^{64} - 1`   | `2^{64}` |  `[0, n)`            |
++--------------------+-----------------+----------+----------------------+
+| ``redc_fast``      |  `2^{62} - 1`   | `2^{64}` |  `[0, 2n)`           |
++--------------------+-----------------+----------+----------------------+
+| ``redc_half``      |  `2^{31} - 1`   | `2^{32}` |  `[0, n)`            |
++--------------------+-----------------+----------+----------------------+
+| ``redc_half_fast`` |  `2^{30} - 1`   | `2^{32}` |  `[0, 2n)`           |
++--------------------+-----------------+----------+----------------------+
+
+For 32-bit machines, the maximum `n` become `2^{32} - 1`,
+`2^{30} - 1`, `2^{15} - 1`, and `2^{14} - 1` respectively.
+
+.. type:: nmod_redc_ctx_struct
+          nmod_redc_ctx_t
+
+    A context object for Montgomery arithmetic. This holds the same content
+    as an ``nmod_t`` context, plus the precomputed constant `-1/n` modulo `R`.
+
+.. function:: void nmod_redc_ctx_init_nmod(nmod_redc_ctx_t ctx, nmod_t mod)
+              void nmod_redc_ctx_init_ui(nmod_redc_ctx_t ctx, ulong n)
+
+    Initialize ``ctx`` for Montgomery arithmetic modulo the given modulus
+    `n` which is required to be odd.
+
+.. function:: ulong nmod_redc_set_nmod(ulong x, const nmod_redc_ctx_t ctx)
+
+    Convert `x` from the standard representation to Montgomery representation.
+    If `x` is viewed a residue in the standard representation,
+    this returns `x R \bmod n`.
+
+.. function:: ulong nmod_redc_set_ui(ulong x, const nmod_redc_ctx_t ctx)
+
+    Convert `x` which is not necessarily reduced modulo `n`
+    to Montgomery representation.
+
+.. function:: ulong nmod_redc_get_nmod(ulong x, const nmod_redc_ctx_t ctx)
+
+    Convert `x` back from Montgomery representation to standard representation.
+    If `x` is viewed as a residue in the standard representation,
+    this returns `x / R \bmod n`. This function allows `x \in [0, 2n)`.
+
+.. function:: ulong nmod_redc_neg(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_add(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_sub(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_mul(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+
+    Arithmetic in the Montgomery representation.
+
+.. function:: int nmod_redc_can_use_fast(const nmod_redc_ctx_t ctx)
+
+    Return whether the modulus is small enough to safely use fast operations.
+
+.. function:: ulong nmod_redc_fast_normalise(ulong x, const nmod_redc_ctx_t ctx)
+
+    Convert a non-canonical residue in `[0, 2n)` to a canonical
+    residue in `[0, n)`.
+
+.. function:: ulong nmod_redc_fast_neg(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_fast_add(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_fast_sub(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_fast_mul(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_fast_mul_two(ulong x, const nmod_redc_ctx_t ctx)
+
+    Arithmetic in Montgomery representation, using non-canonical residues.
+
+.. function:: ulong _nmod_redc_pow_ui(ulong a, ulong exp, const nmod_redc_ctx_t ctx)
+              ulong _nmod_redc_fast_pow_ui(ulong a, ulong exp, const nmod_redc_ctx_t ctx)
+
+    Return `a^{exp}`. The exponent is required to be positive.
+
+.. function:: ulong _nmod_redc_2_pow_ui(ulong exp, const nmod_redc_ctx_t ctx)
+              ulong _nmod_redc_fast_2_pow_ui(ulong exp, const nmod_redc_ctx_t ctx)
+
+    Return `2^{exp}`. There are no restrictions on the exponent.
+
+.. function:: void nmod_redc_half_ctx_init_nmod(nmod_redc_ctx_t ctx, nmod_t mod)
+              void nmod_redc_half_ctx_init_ui(nmod_redc_ctx_t ctx, ulong n)
+
+    Initialize context for use with ``half`` or ``half_fast`` methods.
+
+.. function:: ulong nmod_redc_half_set_nmod(ulong x, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_set_ui(ulong x, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_get_nmod(ulong x, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_add(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_sub(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_mul(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              int nmod_redc_half_can_use_fast(const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_fast_mul(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_fast_add(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+              ulong nmod_redc_half_fast_sub(ulong x, ulong y, const nmod_redc_ctx_t ctx)
+
+    Methods analogous to their non-``half`` counterparts.
 
 Discrete Logarithms via Pohlig-Hellman
 --------------------------------------------------------------------------------

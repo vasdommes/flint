@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2025 Fredrik Johansson
+    Copyright (C) 2025, 2026 Fredrik Johansson
 
     This file is part of FLINT.
 
@@ -18,6 +18,7 @@
 #if FLINT_HAVE_FFT_SMALL
 
 #include "fft_small.h"
+#include "fft_small/impl.h"
 
 /* Repacking for tiny moduli: given polynomials
 
@@ -166,14 +167,7 @@ FLINT_FORCE_INLINE
 uint32_t u32_mod_preinv(uint32_t x, uint32_t d, uint64_t dinv)
 {
     uint64_t l = dinv * x;
-
-#if !defined(__GNUC__)
-    uint64_t hi, lo;
-    umul_ppmm(hi, lo, l, d);
-    return hi;
-#else
-    return ((__uint128_t) l * d ) >> 64;
-#endif
+    return n_mulhi(l, d);
 }
 
 FLINT_FORCE_INLINE
@@ -205,16 +199,30 @@ uint32_t u32_preinv(uint32_t d)
     cy = 0; \
     uint32_t dd = mod.n; \
     uint64_t ddinv = u32_preinv(dd); \
-    for (i = 0; 2 * i + 1 < zn; i++) \
+    if (znlo != 0) \
     { \
-        c = z2[i]; \
+        if (znlo % 2) \
+        { \
+            c = z2[znlo / 2 - znlo2]; \
+            c1 = (c / m) % m; \
+            c2 = c / (m * m); \
+            d = u32_mod_preinv(c1, dd, ddinv); \
+            z[0] = d; \
+            cy = c2; \
+        } \
+        else \
+            cy = z2[znlo / 2 - 1 - znlo2] / (m * m); \
+    } \
+    for (i = (znlo + 1) / 2; 2 * i + 1 < zn; i++) \
+    { \
+        c = z2[i - znlo2]; \
         c0 = c % m; \
         c1 = (c / m) % m;  \
         c2 = c / (m * m); \
         d = u32_mod_preinv(c0 + cy, dd, ddinv); \
-        z[2 * i] = d; \
+        z[2 * i - znlo] = d; \
         d = u32_mod_preinv(c1, dd, ddinv); \
-        z[2 * i + 1] = d; \
+        z[2 * i + 1 - znlo] = d; \
         cy = c2; \
     } \
     if (zn % 2) \
@@ -222,18 +230,18 @@ uint32_t u32_preinv(uint32_t d)
         if (zn > 2 * zn2) \
             c0 = 0; \
         else \
-            c0 = z2[zn2 - 1] % M; \
+            c0 = z2[zn2 - 1 - znlo2] % M; \
         d = u32_mod_preinv(c0 + cy, dd, ddinv); \
-        z[zn - 1] = d; \
+        z[zn - 1 - znlo] = d; \
     }
 
 
 static int
-_nmod_poly_mullow_fft_small_repack_m(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, ulong M, nmod_t mod)
+_nmod_poly_mulmid_fft_small_repack_m(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong znlo, slong zn, ulong M, nmod_t mod)
 {
     TMP_INIT;
     ulong *a2, *b2, *z2;
-    slong an2, bn2, zn2;
+    slong an2, bn2, zn2, znlo2;
     ulong d, cy, c, c0, c1, c2;
     nmod_t mod2;
     slong i;
@@ -248,18 +256,18 @@ _nmod_poly_mullow_fft_small_repack_m(nn_ptr z, nn_srcptr a, slong an, nn_srcptr 
 
     an2 = (an + 1) / 2;
     bn2 = (bn + 1) / 2;
-    zn2 = (zn + 1) / 2;
-    zn2 = FLINT_MIN(zn2, an2 + bn2 - 1);
+    zn2 = FLINT_MIN((zn + 1) / 2, an2 + bn2 - 1);
+    znlo2 = FLINT_MAX(0, (znlo - 1) / 2);
 
     if (squaring)
     {
-        a2 = TMP_ALLOC((an2 + zn2) * sizeof(ulong));
+        a2 = TMP_ALLOC((an2 + (zn2 - znlo2)) * sizeof(ulong));
         b2 = a2;
         z2 = a2 + an2;
     }
     else
     {
-        a2 = TMP_ALLOC((an2 + bn2 + zn2) * sizeof(ulong));
+        a2 = TMP_ALLOC((an2 + bn2 + (zn2 - znlo2)) * sizeof(ulong));
         b2 = a2 + an2;
         z2 = b2 + bn2;
     }
@@ -287,7 +295,7 @@ _nmod_poly_mullow_fft_small_repack_m(nn_ptr z, nn_srcptr a, slong an, nn_srcptr 
     if (bn % 2) b2[bn / 2] = b[bn - 1];
 
     nmod_init(&mod2, FFT_PRIME);
-    _nmod_poly_mul_mid_default_mpn_ctx(z2, 0, zn2, a2, an2, b2, bn2, mod2);
+    _nmod_poly_mul_mid_default_mpn_ctx(z2, znlo2, zn2, a2, an2, b2, bn2, mod2);
 
     if (M == M16)
     {
@@ -304,7 +312,7 @@ _nmod_poly_mullow_fft_small_repack_m(nn_ptr z, nn_srcptr a, slong an, nn_srcptr 
 }
 
 int
-_nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, nmod_t mod)
+_nmod_poly_mulmid_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong znlo, slong zn, nmod_t mod)
 {
     uint32_t aeven;
     uint32_t aodd;
@@ -329,7 +337,7 @@ _nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b,
 
     /* Coefficients are < 2^16, and (2^16)^3 < FFT_PRIME. */
     if (c0_bound < M16)
-        return _nmod_poly_mullow_fft_small_repack_m(z, a, an, b, bn, zn, M16, mod);
+        return _nmod_poly_mulmid_fft_small_repack_m(z, a, an, b, bn, znlo, zn, M16, mod);
 
     /*
     Since packing space is very limited, we try a Cauchy-Schwarz bound if
@@ -369,7 +377,9 @@ _nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b,
     Cauchy-Schwarz, but typically be less tight.
     */
 
-    aeven = (an % 2) ? a[an - 1] : 0;
+    /* If an is odd, the last coefficient is an even-indexed one without
+       an odd partner; it must enter the sum of squares squared. */
+    aeven = (an % 2) ? (uint32_t) a[an - 1] * (uint32_t) a[an - 1] : 0;
     aodd = 0;
     for (i = 0; i + 1 < an; i += 2)
     {
@@ -387,7 +397,7 @@ _nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b,
     }
     else
     {
-        beven = (bn % 2) ? b[bn - 1] : 0;
+        beven = (bn % 2) ? (uint32_t) b[bn - 1] * (uint32_t) b[bn - 1] : 0;
         bodd = 0;
         for (i = 0; i + 1 < bn; i += 2)
         {
@@ -407,21 +417,142 @@ _nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b,
     //     n, an, bn, aeven, aodd, beven, bodd, c0_bound, c1_bound, c2_bound);
 
     if (c0_bound < M16 && c1_bound < M16 && c2_bound * M16 * M16 < FFT_PRIME)
-        return _nmod_poly_mullow_fft_small_repack_m(z, a, an, b, bn, zn, M16, mod);
+        return _nmod_poly_mulmid_fft_small_repack_m(z, a, an, b, bn, znlo, zn, M16, mod);
 
     if (c0_bound < M17 && c1_bound < M17 && c2_bound * M17 * M17 < FFT_PRIME)
-        return _nmod_poly_mullow_fft_small_repack_m(z, a, an, b, bn, zn, M17, mod);
+        return _nmod_poly_mulmid_fft_small_repack_m(z, a, an, b, bn, znlo, zn, M17, mod);
 
     return 0;
+}
+
+/*
+    Whether the transposed product of lengths sn and m behind the window
+    [znlo, zn) of the product of lengths an and bn has a strictly shorter
+    transform than the window of the full product, with the arguments the
+    plans of _nmod_poly_mul_tr_mpn_ctx and _nmod_poly_mul_mid_mpn_ctx use.
+    Only the transform lengths are computed, not the plans.
+*/
+static int
+_nmod_poly_mulmid_fft_small_transposed_shorter(slong an, slong bn,
+                        slong znlo, slong zn, slong sn, slong m)
+{
+    fft_small_plan_t Pw, Pt;
+    ulong full = an + bn - 1;
+
+    _fft_small_plan_set_window_nmod(Pw, znlo, FLINT_MIN((ulong) zn, full), full,
+            n_max(_fft_small_len_trunc((ulong) an), _fft_small_len_trunc((ulong) bn)));
+    _fft_small_plan_set_window_nmod(Pt, 0, m, sn + m - 1,
+            n_max(_fft_small_len_trunc((ulong) sn), _fft_small_len_trunc((ulong) m)));
+
+    return Pt->ztrunc < Pw->ztrunc;
+}
+
+void
+_nmod_poly_mulmid_fft_small(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong znlo, slong zn, nmod_t mod)
+{
+    nn_srcptr s, l;
+    slong sn, ln, m, t;
+
+    /* drop the coefficients that no output coefficient uses, as
+       _nmod_poly_mulmid does: the high ones, and the low ones of each
+       operand that only meet the other below znlo */
+    an = FLINT_MIN(an, zn);
+    bn = FLINT_MIN(bn, zn);
+
+    t = znlo - (bn - 1);
+    if (t > 0)
+    {
+        a += t;
+        an -= t;
+        znlo -= t;
+        zn -= t;
+    }
+
+    t = znlo - (an - 1);
+    if (t > 0)
+    {
+        b += t;
+        bn -= t;
+        znlo -= t;
+        zn -= t;
+    }
+
+    FLINT_ASSERT(an > 0 && bn > 0);
+    FLINT_ASSERT(znlo < zn && zn <= an + bn - 1);
+
+    if (_nmod_poly_mulmid_fft_small_repack(z, a, an, b, bn, znlo, zn, mod))
+        return;
+
+    if (an >= bn)
+        s = b, sn = bn, l = a, ln = an;
+    else
+        s = a, sn = an, l = b, ln = bn;
+
+    m = zn - znlo;
+
+    /*
+        The window [znlo, zn) of the product is the transpose of the
+        multiplication by s reversed of a polynomial of length m: with
+        g = x^(sn - 1 - znlo) * l (shifted, the negative powers dropped), it
+        is the range [sn - 1, sn - 1 + m) of s*g, which
+        _nmod_poly_mul_tr_mpn_ctx computes from rev(s) and g at the cost of
+        a product of lengths sn and m, against a product of lengths sn and ln
+        for the window of the full product.
+        However, the full product's wraparound can bring the latter down to the
+        same transform length (for instance for the window [255, 319) of a
+        product of lengths 256 and 319, both are 512), and then the window
+        product is a few percent faster.
+        So the transposed driver is used only when its transform is strictly
+        shorter, as computed by the window selection of the plans of both
+        drivers. It is not used when the window is padded on both sides (it
+        starts before the full sums and ends after them).
+    */
+    if (m < ln && (znlo >= sn - 1 || zn <= ln)
+        && _nmod_poly_mulmid_fft_small_transposed_shorter(an, bn, znlo, zn, sn, m))
+    {
+        slong lead = sn - 1 - znlo;     /* zeros in front of g, if > 0 */
+        slong gn = m + sn - 1;          /* length of g, zeros included */
+        nn_ptr t;
+        TMP_INIT;
+
+        TMP_START;
+
+        if (lead <= 0)
+        {
+            /* g = l[-lead .. ), with gn - (ln + lead) zeros at the end
+               that the driver supplies itself; ln + lead > 0 since the
+               window starts before the end of the product */
+            FLINT_ASSERT(ln + lead > 0);
+            t = TMP_ARRAY_ALLOC(sn, ulong);
+            _nmod_poly_reverse(t, s, sn, sn);
+            _nmod_poly_mul_tr_default_mpn_ctx(z, m, t, sn, l - lead,
+                                              FLINT_MIN(ln + lead, gn), mod);
+        }
+        else
+        {
+            slong glen = FLINT_MIN(ln, gn - lead);
+
+            t = TMP_ARRAY_ALLOC(sn + lead + glen, ulong);
+            _nmod_poly_reverse(t, s, sn, sn);
+            _nmod_vec_zero(t + sn, lead);
+            _nmod_vec_set(t + sn + lead, l, glen);
+            _nmod_poly_mul_tr_default_mpn_ctx(z, m, t, sn, t + sn,
+                                              lead + glen, mod);
+        }
+
+        TMP_END;
+
+        return;
+    }
+
+    _nmod_poly_mul_mid_default_mpn_ctx(z, znlo, zn, a, an, b, bn, mod);
 }
 
 void
 _nmod_poly_mullow_fft_small(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, nmod_t mod)
 {
-    if (!_nmod_poly_mullow_fft_small_repack(z, a, an, b, bn, zn, mod))
-        _nmod_poly_mul_mid_default_mpn_ctx(z, 0, zn, a, an, b, bn, mod);
+    _nmod_poly_mulmid_fft_small(z, a, an, b, bn, 0, zn, mod);
 }
-
 
 static const short fft_mul_tab[] = {1326, 1326, 1095, 802, 674, 537, 330, 306, 290,
 274, 200, 192, 182, 173, 163, 99, 97, 93, 90, 82, 80, 438, 414, 324, 393,
@@ -469,6 +600,13 @@ _nmod_poly_mullow_want_fft_small(slong len1, slong len2, slong n, int squaring, 
         bits = NMOD_BITS(mod);
         cutoff_len = FLINT_MIN(len1, 2 * len2);
 
+        /* modulo a prime of the fft_small context, fft_small needs a single
+           prime and no chinese remaindering, and wins much earlier than the
+           table says for other 50-bit moduli */
+        if (bits == 50 && cutoff_len >= 24 &&
+            _fft_small_mpn_ctx_prime_index(get_default_mpn_ctx(), mod.n) >= 0)
+            return 1;
+
         if (squaring)
             return cutoff_len >= fft_sqr_tab[bits - 1];
         else
@@ -488,6 +626,12 @@ _nmod_poly_mullow_want_fft_small(slong len1, slong len2, slong n, int squaring, 
         bits = NMOD_BITS(mod);
         cutoff_len = FLINT_MIN(len1, len2);
 
+        /* modulo a prime of the fft_small context, as above; for low
+           products, classical does about half the work of a full product */
+        if (bits == 50 && FLINT_MIN(len1, 2 * len2) >= 40 &&
+            _fft_small_mpn_ctx_prime_index(get_default_mpn_ctx(), mod.n) >= 0)
+            return 1;
+
         return cutoff_len >= fft_mullow_tab[bits - 1];
     }
 }
@@ -495,7 +639,7 @@ _nmod_poly_mullow_want_fft_small(slong len1, slong len2, slong n, int squaring, 
 #else
 
 int
-_nmod_poly_mullow_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, nmod_t mod)
+_nmod_poly_mulmid_fft_small_repack(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong znlo, slong zn, nmod_t mod)
 {
     return 0;
 }
@@ -507,11 +651,16 @@ _nmod_poly_mullow_want_fft_small(slong len1, slong len2, slong n, int squaring, 
 }
 
 void
-_nmod_poly_mullow_fft_small(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, nmod_t mod)
+_nmod_poly_mulmid_fft_small(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong znlo, slong zn, nmod_t mod)
 {
     flint_throw(FLINT_ERROR, "fft_small is not available");
 }
 
+void
+_nmod_poly_mullow_fft_small(nn_ptr z, nn_srcptr a, slong an, nn_srcptr b, slong bn, slong zn, nmod_t mod)
+{
+    _nmod_poly_mulmid_fft_small(z, a, an, b, bn, 0, zn, mod);
+}
 
 #endif
 
