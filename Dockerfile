@@ -3,10 +3,11 @@
 # latest alpine release
 FROM alpine:3.24 AS build
 
-# Argument for ./configure --host (target architecture/OS/..., e.g. arm64)
-# If empty, configure command will ignore it and build for current machine
+# Argument for ./configure --host: a full triplet, e.g. x86_64-linux-musl.
+# Default: generic CPU of the build platform, so that the image runs on any CPU.
+# Without --host, configure optimizes for the build machine CPU (e.g. -march=tigerlake).
+# An incomplete triplet (e.g. amd64 -> x86_64-pc-none) has no OS, so libtool builds only a static library.
 ARG host
-ENV FLINT_CONFIGURE_HOST=$host
 
 RUN apk add \
     autoconf \
@@ -24,9 +25,10 @@ RUN apk add \
 WORKDIR /usr/local/src/flint
 # Build FLINT from current sources
 COPY . .
-RUN echo FLINT target host=$FLINT_CONFIGURE_HOST && \
+RUN host=${host:-$(uname -m)-linux-musl} && \
+    echo FLINT target host=$host && \
     ./bootstrap.sh && \
-    ./configure --disable-static --with-blas --disable-pthread --prefix=/usr/local --host=$FLINT_CONFIGURE_HOST && \
+    ./configure --disable-static --with-blas --disable-pthread --prefix=/usr/local --host=$host && \
     make -j`nproc` && \
     make -j $(expr $(nproc) + 1) check  && \
     make -j`nproc` install
