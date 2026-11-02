@@ -202,6 +202,31 @@ else()
     set(FFT_SMALL)
 endif()
 
+# Whether FLINT is compiled with AVX2, recorded in flint-config.h for inline
+# code of the headers that calls AVX2 functions of the library (for instance
+# _nmod_vec_nored_scalar_addmul_halflimb in nmod_vec.h), which must not depend
+# on the compiler flags of the code that includes the header.
+set(CMAKE_REQUIRED_FLAGS "")
+if(NOT MSVC AND NOT "${ENABLE_ARCH}" STREQUAL "NO" AND HAS_FLAG_ARCH)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -march=${ENABLE_ARCH}")
+endif()
+if(ENABLE_AVX2)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${avx2_flag}")
+    if(HAS_FLAG_MFMA)
+        set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mfma")
+    endif()
+endif()
+if(ENABLE_AVX512)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${avx512_flag}")
+endif()
+check_c_source_compiles([[
+    #if !defined(__AVX2__)
+    # error
+    error
+    #endif
+    int main(void) { return 0; }]] FLINT_HAVE_AVX2)
+unset(CMAKE_REQUIRED_FLAGS)
+
 # Find sources
 
 set(_BUILD_DIRS
@@ -639,13 +664,13 @@ endif()
 
 
 if(BUILD_DOCS)
-    find_package(Sphinx REQUIRED)
-    file(GLOB DOC_SOURCES doc/source/*.rst)
+    # the documentation is built by doc/fdoc (Python 3; Node.js optional;
+    # pdflatex for the PDF)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_custom_target(html
-        COMMAND ${SPHINX_EXECUTABLE} -b html "${CMAKE_CURRENT_SOURCE_DIR}/doc/source" "${CMAKE_CURRENT_BINARY_DIR}/html"
-        SOURCES ${DOC_SOURCES})  
-    add_custom_target(latex
-        COMMAND ${SPHINX_EXECUTABLE} -b latex "${CMAKE_CURRENT_SOURCE_DIR}/doc/source" "${CMAKE_CURRENT_BINARY_DIR}/latex"
-        SOURCES ${DOC_SOURCES})  
-    add_custom_target(pdf DEPENDS latex COMMAND make WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/latex") 
+        COMMAND ${Python3_EXECUTABLE} -m fdoc --flint "${CMAKE_CURRENT_SOURCE_DIR}" build --out "${CMAKE_CURRENT_BINARY_DIR}/doc/html"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/doc")
+    add_custom_target(pdf
+        COMMAND ${Python3_EXECUTABLE} -m fdoc --flint "${CMAKE_CURRENT_SOURCE_DIR}" latex --pdf --out "${CMAKE_CURRENT_BINARY_DIR}/doc/latex"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/doc")
 endif()

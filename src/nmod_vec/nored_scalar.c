@@ -12,6 +12,15 @@
 #include "flint-mparam.h"
 #include "nmod_vec.h"
 
+/* The inline _nmod_vec_nored_scalar_addmul_halflimb of nmod_vec.h calls
+   the AVX2 function below according to FLINT_HAVE_AVX2, recorded in
+   flint-config.h, while this file is compiled according to the compiler
+   macros: both must agree, otherwise the function is called but not
+   defined, or defined but not used. */
+#if NMOD_VEC_LIB_HAVE_AVX2 != (FLINT_BITS == 64 && defined(__AVX2__))
+# error "FLINT_HAVE_AVX2 (flint-config.h) does not match the instruction sets FLINT is compiled with"
+#endif
+
 
 #if FLINT_BITS == 64 && defined(__AVX2__)
 
@@ -30,6 +39,32 @@ _nmod_vec_nored_scalar_addmul_halflimb_avx2(nn_ptr res, nn_srcptr vec, slong len
         vec4n va = vec4n_load_unaligned(res + i);
         vec4n vb = vec4n_load_unaligned(vec + i);
         vec4n_store_unaligned(res + i, vec4n_add(va, vec4n_mul(vb, vc)));
+    }
+
+    for ( ; i < len; i++)
+        res[i] += vec[i] * c;
+}
+
+#elif FLINT_BITS == 64 && defined(__ARM_NEON)
+
+#include <arm_neon.h>
+
+void
+_nmod_vec_nored_scalar_addmul_halflimb_neon(nn_ptr res, nn_srcptr vec, slong len, ulong c)
+{
+    const uint32x2_t vc = vdup_n_u32((uint32_t) c);
+    slong i = 0;
+
+    /* the entries of vec and c fit in 32 bits: the entries are narrowed
+       and multiplied by c with umlal (32 x 32 -> 64 bits, accumulated) */
+    for ( ; i + 3 < len; i += 4)
+    {
+        uint32x2_t v0 = vmovn_u64(vld1q_u64((const uint64_t *) (vec + i)));
+        uint32x2_t v1 = vmovn_u64(vld1q_u64((const uint64_t *) (vec + i + 2)));
+        uint64x2_t r0 = vld1q_u64((const uint64_t *) (res + i));
+        uint64x2_t r1 = vld1q_u64((const uint64_t *) (res + i + 2));
+        vst1q_u64((uint64_t *) (res + i), vmlal_u32(r0, v0, vc));
+        vst1q_u64((uint64_t *) (res + i + 2), vmlal_u32(r1, v1, vc));
     }
 
     for ( ; i < len; i++)

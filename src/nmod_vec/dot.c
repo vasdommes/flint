@@ -142,7 +142,7 @@ ulong _nmod_vec_dot2_split(nn_srcptr vec1, nn_srcptr vec2, slong len, nmod_t mod
         hsum_lo += vec1[i] * vec2[i];
 
     ulong res;
-    NMOD_RED(res, pow2_precomp * hsum_hi + hsum_lo, mod);
+    _NMOD_VEC_DOT_SPLIT_COMBINE(res, hsum_hi, hsum_lo, pow2_precomp, mod);
     return res;
 }
 #else  // defined(__AVX2__)
@@ -199,7 +199,7 @@ ulong _nmod_vec_dot2_half(nn_srcptr vec1, nn_srcptr vec2, slong len, nmod_t mod,
     }
 
     ulong res;
-    NMOD_RED(res, pow2_precomp * hsum_hi + hsum_lo, mod);
+    _NMOD_VEC_DOT_SPLIT_COMBINE(res, hsum_hi, hsum_lo, pow2_precomp, mod);
     return res;
 }
 #else  // FLINT_BITS == 64 && defined(__AVX2__)
@@ -320,7 +320,7 @@ ulong _nmod_vec_dot2_split_rev(nn_srcptr vec1, nn_srcptr vec2, slong len, nmod_t
         hsum_lo += vec1[i] * vec2[len-1-i];
 
     ulong res;
-    NMOD_RED(res, pow2_precomp * hsum_hi + hsum_lo, mod);
+    _NMOD_VEC_DOT_SPLIT_COMBINE(res, hsum_hi, hsum_lo, pow2_precomp, mod);
     return res;
 }
 #else  // defined(__AVX2__)
@@ -470,7 +470,7 @@ ulong _nmod_vec_dot2_split_ptr(nn_srcptr vec1, const nn_ptr * vec2, slong offset
         hsum_lo += vec1[i] * vec2[i][offset];
 
     ulong res;
-    NMOD_RED(res, pow2_precomp * hsum_hi + hsum_lo, mod);
+    _NMOD_VEC_DOT_SPLIT_COMBINE(res, hsum_hi, hsum_lo, pow2_precomp, mod);
     return res;
 }
 #else  // defined(__AVX2__)
@@ -535,11 +535,8 @@ ulong _nmod_vec_dot3_ptr(nn_srcptr vec1, const nn_ptr * vec2, slong offset, slon
 // in short: with current DOT_SPLIT_BITS value 56,
 // -> modulus n up to about 2**30.5
 //       (more precisely, n <= 1515531528)
-// -> length of dot product up to at least 47546087, and up to at least
-//    380368697 for n <= 1178828563
-//       (more precisely, len * (n-1)**3 + 7 * (n-1)**2 * 2**56
-//                                      < 2**120 + 2**56 - 2**112,
-//        see (C2); this is checked in _nmod_vec_dot_params)
+// -> no practical constraint on the length: len * (n-1)**2 < 2**s * (2**64 - 1),
+//    i.e. len < 2**59 roughly, see (C1)
 
 // APPROACH:
 //
@@ -548,7 +545,10 @@ ulong _nmod_vec_dot3_ptr(nn_srcptr vec1, const nn_ptr * vec2, slong offset, slon
 //
 // -> avoiding modular reductions altogether, compute dp_lo and dp_hi such that
 // the dot product without modular reduction is dp  =  dp_lo + 2**s * dp_hi
-// -> finally, compute (dp_lo + pow2_precomp * dp_hi)  %  n
+// -> finally, compute (dp_lo + pow2_precomp * dp_hi)  %  n, as a two-word
+//    integer: since pow2_precomp < n its high word is < n, so a single
+//    NMOD_RED2 suffices, and a one-word NMOD_RED when the high word is 0
+//    (see _NMOD_VEC_DOT_SPLIT_COMBINE)
 // -> done through repeating this: accumulate a few terms,
 // move higher bits to dp_hi and keep lower ones in dp_lo
 
@@ -574,18 +574,17 @@ ulong _nmod_vec_dot3_ptr(nn_srcptr vec1, const nn_ptr * vec2, slong offset, slon
 // -> constraint (C1):
 // in the above representation of dp we will use a ulong for dp_hi,
 // so we require      len * (n-1)**2 <= 2**s * (2**64 - 1)
-// which is less restrictive than the below (C2)
+// with s = 56 and n <= 1515531528, this means len < 2**59 roughly
 //
-// -> constraint (C2):
-// for dp_lo + pow2_precomp * dp_hi to fit in a single word, we require
-//      dp_lo + (n-1) dp_hi < 2**64.
-// After the last fold, up to t more products are added to dp_lo (t = 7 for
-// the scalar code, t = 3 for the AVX2 code), so dp_lo <= 2**s - 1 + t (n-1)**2.
-// Since dp_hi <= len * (n-1)**2 / 2**s, it suffices to ensure
+// -> former constraint (C2), no longer needed:
+// up to October 2026 the final value dp_lo + pow2_precomp * dp_hi was
+// computed in a single word, which required
 //     len * (n-1)**3 + t * (n-1)**2 * 2**s < 2**s * (2**64 + 1 - 2**s)
-// The table below omits the term t * (n-1)**2 * 2**s and its length bounds
-// are therefore too large for n close to nmax8: _nmod_vec_dot_params checks
-// (C2) with t = 7 instead. At n = 1515531528 it gives len <= 47546087.
+// where t is the number of products added to dp_lo after the last fold
+// (t = 7 for the scalar code, t = 3 for the AVX2 code); _nmod_vec_dot_params
+// then fell back to _DOT2 for longer vectors (len > 47546087 at
+// n = 1515531528). The table below is kept for reference on the choice of
+// s; its length columns are now irrelevant.
 //
 // sage: for s in range(40,64):
 // ....:     nmax8 = 1 + floor(sqrt(2**61 - 2**(s-3)))             # (C0-8)

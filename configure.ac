@@ -862,6 +862,7 @@ then
     AC_SEARCH_LIBS([__gmpn_mulmid_n],[gmp],[AC_DEFINE(FLINT_HAVE_NATIVE_mpn_mulmid_n,1,Define if GMP has mpn_mulmid_n)])
     AC_SEARCH_LIBS([__gmpn_divexact],[gmp],[AC_DEFINE(FLINT_HAVE_NATIVE_mpn_divexact,1,Define if GMP has mpn_divexact)])
     AC_SEARCH_LIBS([__gmpn_mod_34lsub1],[gmp],[AC_DEFINE(FLINT_HAVE_NATIVE_mpn_mod_34lsub1,1,Define if GMP has mpn_mod_34lsub1)])
+    AC_SEARCH_LIBS([__gmpn_gcd_22],[gmp],[AC_DEFINE(FLINT_HAVE_NATIVE_mpn_gcd_22,1,Define if GMP has mpn_gcd_22)])
 fi
 
 if test "$enable_mpfr_check" = "yes";
@@ -1058,6 +1059,20 @@ then
     AC_DEFINE(FLINT_HAVE_FFT_SMALL,1,[Define to use the fft_small module])
 else
     AC_SUBST(FFT_SMALL,[\	\	])
+fi
+
+###############################################################################
+# instruction sets of the build, recorded for inline code of the headers
+###############################################################################
+
+# Inline code of the headers that calls AVX2 functions of the library (for
+# instance _nmod_vec_nored_scalar_addmul_halflimb in nmod_vec.h) must follow
+# the instruction sets FLINT is compiled with, not the compiler flags of the
+# code that includes the header: record them in flint-config.h. This reuses
+# the check for fft_small, which tests __AVX2__ with the final CFLAGS.
+if test "$flint_cv_have_fft_small_x86_i" = "yes";
+then
+    AC_DEFINE(FLINT_HAVE_AVX2,1,[Define if FLINT is compiled with AVX2])
 fi
 
 ###############################################################################

@@ -58,6 +58,17 @@
 #endif
 
 /*
+    Inline code of this header that calls SIMD functions of the library must
+    follow the instruction sets FLINT was compiled with, not the compiler
+    macros (__AVX2__, ...) of the calling code, which may differ.
+*/
+#if FLINT_BITS == 64 && FLINT_HAVE_AVX2
+# define NMOD_VEC_LIB_HAVE_AVX2 1
+#else
+# define NMOD_VEC_LIB_HAVE_AVX2 0
+#endif
+
+/*
     Minimal lengths for these to beat the scalar code, measured on Ice Lake,
     Zen 4, Cascade Lake, Broadwell and Emerald Rapids. For u64, measured
     against _DOT2 in the two-limb band and against _DOT3_ACC / _DOT3 in the
@@ -227,17 +238,26 @@ void _nmod_vec_scalar_addmul_nmod(nn_ptr res, nn_srcptr vec, slong len, ulong c,
 void _nmod_vec_scalar_addmul_nmod_generic(nn_ptr res, nn_srcptr vec, slong len, ulong c, nmod_t mod);
 void _nmod_vec_scalar_addmul_nmod_shoup(nn_ptr res, nn_srcptr vec, slong len, ulong c, nmod_t mod);
 
-#if FLINT_BITS == 64 && defined(__AVX2__)
+/* the AVX2 version exists when FLINT itself is compiled with AVX2 */
+#if NMOD_VEC_LIB_HAVE_AVX2
 void _nmod_vec_nored_scalar_addmul_halflimb_avx2(nn_ptr res, nn_srcptr vec, slong len, ulong c);
+#elif FLINT_BITS == 64 && defined(__ARM_NEON)
+void _nmod_vec_nored_scalar_addmul_halflimb_neon(nn_ptr res, nn_srcptr vec, slong len, ulong c);
 #endif
 
 NMOD_VEC_INLINE void
 _nmod_vec_nored_scalar_addmul_halflimb(nn_ptr res, nn_srcptr vec, slong len, ulong c)
 {
-#if FLINT_BITS == 64 && defined(__AVX2__)
+#if NMOD_VEC_LIB_HAVE_AVX2
     if (len >= 16)
     {
         _nmod_vec_nored_scalar_addmul_halflimb_avx2(res, vec, len, c);
+        return;
+    }
+#elif FLINT_BITS == 64 && defined(__ARM_NEON)
+    if (len >= 16)
+    {
+        _nmod_vec_nored_scalar_addmul_halflimb_neon(res, vec, len, c);
         return;
     }
 #endif
@@ -264,11 +284,31 @@ void _nmod_vec_invert_shoup(nn_ptr res, nn_srcptr vec, ulong len, nmod_t mod);
 #if (FLINT_BITS == 64)
 #   define DOT_SPLIT_BITS 56
 #   define DOT_SPLIT_MASK UWORD(72057594037927935) // (1L << DOT_SPLIT_BITS) - 1
+
+/*
+    res = (pow2_precomp * hi + lo) mod n, for pow2_precomp < n and any words
+    hi, lo, computed as a two-word integer c1:c0. Since pow2_precomp < n,
+    c1:c0 < n * 2**FLINT_BITS, i.e. c1 < n, as required by NMOD_RED2; this
+    puts no constraint on the length of the dot product beyond hi not
+    overflowing (see the notes at the end of nmod_vec/dot.c). When c1 is 0
+    (always the case for short and medium lengths) the one-word NMOD_RED
+    suffices. The other branch uses NMOD_RED2 directly (not NMOD2_RED2): when
+    the compiler turns the test into a select, the two branches then merge into
+    a single reduction, whereas NMOD2_RED2 would add a second one on every call
+    (seen with Apple clang 17 on an M4).
+*/
+#   define _NMOD_VEC_DOT_SPLIT_COMBINE(res, hi, lo, pow2_precomp, mod)  \
+    do {                                                                \
+        ulong c1xx, c0xx;                                               \
+        umul_ppmm(c1xx, c0xx, (pow2_precomp), (hi));                    \
+        add_ssaaaa(c1xx, c0xx, c1xx, c0xx, UWORD(0), (lo));             \
+        if (c1xx == 0)                                                  \
+            NMOD_RED(res, c0xx, mod);                                   \
+        else                                                            \
+            NMOD_RED2(res, c1xx, c0xx, mod);                            \
+    } while (0)
 #endif // FLINT_BITS == 64
 
-/* The method is chosen by the library (src/nmod_vec/dot_params.c), so that
-   it matches the kernels FLINT was compiled with, whatever the compiler flags
-   of the calling code. */
 dot_params_t _nmod_vec_dot_params(ulong len, nmod_t mod);
 
 int _nmod_vec_dot_bound_limbs(slong len, nmod_t mod);
@@ -632,8 +672,8 @@ do                                                    \
     for ( ; i < (len); i++)                           \
         dp_lo += (expr1) * (expr2);                   \
                                                       \
-    res = pow2_precomp * dp_hi + dp_lo;               \
-    NMOD_RED(res, res, mod);                          \
+    _NMOD_VEC_DOT_SPLIT_COMBINE(res, dp_hi, dp_lo,    \
+                                pow2_precomp, mod);   \
 } while(0);
 #endif  // FLINT_BITS == 64
 

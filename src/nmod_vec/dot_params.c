@@ -13,62 +13,13 @@
     Selection of the dot product method. This is not an inline function in
     nmod_vec.h: the choice depends on the kernels the library was compiled
     with (AVX2, AVX-512, IFMA), which a calling translation unit compiled
-    with other flags cannot see.
+    with other flags cannot see. The split methods _DOT2_SPLIT and
+    _DOT2_HALF have no length bound (their final step is a two-word
+    reduction, see _NMOD_VEC_DOT_SPLIT_COMBINE in nmod_vec.h).
 */
 
 #include "nmod.h"
 #include "nmod_vec.h"
-
-#if FLINT_BITS == 64
-
-/* whether len * m^3 < 2^56 * B, for m < 2^32 */
-static int
-_len_m3_below(ulong len, ulong m, ulong B)
-{
-    ulong c1, c0, p2, p1, p0, t;
-
-    umul_ppmm(c1, c0, m * m, m);
-    umul_ppmm(p1, p0, c0, len);
-    umul_ppmm(p2, t, c1, len);
-    add_ssaaaa(p2, p1, p2, p1, UWORD(0), t);
-
-    /* 2^56 * B = (B >> 8) * 2^64 + (B << 56) */
-    if (p2 != 0)
-        return 0;
-    return (p1 < (B >> 8)) || (p1 == (B >> 8) && p0 < (B << 56));
-}
-
-/*
-    _DOT2_SPLIT with m = n - 1 <= 1515531527: the final value
-    pow2_precomp * dp_hi + dp_lo fits in a word if
-        len * m^3 + t * m^2 * 2^56 < 2^56 * (2^64 - 2^56 + 1),
-    where t is the number of products added after the last fold (t = 7 for
-    the scalar code, t = 3 for the AVX2 code; we use 7, since the scalar
-    code is used with the same parameters by the strided and ptr variants).
-    Here 0 < 2^64 - 2^56 + 1 - 7 * m^2 < 2^64.
-*/
-static int
-_dot2_split_len_ok(ulong len, ulong m)
-{
-    ulong B = UWORD(0) - (UWORD(1) << DOT_SPLIT_BITS) + 1 - 7 * (m * m);
-    return _len_m3_below(len, m, B);
-}
-
-#if defined(__AVX2__)
-/*
-    _DOT2_HALF with AVX2, m = n - 1 < 2^32: the final value
-    pow2_precomp * dp_hi + dp_lo fits in a word if
-        len * m^3 < 2^56 * (2^64 - 2^58),
-    which holds for every such m when len <= 16515072.
-*/
-static int
-_dot2_half_avx2_len_ok(ulong len, ulong m)
-{
-    return _len_m3_below(len, m, UWORD(0) - (UWORD(1) << 58));
-}
-#endif
-
-#endif  // FLINT_BITS == 64
 
 #define _FIXED_LEN_MOD_BOUNDS(fixedlen, onelimb_bnd, twolimb_bnd) \
         if (len == fixedlen)                                      \
@@ -157,8 +108,8 @@ dot_params_t _nmod_vec_dot_params(ulong len, nmod_t mod)
             return params;
         }
 #endif
-#if (FLINT_BITS == 64) // _SPLIT: see the end of dot.c for these constraints
-        if (mod.n <= UWORD(1515531528) && _dot2_split_len_ok(len, mod.n - 1))
+#if (FLINT_BITS == 64) // _SPLIT: see the end of dot.c for this constraint
+        if (mod.n <= UWORD(1515531528))
         {
             ulong pow2_precomp;
             NMOD_RED(pow2_precomp, (UWORD(1) << DOT_SPLIT_BITS), mod);
@@ -167,15 +118,9 @@ dot_params_t _nmod_vec_dot_params(ulong len, nmod_t mod)
         }
 #endif // FLINT_BITS == 64
 #if (FLINT_BITS == 64) && defined(__AVX2__)
-        // the AVX2 kernel of _nmod_vec_dot2_half needs a length bound
-        if (_dot2_half_avx2_len_ok(len, mod.n - 1))
-        {
-            ulong pow2_precomp;
-            NMOD_RED(pow2_precomp, (UWORD(1) << DOT_SPLIT_BITS), mod);
-            dot_params_t params = {_DOT2_HALF, pow2_precomp};
-            return params;
-        }
-        dot_params_t params = {_DOT2, UWORD(0)};
+        ulong pow2_precomp;
+        NMOD_RED(pow2_precomp, (UWORD(1) << DOT_SPLIT_BITS), mod);
+        dot_params_t params = {_DOT2_HALF, pow2_precomp};
         return params;
 #elif defined(NMOD_VEC_DOT2_SPLIT_MAX_LEN)
         dot_params_t params = {_DOT2, UWORD(0)};
